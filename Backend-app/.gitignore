@@ -1,0 +1,34 @@
+# ── Variables de entorno (NUNCA subir) ───────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Entorno virtual Python ───────────────────────────────────────────────────
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# ── Base de datos local ───────────────────────────────────────────────────────
+db.sqlite3
+*.sqlite3
+
+# ── Archivos estáticos generados ─────────────────────────────────────────────
+staticfiles/
+media/
+
+# ── Django ────────────────────────────────────────────────────────────────────
+*.log
+local_settings.py
+
+# ── Pytest / Coverage ────────────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Celery ───────────────────────────────────────────────────────────────────
+celerybeat-schedule
+celerybeat.pid
