@@ -13,7 +13,7 @@ class ClienteSerializer(serializers.ModelSerializer):
             'limite_credito', 'saldo_deuda', 'credito_disponible',
             'activo', 'creado_en',
         ]
-        read_only_fields = ['saldo_deuda', 'creado_en']
+        read_only_fields = ['colmado', 'saldo_deuda', 'creado_en']
 
 
 class AbonoFiadoSerializer(serializers.ModelSerializer):

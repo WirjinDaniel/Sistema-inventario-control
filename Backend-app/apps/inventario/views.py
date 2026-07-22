@@ -48,7 +48,11 @@ class ProductoViewSet(viewsets.ModelViewSet):
     ordering_fields = ['nombre', 'stock_actual', 'precio_venta']
 
     def get_queryset(self):
-        qs = Producto.objects.filter(colmado=self.request.user.colmado, activo=True)
+        # Para acciones de detalle (retrieve, update, destroy) incluir productos inactivos
+        if self.action in ('retrieve', 'update', 'partial_update', 'destroy'):
+            qs = Producto.objects.filter(colmado=self.request.user.colmado)
+        else:
+            qs = Producto.objects.filter(colmado=self.request.user.colmado, activo=True)
         categoria_id = self.request.query_params.get('categoria')
         if categoria_id:
             qs = qs.filter(categoria_id=categoria_id)

@@ -9,6 +9,7 @@ class BancoCuentaSerializer(serializers.ModelSerializer):
     class Meta:
         model = BancoCuenta
         fields = ['id', 'colmado', 'banco', 'numero_cuenta', 'titular', 'activo']
+        read_only_fields = ['colmado']
 
 
 class SesionCajaSerializer(serializers.ModelSerializer):
@@ -19,7 +20,7 @@ class SesionCajaSerializer(serializers.ModelSerializer):
     class Meta:
         model = SesionCaja
         fields = '__all__'
-        read_only_fields = ['apertura']
+        read_only_fields = ['apertura', 'colmado', 'cajero']
 
 
 class VentaDetalleSerializer(serializers.ModelSerializer):
@@ -28,6 +29,7 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
     class Meta:
         model = VentaDetalle
         fields = ['id', 'producto', 'producto_nombre', 'cantidad', 'precio_unitario', 'descuento', 'subtotal']
+        read_only_fields = ['subtotal']
 
 
 class VentaCreateSerializer(serializers.ModelSerializer):

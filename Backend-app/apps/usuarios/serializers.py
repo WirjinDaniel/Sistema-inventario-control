@@ -7,6 +7,7 @@ class ColmadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Colmado
         fields = '__all__'
+        read_only_fields = ['id', 'creado_en']
 
 
 class UsuarioSerializer(serializers.ModelSerializer):

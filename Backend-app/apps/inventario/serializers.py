@@ -8,6 +8,7 @@ class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
         fields = ['id', 'colmado', 'nombre', 'color', 'icono', 'activo', 'total_productos']
+        read_only_fields = ['colmado']
 
     def get_total_productos(self, obj):
         return obj.productos.filter(activo=True).count()
@@ -19,6 +20,7 @@ class MarcaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Marca
         fields = ['id', 'colmado', 'nombre', 'pais_origen', 'activo', 'total_productos']
+        read_only_fields = ['colmado']
 
     def get_total_productos(self, obj):
         return Producto.objects.filter(colmado=obj.colmado, proveedor__icontains=obj.nombre, activo=True).count()
@@ -40,7 +42,7 @@ class ReglaDescuentoSerializer(serializers.ModelSerializer):
             'id', 'colmado', 'producto', 'producto_nombre', 'categoria', 'categoria_nombre',
             'nombre', 'cantidad_minima', 'tipo', 'valor', 'activo', 'creado_en',
         ]
-        read_only_fields = ['creado_en']
+        read_only_fields = ['colmado', 'creado_en']
 
 
 class ProductoSerializer(serializers.ModelSerializer):
@@ -65,7 +67,7 @@ class ProductoSerializer(serializers.ModelSerializer):
             'fecha_vencimiento', 'activo', 'proveedor', 'unidades_por_caja', 'itbis_exento', 'notas',
             'creado_en', 'presentaciones', 'reglas_descuento',
         ]
-        read_only_fields = ['creado_en', 'actualizado_en']
+        read_only_fields = ['colmado', 'creado_en', 'actualizado_en']
 
 
 class MovimientoInventarioSerializer(serializers.ModelSerializer):
@@ -79,4 +81,4 @@ class MovimientoInventarioSerializer(serializers.ModelSerializer):
             'cantidad', 'costo_unitario', 'usuario', 'usuario_nombre',
             'nota', 'fecha',
         ]
-        read_only_fields = ['fecha']
+        read_only_fields = ['colmado', 'usuario', 'fecha']

@@ -17,7 +17,7 @@ class SuplidorSerializer(serializers.ModelSerializer):
             'descuento_habitual', 'frecuencia_entrega', 'notas', 'activo', 'creado_en',
             'total_comprado', 'total_pagado', 'balance_pendiente', 'ultima_compra',
         ]
-        read_only_fields = ['creado_en']
+        read_only_fields = ['colmado', 'creado_en']
 
     def get_total_comprado(self, obj):
         return float(obj.ordenes.filter(estado=OrdenCompra.ESTADO_RECIBIDA).aggregate(t=Sum('total'))['t'] or 0)
@@ -50,7 +50,7 @@ class PagoSuplidorSerializer(serializers.ModelSerializer):
     class Meta:
         model = PagoSuplidor
         fields = ['id', 'orden', 'usuario', 'usuario_nombre', 'monto', 'fecha', 'metodo', 'referencia', 'nota']
-        read_only_fields = ['fecha']
+        read_only_fields = ['usuario', 'fecha']
 
 
 class OrdenCompraSerializer(serializers.ModelSerializer):
@@ -68,4 +68,4 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
             'numero_factura', 'fecha', 'fecha_recepcion', 'total', 'estado', 'notas',
             'items', 'pagos', 'total_pagado', 'balance_pendiente',
         ]
-        read_only_fields = ['fecha', 'total', 'estado']
+        read_only_fields = ['usuario', 'fecha', 'total', 'estado']

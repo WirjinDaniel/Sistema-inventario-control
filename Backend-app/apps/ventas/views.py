@@ -44,7 +44,7 @@ class SesionCajaViewSet(viewsets.ModelViewSet):
         if not sesion.esta_abierta:
             return Response({'detail': 'La sesión ya está cerrada.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        efectivo_declarado = request.data.get('efectivo_final_declarado', 0)
+        efectivo_declarado = float(request.data.get('efectivo_final_declarado', 0))
 
         # Calcular efectivo esperado (efectivo inicial + ventas en efectivo)
         ventas_efectivo = sesion.ventas.filter(

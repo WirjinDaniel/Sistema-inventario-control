@@ -1,4 +1,6 @@
-from rest_framework import viewsets, permissions, filters
+from rest_framework import viewsets, permissions, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Usuario, Colmado, AuditoriaLog
 from .serializers import UsuarioSerializer, UsuarioCreateSerializer, ColmadoSerializer, CustomTokenSerializer, AuditoriaLogSerializer
@@ -27,6 +29,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if self.action in ('create', 'destroy', 'update', 'partial_update'):
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticated()]
+
+    @action(detail=False, methods=['get', 'patch'], url_path='colmado')
+    def colmado(self, request):
+        """Obtener o actualizar datos del colmado del usuario autenticado"""
+        colmado = request.user.colmado
+        if request.method == 'GET':
+            serializer = ColmadoSerializer(colmado)
+            return Response(serializer.data)
+        elif request.method == 'PATCH':
+            serializer = ColmadoSerializer(colmado, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AuditoriaLogViewSet(viewsets.ReadOnlyModelViewSet):

@@ -326,8 +326,18 @@ export default function POSPage() {
       setUltimaVenta(data);
       limpiarCarrito();
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string; non_field_errors?: string[] } } };
-      toast.error(e.response?.data?.detail ?? e.response?.data?.non_field_errors?.[0] ?? "Error al procesar la venta");
+      const e = err as { response?: { data?: Record<string, unknown> } };
+      const data = e.response?.data;
+      if (data) {
+        const msg = (data.detail as string)
+          ?? (data.non_field_errors as string[])?.[0]
+          ?? Object.entries(data)
+              .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+              .join(' | ');
+        toast.error(msg || "Error al procesar la venta");
+      } else {
+        toast.error("Error al procesar la venta");
+      }
     } finally { setProcesando(false); }
   }
 
