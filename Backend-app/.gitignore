@@ -1,3 +1,6 @@
+# ── Scripts de debug local (no subir) ────────────────────────────────────────
+scripts/
+
 # ── Variables de entorno (NUNCA subir) ───────────────────────────────────────
 .env
 .env.*

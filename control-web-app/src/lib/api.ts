@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api",
   headers: { "Content-Type": "application/json" },
 });
 
@@ -23,7 +23,7 @@ api.interceptors.response.use(
       if (refresh) {
         try {
           const { data } = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"}/auth/refresh/`,
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api"}/auth/refresh/`,
             { refresh }
           );
           localStorage.setItem("access_token", data.access);

@@ -13,7 +13,7 @@ class ColmadoSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['id', 'username', 'nombre', 'rol', 'colmado', 'is_active', 'creado_en']
+        fields = ['id', 'username', 'nombre', 'rol', 'colmado', 'is_active', 'is_superuser', 'creado_en']
         read_only_fields = ['creado_en']
 
 

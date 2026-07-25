@@ -1,4 +1,7 @@
+import logging
 from .models import AuditoriaLog
+
+logger = logging.getLogger(__name__)
 
 
 def get_client_ip(request):
@@ -21,5 +24,5 @@ def log(request, accion, modulo, descripcion, objeto_id=None, extra=None):
             ip=get_client_ip(request),
             extra=extra or {},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("audit.log falló: %s", e, exc_info=True)
