@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { DatePicker } from "@/components/ui/date-picker";
 
 const UNIDADES = ["unidad", "libra", "onza", "galón", "caja", "docena", "litro"];
 
@@ -519,11 +520,11 @@ export default function ProductosPage() {
                     </div>
                     <div>
                       <Label className="text-[10px] mb-1 block">Desde</Label>
-                      <Input type="date" value={form.oferta_inicio} onChange={f("oferta_inicio")} className="border-rose-200" />
+                      <DatePicker value={form.oferta_inicio} onChange={(v) => setForm((p) => ({ ...p, oferta_inicio: v }))} placeholder="Inicio oferta" className="w-full border-rose-200" />
                     </div>
                     <div>
                       <Label className="text-[10px] mb-1 block">Hasta</Label>
-                      <Input type="date" value={form.oferta_fin} onChange={f("oferta_fin")} className="border-rose-200" />
+                      <DatePicker value={form.oferta_fin} onChange={(v) => setForm((p) => ({ ...p, oferta_fin: v }))} placeholder="Fin oferta" className="w-full border-rose-200" />
                     </div>
                   </div>
                   {form.precio_oferta && form.precio_venta && (
@@ -545,8 +546,7 @@ export default function ProductosPage() {
                       No aplica
                     </label>
                   </div>
-                  <Input type="date" value={form.fecha_vencimiento} onChange={f("fecha_vencimiento")}
-                    disabled={form.sin_vencimiento} />
+                  <DatePicker value={form.fecha_vencimiento} onChange={(v) => setForm((p) => ({ ...p, fecha_vencimiento: v }))} placeholder="Seleccionar fecha" disabled={form.sin_vencimiento} className="w-full" />
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Notas internas</Label>

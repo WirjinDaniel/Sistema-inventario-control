@@ -8,6 +8,7 @@ import {
   ShoppingCart, Wallet, Package, Store, LogIn, AlertTriangle,
   CreditCard, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface AuditoriaEntry {
   id: number;
@@ -129,8 +130,8 @@ export default function AuditoriaPage() {
             {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
           </select>
           {/* Fechas */}
-          <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} className={`${inputCls} w-full`} />
-          <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} className={`${inputCls} w-full`} />
+          <DatePicker value={fechaDesde} onChange={setFechaDesde} placeholder="Desde" className="w-full" />
+          <DatePicker value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" className="w-full" />
         </div>
         {(busqueda || filtroAccion || filtroModulo || filtroUsuario || fechaDesde || fechaHasta) && (
           <button onClick={() => { setBusqueda(''); setFiltroAccion(''); setFiltroModulo(''); setFiltroUsuario(''); setFechaDesde(''); setFechaHasta(''); }}

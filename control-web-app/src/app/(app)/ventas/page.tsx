@@ -5,8 +5,9 @@ import api from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   BookOpen, Search, ShoppingCart, CreditCard, Building2,
-  Banknote, AlertTriangle, X, Check, ChevronDown, ChevronUp, CalendarDays,
+  Banknote, AlertTriangle, X, Check, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { Venta } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -129,13 +130,8 @@ export default function VentasPage() {
             <option value="COMPLETADA">Completada</option>
             <option value="ANULADA">Anulada</option>
           </select>
-          <div className="flex items-center gap-1">
-            <CalendarDays size={13} className="text-muted-foreground shrink-0" />
-            <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
-              className="h-8 flex-1 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
-          </div>
-          <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
-            className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+          <DatePicker value={fechaDesde} onChange={setFechaDesde} placeholder="Desde" />
+          <DatePicker value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" />
         </div>
         {hayFiltros && (
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-muted-foreground"

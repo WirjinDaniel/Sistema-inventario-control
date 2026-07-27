@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   ArrowLeftRight, Search, TrendingUp, TrendingDown, RotateCcw,
-  ShoppingCart, X, CalendarDays,
+  ShoppingCart, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface Movimiento {
   id: number;
@@ -169,20 +170,9 @@ export default function MovimientosPage() {
           ))}
         </select>
         <div className="flex items-center gap-1.5">
-          <CalendarDays size={13} className="text-muted-foreground" />
-          <input
-            type="date"
-            value={fechaDesde}
-            onChange={(e) => setFechaDesde(e.target.value)}
-            className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+          <DatePicker value={fechaDesde} onChange={setFechaDesde} placeholder="Desde" />
           <span className="text-xs text-muted-foreground">—</span>
-          <input
-            type="date"
-            value={fechaHasta}
-            onChange={(e) => setFechaHasta(e.target.value)}
-            className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+          <DatePicker value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" />
         </div>
         {hayFiltros && (
           <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={limpiarFiltros}>
