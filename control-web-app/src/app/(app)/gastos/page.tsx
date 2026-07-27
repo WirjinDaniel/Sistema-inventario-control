@@ -1,434 +1,380 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import api from '@/lib/api';
-import { CategoriaGasto, Gasto } from '@/types';
-import CustomSelect from '@/components/CustomSelect';
-import toast from 'react-hot-toast';
+import { useState, useEffect, useCallback } from "react";
+import api from "@/lib/api";
+import type { CategoriaGasto, Gasto } from "@/types";
+import toast from "react-hot-toast";
 import {
-  Receipt, Plus, X, DollarSign, TrendingDown, AlertTriangle,
-  Loader2, Search, ChevronDown, ChevronUp, Banknote, CreditCard, ArrowLeftRight, BookCheck,
-} from 'lucide-react';
+  Receipt, Plus, DollarSign, TrendingDown, AlertTriangle,
+  Search, ChevronDown, ChevronUp, Banknote, CreditCard,
+  ArrowLeftRight, BookCheck, X, Check,
+} from "lucide-react";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const METODOS_PAGO = [
-  { value: 'EFECTIVO',      label: 'Efectivo',       icon: Banknote },
-  { value: 'TARJETA',       label: 'Tarjeta',        icon: CreditCard },
-  { value: 'TRANSFERENCIA', label: 'Transferencia',  icon: ArrowLeftRight },
-  { value: 'CHEQUE',        label: 'Cheque',         icon: BookCheck },
+  { value: "EFECTIVO",      label: "Efectivo",      icon: Banknote },
+  { value: "TARJETA",       label: "Tarjeta",       icon: CreditCard },
+  { value: "TRANSFERENCIA", label: "Transferencia", icon: ArrowLeftRight },
+  { value: "CHEQUE",        label: "Cheque",        icon: BookCheck },
 ];
 
-const METODO_COLOR: Record<string, string> = {
-  EFECTIVO:      'bg-emerald-100 text-emerald-700',
-  TARJETA:       'bg-blue-100 text-blue-700',
-  TRANSFERENCIA: 'bg-violet-100 text-violet-700',
-  CHEQUE:        'bg-amber-100 text-amber-700',
-};
-
-const TIPOS_LABEL: Record<string, { label: string; color: string }> = {
-  FIJO:          { label: 'Fijo',          color: 'bg-blue-100 text-blue-700' },
-  VARIABLE:      { label: 'Variable',      color: 'bg-amber-100 text-amber-700' },
-  FINANCIERO:    { label: 'Financiero',    color: 'bg-purple-100 text-purple-700' },
-  PERDIDA:       { label: 'Pérdida',       color: 'bg-red-100 text-red-700' },
-  ADMINISTRATIVO:{ label: 'Administrativo',color: 'bg-slate-100 text-slate-700' },
-  RETIRO:        { label: 'Retiro',        color: 'bg-orange-100 text-orange-700' },
+const TIPOS_LABEL: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger" | "info" | "purple" | "secondary" }> = {
+  FIJO:          { label: "Fijo",           variant: "info" },
+  VARIABLE:      { label: "Variable",       variant: "warning" },
+  FINANCIERO:    { label: "Financiero",     variant: "purple" },
+  PERDIDA:       { label: "Pérdida",        variant: "danger" },
+  ADMINISTRATIVO:{ label: "Administrativo", variant: "secondary" },
+  RETIRO:        { label: "Retiro",         variant: "default" },
 };
 
 const PERIODOS = [
-  { value: 'hoy',    label: 'Hoy' },
-  { value: 'semana', label: 'Esta semana' },
-  { value: 'mes',    label: 'Este mes' },
+  { value: "hoy",    label: "Hoy" },
+  { value: "semana", label: "Semana" },
+  { value: "mes",    label: "Mes" },
 ];
 
 interface Resumen {
-  total: number;
-  FIJO: number;
-  VARIABLE: number;
-  FINANCIERO: number;
-  PERDIDA: number;
-  ADMINISTRATIVO: number;
-  RETIRO: number;
+  total: number; FIJO: number; VARIABLE: number;
+  FINANCIERO: number; PERDIDA: number; ADMINISTRATIVO: number; RETIRO: number;
 }
-
-const inputCls =
-  'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition';
 
 export default function GastosPage() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [categorias, setCategorias] = useState<CategoriaGasto[]>([]);
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(true);
-  const [periodo, setPeriodo] = useState('mes');
-  const [filtroTipo, setFiltroTipo] = useState('');
-  const [busqueda, setBusqueda] = useState('');
+  const [periodo, setPeriodo] = useState("mes");
+  const [filtroTipo, setFiltroTipo] = useState("");
+  const [busqueda, setBusqueda] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-
   const [form, setForm] = useState({
-    categoria: '',
-    descripcion: '',
-    monto: '',
-    metodo_pago: 'EFECTIVO',
-    comprobante: '',
-    nota: '',
+    categoria: "", descripcion: "", monto: "",
+    metodo_pago: "EFECTIVO", comprobante: "", nota: "",
   });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ periodo });
-      if (filtroTipo) params.set('tipo', filtroTipo);
-
+      if (filtroTipo) params.set("tipo", filtroTipo);
       const [gastosRes, resumenRes] = await Promise.all([
         api.get(`/gastos/?${params}`),
         api.get(`/gastos/resumen/?${params}`),
       ]);
       setGastos(gastosRes.data.results ?? gastosRes.data);
       setResumen(resumenRes.data);
-    } catch {
-      toast.error('Error al cargar gastos');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error("Error al cargar gastos"); }
+    finally { setLoading(false); }
   }, [periodo, filtroTipo]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    api.get('/gastos/categorias/').then(r => {
+    api.get("/gastos/categorias/").then((r) => {
       const data: CategoriaGasto[] = r.data.results ?? r.data;
       if (data.length === 0) {
-        api.post('/gastos/categorias/seed/').then(() =>
-          api.get('/gastos/categorias/').then(r2 => setCategorias(r2.data.results ?? r2.data))
+        api.post("/gastos/categorias/seed/").then(() =>
+          api.get("/gastos/categorias/").then((r2) => setCategorias(r2.data.results ?? r2.data))
         );
-      } else {
-        setCategorias(data);
-      }
+      } else { setCategorias(data); }
     });
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.categoria || !form.descripcion || !form.monto) {
-      toast.error('Completa los campos requeridos');
-      return;
-    }
+    if (!form.categoria || !form.descripcion || !form.monto) return toast.error("Completa los campos requeridos");
     setSubmitting(true);
     try {
-      await api.post('/gastos/', {
-        categoria: Number(form.categoria),
-        descripcion: form.descripcion,
-        monto: form.monto,
-        metodo_pago: form.metodo_pago,
-        comprobante: form.comprobante,
-        nota: form.nota,
+      await api.post("/gastos/", {
+        categoria: Number(form.categoria), descripcion: form.descripcion,
+        monto: form.monto, metodo_pago: form.metodo_pago,
+        comprobante: form.comprobante, nota: form.nota,
       });
-      toast.success('Gasto registrado');
+      toast.success("Gasto registrado");
       setShowModal(false);
-      setForm({ categoria: '', descripcion: '', monto: '', metodo_pago: 'EFECTIVO', comprobante: '', nota: '' });
+      setForm({ categoria: "", descripcion: "", monto: "", metodo_pago: "EFECTIVO", comprobante: "", nota: "" });
       fetchData();
-    } catch {
-      toast.error('Error al registrar gasto');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    } catch { toast.error("Error al registrar gasto"); }
+    finally { setSubmitting(false); }
+  }
 
-  const categoriaOptions = categorias.map(c => ({
-    value: String(c.id),
-    label: c.nombre,
-    description: TIPOS_LABEL[c.tipo]?.label,
-  }));
-
-  const tipoOptions = [
-    { value: '', label: 'Todos los tipos' },
-    ...Object.entries(TIPOS_LABEL).map(([v, { label }]) => ({ value: v, label })),
-  ];
-
-  const gastosFiltrados = gastos.filter(g => {
+  const gastosFiltrados = gastos.filter((g) => {
     if (!busqueda) return true;
-    return (
-      g.descripcion.toLowerCase().includes(busqueda.toLowerCase()) ||
-      g.categoria_nombre.toLowerCase().includes(busqueda.toLowerCase())
-    );
+    const q = busqueda.toLowerCase();
+    return g.descripcion.toLowerCase().includes(q) || g.categoria_nombre.toLowerCase().includes(q);
   });
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', maximumFractionDigits: 0 }).format(n);
-
-  const statCards = [
-    { label: 'Total gastos', value: resumen?.total ?? 0, icon: DollarSign, color: 'from-indigo-500 to-violet-600', light: 'bg-indigo-50 text-indigo-600' },
-    { label: 'Gastos fijos', value: resumen?.FIJO ?? 0, icon: Receipt, color: 'from-blue-500 to-blue-600', light: 'bg-blue-50 text-blue-600' },
-    { label: 'Variables', value: resumen?.VARIABLE ?? 0, icon: TrendingDown, color: 'from-amber-500 to-amber-600', light: 'bg-amber-50 text-amber-600' },
-    { label: 'Pérdidas', value: resumen?.PERDIDA ?? 0, icon: AlertTriangle, color: 'from-red-500 to-red-600', light: 'bg-red-50 text-red-600' },
-  ];
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Gastos</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Control de egresos del negocio</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold shadow hover:shadow-md hover:-translate-y-0.5 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Registrar gasto
-        </button>
-      </div>
+    <div className="p-6 space-y-5">
+      <PageHeader
+        title="Gastos"
+        description="Control de egresos del negocio"
+        actions={
+          <Button onClick={() => setShowModal(true)} className="gap-2">
+            <Plus size={15} /> Registrar gasto
+          </Button>
+        }
+      />
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map(card => (
-          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:-translate-y-0.5 transition-transform">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: "Total gastos", value: resumen?.total ?? 0, icon: DollarSign, iconBg: "bg-brand-50 dark:bg-brand-950/30", iconColor: "text-brand-600 dark:text-brand-400" },
+          { label: "Gastos fijos", value: resumen?.FIJO ?? 0, icon: Receipt, iconBg: "bg-blue-50 dark:bg-blue-950/30", iconColor: "text-blue-600 dark:text-blue-400" },
+          { label: "Variables", value: resumen?.VARIABLE ?? 0, icon: TrendingDown, iconBg: "bg-amber-50 dark:bg-amber-950/30", iconColor: "text-amber-600 dark:text-amber-400" },
+          { label: "Pérdidas", value: resumen?.PERDIDA ?? 0, icon: AlertTriangle, iconBg: "bg-rose-50 dark:bg-rose-950/30", iconColor: "text-rose-600 dark:text-rose-400" },
+        ].map((card) => (
+          <div key={card.label} className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-slate-500">{card.label}</span>
-              <div className={`p-2 rounded-xl ${card.light}`}>
-                <card.icon className="w-4 h-4" />
+              <span className="text-xs text-muted-foreground">{card.label}</span>
+              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", card.iconBg)}>
+                <card.icon size={16} className={card.iconColor} />
               </div>
             </div>
-            <div className="text-2xl font-bold text-slate-800">
-              {loading ? <div className="h-7 w-24 bg-slate-100 rounded animate-pulse" /> : fmt(card.value)}
-            </div>
+            {loading
+              ? <Skeleton className="h-7 w-28" />
+              : <p className="text-xl font-bold text-foreground tabular-nums">{formatCurrency(card.value)}</p>
+            }
           </div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-              placeholder="Buscar por descripción o categoría..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-            />
-          </div>
-          <div className="w-48">
-            <CustomSelect
-              value={filtroTipo}
-              onChange={v => setFiltroTipo(v as string)}
-              options={tipoOptions}
-              placeholder="Tipo de gasto"
-            />
-          </div>
-          <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-            {PERIODOS.map(p => (
-              <button
-                key={p.value}
-                onClick={() => setPeriodo(p.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  periodo === p.value
-                    ? 'bg-white shadow text-indigo-600'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {p.label}
-              </button>
+      {/* Filtros */}
+      <div className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar descripción o categoría..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="pl-8 h-8 text-xs"
+          />
+        </div>
+        <select
+          value={filtroTipo}
+          onChange={(e) => setFiltroTipo(e.target.value)}
+          className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="">Todos los tipos</option>
+          {Object.entries(TIPOS_LABEL).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        {/* Período toggle */}
+        <div className="flex gap-1 bg-muted rounded-lg p-1">
+          {PERIODOS.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => setPeriodo(p.value)}
+              className={cn(
+                "px-3 py-1 rounded-md text-xs font-medium transition-all",
+                periodo === p.value
+                  ? "bg-background shadow text-brand-600 dark:text-brand-400"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {(busqueda || filtroTipo) && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground"
+            onClick={() => { setBusqueda(""); setFiltroTipo(""); }}>
+            <X size={12} /> Limpiar
+          </Button>
+        )}
+      </div>
+
+      {/* Tabla */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="flex-1 space-y-1">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-4 w-20" />
+              </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        ) : gastosFiltrados.length === 0 ? (
+          <EmptyState
+            icon={Receipt}
+            title="Sin gastos registrados"
+            description="Registra el primer gasto con el botón de arriba."
+            action={{ label: "Registrar gasto", onClick: () => setShowModal(true) }}
+          />
+        ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Categoría</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Descripción</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Método</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Comprobante</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</th>
-                <th className="px-5 py-3" />
+              <tr className="border-b border-border bg-muted/50">
+                {["Fecha", "Categoría", "Descripción", "Método", "Comprobante", "Monto", ""].map((h) => (
+                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
-              {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i}>
-                    {[...Array(6)].map((_, j) => (
-                      <td key={j} className="px-5 py-4">
-                        <div className="h-4 bg-slate-100 rounded animate-pulse" />
+            <tbody className="divide-y divide-border">
+              {gastosFiltrados.map((g) => {
+                const tipo = TIPOS_LABEL[g.categoria_tipo] ?? { label: g.categoria_tipo, variant: "secondary" as const };
+                const isExp = expandedId === g.id;
+                return (
+                  <>
+                    <tr
+                      key={g.id}
+                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => setExpandedId(isExp ? null : g.id)}
+                    >
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDate(g.fecha)}
                       </td>
-                    ))}
-                  </tr>
-                ))
-              ) : gastosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
-                    <Receipt className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p>No hay gastos registrados</p>
-                  </td>
-                </tr>
-              ) : (
-                gastosFiltrados.map(g => {
-                  const tipo = TIPOS_LABEL[g.categoria_tipo] ?? { label: g.categoria_tipo, color: 'bg-slate-100 text-slate-700' };
-                  return (
-                    <>
-                      <tr
-                        key={g.id}
-                        className="hover:bg-slate-50 transition-colors cursor-pointer"
-                        onClick={() => setExpandedId(expandedId === g.id ? null : g.id)}
-                      >
-                        <td className="px-5 py-3.5 text-slate-600 whitespace-nowrap">
-                          {new Date(g.fecha).toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-medium text-slate-800">{g.categoria_nombre}</span>
-                            <span className={`inline-flex w-fit px-2 py-0.5 rounded-full text-xs font-semibold ${tipo.color}`}>
-                              {tipo.label}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-700">{g.descripcion}</td>
-                        <td className="px-5 py-3.5">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${METODO_COLOR[g.metodo_pago] ?? 'bg-slate-100 text-slate-700'}`}>
-                            {METODOS_PAGO.find(m => m.value === g.metodo_pago)?.label ?? g.metodo_pago}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-500">{g.comprobante || '—'}</td>
-                        <td className="px-5 py-3.5 text-right font-bold text-slate-800">
-                          {fmt(parseFloat(g.monto))}
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-400">
-                          {expandedId === g.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-foreground">{g.categoria_nombre}</p>
+                        <Badge variant={tipo.variant} className="mt-0.5 text-[10px] h-4">{tipo.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-foreground">{g.descripcion}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-muted-foreground">
+                          {METODOS_PAGO.find((m) => m.value === g.metodo_pago)?.label ?? g.metodo_pago}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
+                        {g.comprobante || "—"}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-foreground tabular-nums text-sm">
+                        {formatCurrency(Number(g.monto))}
+                      </td>
+                      <td className="px-4 py-3">
+                        {isExp ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                      </td>
+                    </tr>
+                    {isExp && g.nota && (
+                      <tr key={`${g.id}-note`} className="bg-muted/20">
+                        <td colSpan={7} className="px-4 py-2.5 text-xs text-muted-foreground italic">
+                          Nota: {g.nota}
                         </td>
                       </tr>
-                      {expandedId === g.id && g.nota && (
-                        <tr key={`${g.id}-note`} className="bg-indigo-50/40">
-                          <td colSpan={6} className="px-5 py-3 text-sm text-slate-600 italic">
-                            📝 {g.nota}
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })
-              )}
+                    )}
+                  </>
+                );
+              })}
             </tbody>
           </table>
-        </div>
+        )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-800">Registrar Gasto</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 transition">
-                <X className="w-5 h-5" />
-              </button>
+      {/* Modal registrar gasto */}
+      <Dialog open={showModal} onOpenChange={(o) => !o && setShowModal(false)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center">
+                <Receipt size={14} className="text-rose-600 dark:text-rose-400" />
+              </div>
+              Registrar Gasto
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Categoría *</Label>
+              <select
+                value={form.categoria}
+                onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}
+                className="w-full h-9 px-3 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Seleccionar categoría...</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre} ({TIPOS_LABEL[c.tipo]?.label ?? c.tipo})
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Categoría <span className="text-red-500">*</span></label>
-                <CustomSelect
-                  value={form.categoria}
-                  onChange={v => setForm(f => ({ ...f, categoria: v as string }))}
-                  options={categoriaOptions}
-                  placeholder="Seleccionar categoría..."
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Descripción *</Label>
+              <Input
+                value={form.descripcion}
+                onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
+                placeholder="Ej: Pago alquiler local"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Descripción <span className="text-red-500">*</span></label>
-                <input
-                  className={inputCls}
-                  placeholder="Ej: Pago alquiler local mes de julio"
-                  value={form.descripcion}
-                  onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Monto (RD$) *</Label>
+              <Input
+                type="number" min="0" step="0.01"
+                value={form.monto}
+                onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))}
+                className="text-center text-2xl font-bold h-14 tabular-nums"
+                placeholder="0.00"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Monto (RD$) <span className="text-red-500">*</span></label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-2xl font-bold text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center"
-                  placeholder="0.00"
-                  value={form.monto}
-                  onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
-                />
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Método de pago</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {METODOS_PAGO.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, metodo_pago: m.value }))}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium border transition-all",
+                      form.metodo_pago === m.value
+                        ? "border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-muted-foreground"
+                    )}
+                  >
+                    <m.icon size={15} /> {m.label}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Método de pago</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {METODOS_PAGO.map(m => (
-                    <button
-                      key={m.value}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, metodo_pago: m.value }))}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                        form.metodo_pago === m.value
-                          ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      <m.icon className="w-4 h-4" />
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">No. Comprobante (opcional)</Label>
+              <Input
+                value={form.comprobante}
+                onChange={(e) => setForm((f) => ({ ...f, comprobante: e.target.value }))}
+                placeholder="No. factura o recibo"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">No. Comprobante</label>
-                <input
-                  className={inputCls}
-                  placeholder="No. factura o recibo (opcional)"
-                  value={form.comprobante}
-                  onChange={e => setForm(f => ({ ...f, comprobante: e.target.value }))}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Nota (opcional)</Label>
+              <textarea
+                rows={2}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                placeholder="Observaciones adicionales..."
+                value={form.nota}
+                onChange={(e) => setForm((f) => ({ ...f, nota: e.target.value }))}
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nota</label>
-                <textarea
-                  rows={2}
-                  className={inputCls}
-                  placeholder="Observaciones adicionales (opcional)"
-                  value={form.nota}
-                  onChange={e => setForm(f => ({ ...f, nota: e.target.value }))}
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Registrar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="outline" type="button" onClick={() => setShowModal(false)}>Cancelar</Button>
+              <Button type="submit" disabled={submitting} className="gap-2">
+                {submitting
+                  ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                  : <Check size={14} />}
+                Registrar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

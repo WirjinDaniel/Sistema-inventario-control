@@ -49,7 +49,7 @@ export default function SuperadminDashboard() {
           api.get('/dashboard/ventas-por-colmado/'),
         ]);
         setData(statsRes.data);
-        setVentasColmado(ventasRes.data);
+        setVentasColmado(ventasRes.data.results ?? ventasRes.data);
       } catch (err) {
         console.error('Error fetcheando dashboard:', err);
         setError('Error al cargar los datos del dashboard');

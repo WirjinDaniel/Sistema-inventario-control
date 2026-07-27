@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
-  Warehouse, ArrowLeft, Check, Package, Truck,
+  Warehouse, ArrowLeft, Package, Truck,
   Plus, X, Search, AlertTriangle,
 } from 'lucide-react';
 import type { OrdenCompra, Suplidor, Producto } from '@/types';

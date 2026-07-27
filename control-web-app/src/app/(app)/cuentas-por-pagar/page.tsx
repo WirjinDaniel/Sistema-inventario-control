@@ -1,39 +1,40 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import api from '@/lib/api';
-import toast from 'react-hot-toast';
-import {
-  TrendingDown, AlertTriangle, X, Check, Clock,
-  Banknote, Building2, CreditCard,
-} from 'lucide-react';
-import type { OrdenCompra, PagoSuplidor } from '@/types';
+import { useState, useEffect, useCallback } from "react";
+import api from "@/lib/api";
+import toast from "react-hot-toast";
+import { TrendingDown, AlertTriangle, Clock, Check, Banknote, Building2, CreditCard } from "lucide-react";
+import type { OrdenCompra, PagoSuplidor } from "@/types";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-const fmt = (v: string | number) =>
-  `RD$${Number(v).toLocaleString('es-DO', { minimumFractionDigits: 2 })}`;
-
-const fmtFecha = (s: string) =>
-  new Date(s).toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' });
-
-const METODO_CONFIG: Record<PagoSuplidor['metodo'], { label: string; Icon: React.ElementType }> = {
-  EFECTIVO:     { label: 'Efectivo',      Icon: Banknote },
-  TRANSFERENCIA:{ label: 'Transferencia', Icon: Building2 },
-  CHEQUE:       { label: 'Cheque',        Icon: CreditCard },
+const METODO_CONFIG: Record<PagoSuplidor["metodo"], { label: string; icon: React.ElementType }> = {
+  EFECTIVO:      { label: "Efectivo",      icon: Banknote },
+  TRANSFERENCIA: { label: "Transferencia", icon: Building2 },
+  CHEQUE:        { label: "Cheque",        icon: CreditCard },
 };
 
-const ESTADO_CONFIG: Record<string, { label: string; color: string }> = {
-  PENDIENTE: { label: 'Pendiente',    color: 'bg-amber-50 text-amber-700' },
-  RECIBIDA:  { label: 'Recibida',     color: 'bg-blue-50 text-blue-700' },
-  CANCELADA: { label: 'Cancelada',    color: 'bg-red-50 text-red-600' },
+const ESTADO_CONFIG = {
+  PENDIENTE: { label: "Pendiente", variant: "warning" as const },
+  RECIBIDA:  { label: "Recibida",  variant: "info"    as const },
+  CANCELADA: { label: "Cancelada", variant: "success" as const },
 };
 
-interface PagoForm { monto: string; metodo: PagoSuplidor['metodo']; referencia: string; nota: string; }
-const PAGO_EMPTY: PagoForm = { monto: '', metodo: 'EFECTIVO', referencia: '', nota: '' };
+interface PagoForm { monto: string; metodo: PagoSuplidor["metodo"]; referencia: string; nota: string; }
+const PAGO_EMPTY: PagoForm = { monto: "", metodo: "EFECTIVO", referencia: "", nota: "" };
 
 export default function CuentasPorPagarPage() {
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtroEstado, setFiltroEstado] = useState('PENDIENTE');
+  const [filtroEstado, setFiltroEstado] = useState("PENDIENTE");
   const [pagoModal, setPagoModal] = useState<OrdenCompra | null>(null);
   const [pago, setPago] = useState<PagoForm>(PAGO_EMPTY);
   const [guardando, setGuardando] = useState(false);
@@ -42,10 +43,10 @@ export default function CuentasPorPagarPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filtroEstado) params.set('estado', filtroEstado);
+      if (filtroEstado) params.set("estado", filtroEstado);
       const { data } = await api.get(`/compras/ordenes/?${params}`);
       setOrdenes(data.results ?? data);
-    } catch { toast.error('Error cargando cuentas por pagar'); }
+    } catch { toast.error("Error cargando cuentas por pagar"); }
     setLoading(false);
   }, [filtroEstado]);
 
@@ -53,194 +54,212 @@ export default function CuentasPorPagarPage() {
 
   async function registrarPago() {
     if (!pagoModal) return;
-    if (!pago.monto || Number(pago.monto) <= 0) return toast.error('Monto inválido');
+    if (!pago.monto || Number(pago.monto) <= 0) return toast.error("Monto inválido");
     setGuardando(true);
     try {
-      await api.post('/compras/pagos/', { orden: pagoModal.id, ...pago });
-      toast.success(`Pago de ${fmt(pago.monto)} registrado`);
-      setPagoModal(null); setPago(PAGO_EMPTY);
-      cargar();
-    } catch { toast.error('Error al registrar el pago'); }
+      await api.post("/compras/pagos/", { orden: pagoModal.id, ...pago });
+      toast.success(`Pago de ${formatCurrency(Number(pago.monto))} registrado`);
+      setPagoModal(null); setPago(PAGO_EMPTY); cargar();
+    } catch { toast.error("Error al registrar el pago"); }
     setGuardando(false);
   }
 
   const totalPendiente = ordenes
-    .filter(o => o.estado !== 'CANCELADA')
+    .filter((o) => o.estado !== "CANCELADA")
     .reduce((s, o) => s + Number(o.balance_pendiente), 0);
 
-  const venceEstaSemana = ordenes.filter(o => {
-    if (o.estado === 'CANCELADA' || !o.fecha) return false;
+  const venceEstaSemana = ordenes.filter((o) => {
+    if (o.estado === "CANCELADA" || !o.fecha) return false;
     const diasDesde = Math.abs((new Date().getTime() - new Date(o.fecha).getTime()) / 86400000);
     return diasDesde <= 7;
   }).length;
 
-  const f = (k: keyof PagoForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setPago(p => ({ ...p, [k]: e.target.value }));
-
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800">Cuentas por Pagar</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Facturas de compra pendientes de pago</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Cuentas por Pagar"
+        description="Facturas de compra pendientes de pago a proveedores"
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Total por pagar</p>
-          <p className="text-2xl font-black text-slate-800 mt-1">{fmt(totalPendiente)}</p>
-          <p className="text-xs text-slate-400 mt-0.5">{ordenes.filter(o => o.estado !== 'CANCELADA').length} facturas</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-4">
-          <p className="text-xs text-amber-500 font-semibold uppercase tracking-wide flex items-center gap-1">
-            <Clock size={11} /> Esta semana
-          </p>
-          <p className="text-2xl font-black text-amber-600 mt-1">{venceEstaSemana}</p>
-          <p className="text-xs text-slate-400 mt-0.5">facturas recientes</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Canceladas</p>
-          <p className="text-2xl font-black text-emerald-600 mt-1">{ordenes.filter(o => o.estado === 'CANCELADA').length}</p>
-          <p className="text-xs text-slate-400 mt-0.5">pagadas al proveedor</p>
-        </div>
+        {[
+          { label: "Total por pagar", value: formatCurrency(totalPendiente), sub: `${ordenes.filter((o) => o.estado !== "CANCELADA").length} facturas`, color: "text-foreground" },
+          { label: "Esta semana", value: String(venceEstaSemana), sub: "facturas recientes", color: "text-amber-600 dark:text-amber-400", warn: true },
+          { label: "Canceladas", value: String(ordenes.filter((o) => o.estado === "CANCELADA").length), sub: "pagadas al proveedor", color: "text-emerald-600 dark:text-emerald-400" },
+        ].map((kpi) => (
+          <div key={kpi.label} className={cn(
+            "bg-card border rounded-xl p-4",
+            kpi.warn ? "border-amber-200 dark:border-amber-800" : "border-border"
+          )}>
+            <p className={cn("text-xs font-medium uppercase tracking-wide flex items-center gap-1", kpi.warn ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground")}>
+              {kpi.warn && <Clock size={11} />} {kpi.label}
+            </p>
+            <p className={cn("text-2xl font-bold mt-1 tabular-nums", kpi.color)}>{kpi.value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Filtro estado */}
-      <div className="flex gap-2">
-        {(['', 'PENDIENTE', 'RECIBIDA', 'CANCELADA'] as const).map(e => (
-          <button key={e} onClick={() => setFiltroEstado(e)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap">
+        {(["", "PENDIENTE", "RECIBIDA", "CANCELADA"] as const).map((e) => (
+          <button
+            key={e}
+            onClick={() => setFiltroEstado(e)}
+            className={cn(
+              "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
               filtroEstado === e
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white border border-slate-200 text-slate-500 hover:border-indigo-300'
-            }`}>
-            {e === '' ? 'Todas' : ESTADO_CONFIG[e]?.label ?? e}
+                ? "bg-brand-600 text-white shadow-sm"
+                : "bg-card border border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {e === "" ? "Todas" : ESTADO_CONFIG[e]?.label ?? e}
           </button>
         ))}
       </div>
 
       {/* Tabla */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-6 space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-4 w-32" />
+                <div className="flex-1" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            ))}
+          </div>
         ) : ordenes.length === 0 ? (
-          <div className="p-16 text-center">
-            <TrendingDown size={44} className="mx-auto mb-3 text-slate-200" />
-            <p className="font-medium text-slate-400">No hay facturas{filtroEstado ? ` con estado "${ESTADO_CONFIG[filtroEstado]?.label}"` : ''}</p>
-          </div>
+          <EmptyState icon={TrendingDown} title="Sin facturas" description={filtroEstado ? `No hay facturas con estado "${ESTADO_CONFIG[filtroEstado as keyof typeof ESTADO_CONFIG]?.label}"` : "Sin cuentas por pagar"} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  {['Proveedor', 'N° Factura', 'Fecha', 'Total', 'Pagado', 'Balance', 'Estado', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {ordenes.map(o => {
-                  const estado = ESTADO_CONFIG[o.estado] ?? { label: o.estado, color: 'bg-slate-100 text-slate-600' };
-                  const balancePct = Number(o.total) > 0 ? (Number(o.total_pagado) / Number(o.total)) * 100 : 0;
-                  return (
-                    <tr key={o.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3.5 font-semibold text-slate-800">{o.suplidor_nombre}</td>
-                      <td className="px-4 py-3.5 font-mono text-xs text-slate-500">{o.numero_factura || `#${o.id}`}</td>
-                      <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">
-                        <span className="flex items-center gap-1"><Clock size={11} /> {fmtFecha(o.fecha)}</span>
-                      </td>
-                      <td className="px-4 py-3.5 font-semibold text-slate-700 tabular-nums">{fmt(o.total)}</td>
-                      <td className="px-4 py-3.5 text-emerald-600 tabular-nums">
-                        <div>
-                          {fmt(o.total_pagado)}
-                          {balancePct > 0 && (
-                            <div className="w-16 h-1 bg-slate-100 rounded-full mt-1">
-                              <div className="h-1 bg-emerald-400 rounded-full" style={{ width: `${Math.min(balancePct, 100)}%` }} />
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className={`px-4 py-3.5 font-bold tabular-nums ${Number(o.balance_pendiente) > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                        {Number(o.balance_pendiente) > 0
-                          ? <span className="flex items-center gap-1"><AlertTriangle size={12} /> {fmt(o.balance_pendiente)}</span>
-                          : fmt(0)}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${estado.color}`}>{estado.label}</span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {o.estado !== 'CANCELADA' && Number(o.balance_pendiente) > 0 && (
-                          <button onClick={() => { setPagoModal(o); setPago(PAGO_EMPTY); }}
-                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors">
-                            Pagar
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                {["Proveedor", "N° Factura", "Fecha", "Total", "Pagado", "Balance", "Estado", ""].map((h) => (
+                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {ordenes.map((o) => {
+                const estado = ESTADO_CONFIG[o.estado as keyof typeof ESTADO_CONFIG] ?? { label: o.estado, variant: "secondary" as const };
+                const balancePct = Number(o.total) > 0 ? (Number(o.total_pagado) / Number(o.total)) * 100 : 0;
+                return (
+                  <tr key={o.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-medium text-foreground">{o.suplidor_nombre}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.numero_factura || `#${o.id}`}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                      <span className="flex items-center gap-1"><Clock size={11} /> {formatDate(o.fecha)}</span>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-foreground tabular-nums">{formatCurrency(Number(o.total))}</td>
+                    <td className="px-4 py-3 tabular-nums">
+                      <p className="text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(Number(o.total_pagado))}</p>
+                      {balancePct > 0 && <Progress value={Math.min(balancePct, 100)} className="h-1 w-16 mt-1" />}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums">
+                      {Number(o.balance_pendiente) > 0 ? (
+                        <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold text-sm">
+                          <AlertTriangle size={11} /> {formatCurrency(Number(o.balance_pendiente))}
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(0)}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={estado.variant}>{estado.label}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {o.estado !== "CANCELADA" && Number(o.balance_pendiente) > 0 && (
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => { setPagoModal(o); setPago(PAGO_EMPTY); }}
+                        >
+                          Pagar
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
       {/* Modal pago */}
-      {pagoModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div>
-                <h2 className="font-bold text-slate-800">Registrar pago</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{pagoModal.suplidor_nombre} · Balance: {fmt(pagoModal.balance_pendiente)}</p>
+      <Dialog open={!!pagoModal} onOpenChange={(o) => !o && setPagoModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Registrar pago</DialogTitle>
+          </DialogHeader>
+          {pagoModal && (
+            <div className="space-y-4 py-2">
+              <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm">
+                <p className="font-semibold text-foreground">{pagoModal.suplidor_nombre}</p>
+                <p className="text-muted-foreground mt-0.5">Balance: <span className="font-bold tabular-nums text-foreground">{formatCurrency(Number(pagoModal.balance_pendiente))}</span></p>
               </div>
-              <button onClick={() => setPagoModal(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={18} /></button>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Monto (RD$)</label>
-                <input type="number" value={pago.monto} onChange={f('monto')} placeholder="0.00" step="0.01" autoFocus
-                  className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 w-full" />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Monto (RD$)</Label>
+                <Input
+                  type="number" step="0.01" autoFocus
+                  value={pago.monto}
+                  onChange={(e) => setPago((p) => ({ ...p, monto: e.target.value }))}
+                  className="text-center text-xl font-bold h-12 tabular-nums"
+                  placeholder="0.00"
+                />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Método de pago</label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Método de pago</Label>
                 <div className="grid grid-cols-3 gap-2">
-                  {(Object.entries(METODO_CONFIG) as [PagoSuplidor['metodo'], typeof METODO_CONFIG[PagoSuplidor['metodo']]][]).map(([k, v]) => {
-                    const MIcon = v.Icon;
-                    return (
-                      <button key={k} type="button" onClick={() => setPago(p => ({ ...p, metodo: k }))}
-                        className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                          pago.metodo === k ? 'border-indigo-400 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                        }`}>
-                        <MIcon size={16} /> {v.label}
-                      </button>
-                    );
-                  })}
+                  {(Object.entries(METODO_CONFIG) as [PagoSuplidor["metodo"], (typeof METODO_CONFIG)[PagoSuplidor["metodo"]]][]).map(([k, v]) => (
+                    <button
+                      key={k} type="button"
+                      onClick={() => setPago((p) => ({ ...p, metodo: k }))}
+                      className={cn(
+                        "flex flex-col items-center gap-1 py-2.5 rounded-lg border text-xs font-medium transition-all",
+                        pago.metodo === k
+                          ? "border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300"
+                          : "border-border text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <v.icon size={16} /> {v.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Referencia</label>
-                <input value={pago.referencia} onChange={f('referencia')} placeholder="N° cheque, transferencia..."
-                  className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 w-full" />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Referencia</Label>
+                <Input
+                  value={pago.referencia}
+                  onChange={(e) => setPago((p) => ({ ...p, referencia: e.target.value }))}
+                  placeholder="N° cheque, transferencia..."
+                />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nota</label>
-                <input value={pago.nota} onChange={f('nota')} placeholder="Observaciones (opcional)"
-                  className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 w-full" />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Nota (opcional)</Label>
+                <Input
+                  value={pago.nota}
+                  onChange={(e) => setPago((p) => ({ ...p, nota: e.target.value }))}
+                  placeholder="Observaciones..."
+                />
               </div>
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button onClick={() => setPagoModal(null)} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold">Cancelar</button>
-              <button onClick={registrarPago} disabled={guardando}
-                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
-                {guardando ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={15} /> Confirmar</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPagoModal(null)}>Cancelar</Button>
+            <Button onClick={registrarPago} disabled={guardando} className="gap-2">
+              {guardando
+                ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                : <Check size={14} />}
+              Confirmar pago
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

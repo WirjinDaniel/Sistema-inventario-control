@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
-  ShieldCheck, Search, Filter, User, Calendar,
+  ShieldCheck, Search, Filter,
   ShoppingCart, Wallet, Package, Store, LogIn, AlertTriangle,
-  CreditCard, Loader2, ChevronDown, ChevronUp,
+  CreditCard, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 interface AuditoriaEntry {

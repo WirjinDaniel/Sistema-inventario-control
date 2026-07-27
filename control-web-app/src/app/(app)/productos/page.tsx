@@ -3,23 +3,28 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Plus, Edit2, AlertTriangle, Package,
-  X, Check, Filter, ScanBarcode, Sparkles, Camera,
-  ChevronRight, ScrollText,
+  Check, Filter, ScanBarcode, Sparkles, Camera,
+  ScrollText, LayoutGrid, List, Tag,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
 import type { Producto, Categoria } from "@/types";
 import CustomSelect from "@/components/CustomSelect";
+import { cn, formatCurrency } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 const UNIDADES = ["unidad", "libra", "onza", "galón", "caja", "docena", "litro"];
-
-function Badge({ children, color }: { children: React.ReactNode; color: string }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {children}
-    </span>
-  );
-}
 
 interface FormData {
   nombre: string; sku: string; codigo_barras: string; categoria: string;
@@ -41,8 +46,6 @@ const FORM_EMPTY: FormData = {
   sin_vencimiento: false,
 };
 
-const inputCls = "border border-slate-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-150 bg-white";
-
 export default function ProductosPage() {
   const router = useRouter();
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -51,11 +54,12 @@ export default function ProductosPage() {
   const [filtroStockBajo, setFiltroStockBajo] = useState(false);
   const [filtroCat, setFiltroCat] = useState("");
   const [loading, setLoading] = useState(true);
+  const [vista, setVista] = useState<"tabla" | "grid">("tabla");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [modal, setModal] = useState<"crear" | "editar" | null>(null);
   const [editando, setEditando] = useState<Producto | null>(null);
   const [form, setForm] = useState<FormData>(FORM_EMPTY);
   const [guardando, setGuardando] = useState(false);
-  const [tabModal, setTabModal] = useState<"general" | "precios" | "detalles">("general");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -76,7 +80,9 @@ export default function ProductosPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  function abrirCrear() { setForm(FORM_EMPTY); setEditando(null); setModal("crear"); }
+  function abrirCrear() {
+    setForm(FORM_EMPTY); setEditando(null); setModal("crear"); setSheetOpen(true);
+  }
   function abrirEditar(p: Producto) {
     setForm({
       nombre: p.nombre, sku: p.sku, codigo_barras: p.codigo_barras,
@@ -86,14 +92,11 @@ export default function ProductosPage() {
       stock_minimo: p.stock_minimo, fecha_vencimiento: p.fecha_vencimiento ?? "",
       activo: p.activo, proveedor: p.proveedor ?? "",
       unidades_por_caja: p.unidades_por_caja != null ? String(p.unidades_por_caja) : "",
-      itbis_exento: p.itbis_exento ?? false,
-      notas: p.notas ?? "",
+      itbis_exento: p.itbis_exento ?? false, notas: p.notas ?? "",
       sin_vencimiento: !p.fecha_vencimiento,
-      precio_oferta: p.precio_oferta ?? "",
-      oferta_inicio: p.oferta_inicio ?? "",
-      oferta_fin: p.oferta_fin ?? "",
+      precio_oferta: p.precio_oferta ?? "", oferta_inicio: p.oferta_inicio ?? "", oferta_fin: p.oferta_fin ?? "",
     });
-    setEditando(p); setModal("editar");
+    setEditando(p); setModal("editar"); setSheetOpen(true);
   }
 
   async function guardar() {
@@ -113,396 +116,463 @@ export default function ProductosPage() {
       if (modal === "crear") await api.post("/inventario/productos/", payload);
       else await api.patch(`/inventario/productos/${editando!.id}/`, payload);
       toast.success(modal === "crear" ? "Producto creado" : "Producto actualizado");
-      setModal(null); cargar();
+      setSheetOpen(false); cargar();
     } catch { toast.error("Error al guardar el producto"); }
     setGuardando(false);
   }
 
-  const f = (k: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const f = (k: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const margen = form.precio_costo && form.precio_venta
     ? (((Number(form.precio_venta) - Number(form.precio_costo)) / Number(form.precio_costo)) * 100)
     : null;
 
-  const stockBajoCount = productos.filter(p => p.stock_bajo).length;
+  const stockBajoCount = productos.filter((p) => p.stock_bajo).length;
 
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-800">Productos</h1>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Productos</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             {productos.length} productos
             {stockBajoCount > 0 && (
-              <span className="ml-2 inline-flex items-center gap-1 text-red-500 font-semibold">
+              <span className="ml-2 inline-flex items-center gap-1 text-rose-500 font-semibold">
                 <AlertTriangle size={12} /> {stockBajoCount} con stock bajo
               </span>
             )}
           </p>
         </div>
-        <button onClick={abrirCrear}
-          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-200 active:scale-95">
-          <Plus size={16} /> Nuevo producto
-        </button>
+        <Button onClick={abrirCrear} className="gap-2">
+          <Plus size={15} /> Nuevo producto
+        </Button>
       </div>
 
-      {/* Filtros */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-48">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input placeholder="Buscar por nombre, código, SKU..." value={busqueda}
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-52">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre, código, SKU..."
+            value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-150" />
+            className="pl-9"
+          />
         </div>
-        <CustomSelect
-          value={filtroCat}
-          onChange={setFiltroCat}
-          placeholder="Todas las categorías"
-          options={[
-            { value: "", label: "Todas las categorías" },
-            ...categorias.map((c) => ({ value: String(c.id), label: c.nombre })),
-          ]}
-          className="min-w-44"
-        />
-        <button onClick={() => setFiltroStockBajo((v) => !v)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all duration-200 ${
-            filtroStockBajo ? "border-red-300 bg-red-50 text-red-600" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-          }`}>
-          <Filter size={14} /> Stock bajo
-          {filtroStockBajo && <span className="w-1.5 h-1.5 rounded-full bg-red-400" />}
-        </button>
+        <div className="min-w-44">
+          <CustomSelect
+            value={filtroCat}
+            onChange={setFiltroCat}
+            placeholder="Todas las categorías"
+            options={[
+              { value: "", label: "Todas las categorías" },
+              ...categorias.map((c) => ({ value: String(c.id), label: c.nombre })),
+            ]}
+          />
+        </div>
+        <Button
+          variant={filtroStockBajo ? "default" : "outline"}
+          size="sm"
+          onClick={() => setFiltroStockBajo((v) => !v)}
+          className="gap-2"
+        >
+          <Filter size={13} /> Stock bajo
+          {filtroStockBajo && stockBajoCount > 0 && (
+            <Badge variant="danger" className="text-[10px] px-1 h-4 ml-1">{stockBajoCount}</Badge>
+          )}
+        </Button>
+        {/* Vista toggle */}
+        <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/50">
+          <button
+            onClick={() => setVista("tabla")}
+            className={cn("p-1.5 rounded-md transition-colors", vista === "tabla" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            <List size={15} />
+          </button>
+          <button
+            onClick={() => setVista("grid")}
+            className={cn("p-1.5 rounded-md transition-colors", vista === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            <LayoutGrid size={15} />
+          </button>
+        </div>
       </div>
 
-      {/* Tabla */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
-                <th className="px-5 py-3.5 text-left">Producto</th>
-                <th className="px-4 py-3.5 text-left">Categoría</th>
-                <th className="px-4 py-3.5 text-right">Costo</th>
-                <th className="px-4 py-3.5 text-right">Precio</th>
-                <th className="px-4 py-3.5 text-right">Margen</th>
-                <th className="px-4 py-3.5 text-center">Stock</th>
-                <th className="px-4 py-3.5 text-center">Tipo</th>
-                <th className="px-4 py-3.5 text-center">Estado</th>
-                <th className="px-4 py-3.5"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                [...Array(6)].map((_, i) => (
-                  <tr key={i} className="border-b border-slate-50">
-                    {[...Array(9)].map((__, j) => (
-                      <td key={j} className="px-5 py-4"><div className="h-4 bg-slate-100 rounded-lg animate-pulse" /></td>
-                    ))}
-                  </tr>
-                ))
-              ) : productos.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-16 text-slate-400">
-                  <Package size={40} className="mx-auto mb-3 opacity-20" />
-                  <p className="font-medium">No hay productos</p>
-                  <p className="text-xs text-slate-300 mt-1">Crea el primero con el botón de arriba</p>
-                </td></tr>
-              ) : productos.map((p) => (
-                <tr key={p.id} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors duration-150">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-slate-800">{p.nombre}</p>
-                      {p.en_oferta && (
-                        <span className="text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full shrink-0">OFERTA</span>
-                      )}
-                      {(p.reglas_descuento?.length ?? 0) > 0 && (
-                        <span className="text-[10px] bg-violet-100 text-violet-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">Vol.</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-400">{p.codigo_barras || p.sku || "—"}</p>
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-500">{p.categoria_nombre || "—"}</td>
-                  <td className="px-4 py-3.5 text-right text-slate-500 tabular-nums">RD${Number(p.precio_costo).toFixed(2)}</td>
-                  <td className="px-4 py-3.5 text-right tabular-nums">
-                    {p.en_oferta ? (
-                      <div>
-                        <p className="font-bold text-red-500">RD${Number(p.precio_vigente).toFixed(2)}</p>
-                        <p className="text-xs text-slate-400 line-through">RD${Number(p.precio_venta).toFixed(2)}</p>
-                      </div>
-                    ) : (
-                      <p className="font-semibold text-slate-800">RD${Number(p.precio_venta).toFixed(2)}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <span className={`font-semibold text-xs px-2 py-0.5 rounded-full ${
-                      Number(p.margen_ganancia) >= 20 ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                    }`}>
-                      {Number(p.margen_ganancia).toFixed(1)}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`font-bold tabular-nums ${p.stock_bajo ? "text-red-500" : "text-slate-700"}`}>
-                      {Number(p.stock_actual).toFixed(p.tipo === "GRANEL" ? 2 : 0)}
-                    </span>
-                    <span className="text-xs text-slate-400 ml-1">{p.unidad_medida}</span>
-                    {p.stock_bajo && <AlertTriangle size={11} className="inline ml-1 text-red-400 animate-pulse" />}
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <Badge color={p.tipo === "GRANEL" ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"}>
-                      {p.tipo === "GRANEL" ? "Granel" : "Unidad"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <Badge color={p.activo ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}>
-                      {p.activo ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => abrirEditar(p)} title="Editar"
-                        className="p-1.5 rounded-lg hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition-all duration-150 active:scale-90">
-                        <Edit2 size={14} />
-                      </button>
-                      <button onClick={() => router.push(`/kardex?producto=${p.id}&nombre=${encodeURIComponent(p.nombre)}`)} title="Ver Kardex"
-                        className="p-1.5 rounded-lg hover:bg-violet-100 text-slate-400 hover:text-violet-600 transition-all duration-150 active:scale-90">
-                        <ScrollText size={14} />
-                      </button>
-                    </div>
-                  </td>
+      {/* Vista Tabla */}
+      {vista === "tabla" && (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
+                  <th className="px-5 py-3 text-left font-semibold">Producto</th>
+                  <th className="px-4 py-3 text-left font-semibold">Categoría</th>
+                  <th className="px-4 py-3 text-right font-semibold">Costo</th>
+                  <th className="px-4 py-3 text-right font-semibold">Precio</th>
+                  <th className="px-4 py-3 text-right font-semibold">Margen</th>
+                  <th className="px-4 py-3 text-center font-semibold">Stock</th>
+                  <th className="px-4 py-3 text-center font-semibold">Estado</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal crear/editar */}
-      {modal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[92vh]">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                <Package size={17} className="text-indigo-600" />
-              </div>
-              <h2 className="font-bold text-slate-800 text-base flex-1">
-                {modal === "crear" ? "Nuevo Producto" : "Editar Producto"}
-              </h2>
-              <button type="button"
-                onClick={() => setForm((p) => ({ ...p, activo: !p.activo }))}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
-                  form.activo ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-slate-100 border-slate-200 text-slate-500"
-                }`}>
-                <span className={`w-2 h-2 rounded-full transition-colors ${form.activo ? "bg-emerald-500" : "bg-slate-400"}`} />
-                {form.activo ? "Activo" : "Inactivo"}
-              </button>
-              <button onClick={() => { setModal(null); setTabModal("general"); }}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors ml-1">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="flex border-b border-slate-100 shrink-0 px-2">
-              {(["general", "precios", "detalles"] as const).map((t, i) => {
-                const labels = ["General", "Precios & Stock", "Detalles"];
-                return (
-                  <button key={t} onClick={() => setTabModal(t)}
-                    className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold transition-colors border-b-2 ${
-                      tabModal === t ? "text-indigo-600 border-indigo-600" : "text-slate-400 border-transparent hover:text-slate-600"
-                    }`}>
-                    <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${
-                      tabModal === t ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-400"
-                    }`}>{i + 1}</span>
-                    {labels[i]}
-                    {i < 2 && <ChevronRight size={12} className="text-slate-300 ml-1" />}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              {tabModal === "general" && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:border-indigo-300 hover:text-indigo-400 transition-colors shrink-0 group">
-                      <Camera size={22} className="group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] mt-1 font-medium">Foto</span>
-                    </div>
-                    <div className="flex-1 flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre *</label>
-                      <input value={form.nombre} onChange={f("nombre")} placeholder="Ej: Arroz Cristal 1lb"
-                        className={`${inputCls} w-full`} autoFocus />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</label>
-                      <div className="relative">
-                        <input value={form.sku} onChange={f("sku")} placeholder="SKU-001" className={`${inputCls} w-full pr-20`} />
-                        <button type="button"
-                          onClick={() => setForm((p) => ({ ...p, sku: `SKU-${Date.now().toString().slice(-5)}` }))}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold transition-colors">
-                          <Sparkles size={11} /> Generar
-                        </button>
+              </thead>
+              <tbody>
+                {loading ? (
+                  [...Array(6)].map((_, i) => (
+                    <tr key={i} className="border-b border-border">
+                      {[...Array(8)].map((__, j) => (
+                        <td key={j} className="px-5 py-4"><Skeleton className="h-4 w-full" /></td>
+                      ))}
+                    </tr>
+                  ))
+                ) : productos.length === 0 ? (
+                  <tr>
+                    <td colSpan={8}>
+                      <EmptyState
+                        icon={Package}
+                        title="No hay productos"
+                        description="Crea el primero con el botón de arriba"
+                        action={{ label: "Nuevo producto", onClick: abrirCrear }}
+                      />
+                    </td>
+                  </tr>
+                ) : productos.map((p) => (
+                  <tr key={p.id} className="border-b border-border hover:bg-muted/30 transition-colors group">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950 flex items-center justify-center shrink-0 text-brand-600 font-bold text-xs">
+                          {p.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-foreground">{p.nombre}</p>
+                            {p.en_oferta && <Badge variant="danger" className="text-[10px] px-1.5 py-0">OFERTA</Badge>}
+                          </div>
+                          <p className="text-xs text-muted-foreground font-mono">{p.codigo_barras || p.sku || "—"}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Código de barras</label>
-                      <div className="relative">
-                        <input value={form.codigo_barras} onChange={f("codigo_barras")} placeholder="7891234567890"
-                          className={`${inputCls} w-full pr-10`} />
-                        <button type="button" onClick={() => {}}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-500 transition-colors">
-                          <ScanBarcode size={17} />
-                        </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.categoria_nombre ? (
+                        <Badge variant="secondary" className="gap-1 font-normal">
+                          <Tag size={10} /> {p.categoria_nombre}
+                        </Badge>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-muted-foreground tabular-nums font-mono text-xs">
+                      {formatCurrency(p.precio_costo)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {p.en_oferta ? (
+                        <div>
+                          <p className="font-bold text-rose-500 font-mono text-xs">{formatCurrency(p.precio_vigente)}</p>
+                          <p className="text-xs text-muted-foreground line-through font-mono">{formatCurrency(p.precio_venta)}</p>
+                        </div>
+                      ) : (
+                        <p className="font-semibold font-mono text-xs">{formatCurrency(p.precio_venta)}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={cn(
+                        "font-semibold text-xs px-2 py-0.5 rounded-full",
+                        Number(p.margen_ganancia) >= 20
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      )}>
+                        {Number(p.margen_ganancia).toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={cn("font-bold tabular-nums text-sm font-mono", p.stock_bajo ? "text-rose-500" : "text-foreground")}>
+                          {Number(p.stock_actual).toFixed(p.tipo === "GRANEL" ? 2 : 0)}
+                          <span className="text-xs text-muted-foreground ml-1">{p.unidad_medida}</span>
+                        </span>
+                        {p.stock_bajo && (
+                          <div className="flex items-center gap-1 text-[10px] text-rose-500">
+                            <AlertTriangle size={9} /> Stock bajo
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Categoría</label>
-                      <CustomSelect value={form.categoria} onChange={(v) => setForm((p) => ({ ...p, categoria: v }))}
-                        placeholder="Sin categoría"
-                        options={[{ value: "", label: "Sin categoría" }, ...categorias.map((c) => ({ value: String(c.id), label: c.nombre }))]} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</label>
-                      <CustomSelect value={form.tipo} onChange={(v) => setForm((p) => ({ ...p, tipo: v }))}
-                        options={[{ value: "UNIDAD", label: "Por unidad" }, { value: "GRANEL", label: "A granel" }]} />
-                    </div>
-                    <div className="col-span-2 flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Proveedor</label>
-                      <input value={form.proveedor} onChange={f("proveedor")} placeholder="Ej: Distribuidora El Sol (opcional)" className={`${inputCls} w-full`} />
-                    </div>
-                  </div>
-                </div>
-              )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <StatusBadge status={p.activo ? "ACTIVO" : "INACTIVO"} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon-sm" onClick={() => abrirEditar(p)}>
+                          <Edit2 size={13} />
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/kardex?producto=${p.id}&nombre=${encodeURIComponent(p.nombre)}`)}>
+                          <ScrollText size={13} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
-              {tabModal === "precios" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio costo (RD$)</label>
-                      <input type="number" value={form.precio_costo} onChange={f("precio_costo")} placeholder="0.00" step="0.01" className={`${inputCls} w-full`} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio venta (RD$) *</label>
-                      <input type="number" value={form.precio_venta} onChange={f("precio_venta")} placeholder="0.00" step="0.01" className={`${inputCls} w-full`} />
-                    </div>
-                  </div>
-                  {margen !== null && (
-                    <div className={`rounded-xl px-4 py-3 flex items-center justify-between text-sm font-medium ${
-                      margen >= 15 ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-red-50 text-red-600 border border-red-100"
-                    }`}>
-                      <span>Margen: <strong>{margen.toFixed(1)}%</strong></span>
-                      <span>Ganancia: <strong>RD${(Number(form.precio_venta) - Number(form.precio_costo)).toFixed(2)}</strong></span>
+      {/* Vista Grid */}
+      {vista === "grid" && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {loading ? (
+            [...Array(10)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <Skeleton className="w-full h-32 rounded-lg mb-3" />
+                  <Skeleton className="h-4 w-3/4 mb-2" />
+                  <Skeleton className="h-3 w-1/2 mb-3" />
+                  <Skeleton className="h-6 w-full" />
+                </CardContent>
+              </Card>
+            ))
+          ) : productos.length === 0 ? (
+            <div className="col-span-full">
+              <EmptyState icon={Package} title="No hay productos" action={{ label: "Nuevo producto", onClick: abrirCrear }} />
+            </div>
+          ) : productos.map((p) => {
+            const pct = Number(p.stock_minimo) > 0
+              ? Math.min((Number(p.stock_actual) / Number(p.stock_minimo)) * 100, 100)
+              : 100;
+            return (
+              <Card key={p.id} className="group hover:shadow-md transition-all overflow-hidden cursor-pointer" onClick={() => abrirEditar(p)}>
+                <div className="h-28 bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-950 dark:to-brand-900 flex items-center justify-center relative">
+                  <span className="text-4xl font-black text-brand-200 dark:text-brand-800 select-none">
+                    {p.nombre.charAt(0).toUpperCase()}
+                  </span>
+                  {p.en_oferta && (
+                    <Badge variant="danger" className="absolute top-2 right-2 text-[10px]">OFERTA</Badge>
+                  )}
+                  {p.stock_bajo && (
+                    <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
+                      <AlertTriangle size={10} className="text-white" />
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Unidad de medida</label>
-                      <CustomSelect value={form.unidad_medida} onChange={(v) => setForm((p) => ({ ...p, unidad_medida: v }))}
-                        options={UNIDADES.map((u) => ({ value: u, label: u }))} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Unidades por caja/fardo</label>
-                      <input type="number" min="1" value={form.unidades_por_caja} onChange={f("unidades_por_caja")} placeholder="Ej: 12" className={`${inputCls} w-full`} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Stock actual</label>
-                      <input type="number" value={form.stock_actual} onChange={f("stock_actual")} step="0.001" className={`${inputCls} w-full`} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Stock mínimo</label>
-                      <input type="number" value={form.stock_minimo} onChange={f("stock_minimo")} step="0.001" className={`${inputCls} w-full`} />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">ITBIS (18%)</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Activa si el producto es gravado con ITBIS</p>
-                    </div>
-                    <button type="button" onClick={() => setForm((p) => ({ ...p, itbis_exento: !p.itbis_exento }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${form.itbis_exento ? "bg-slate-200" : "bg-indigo-500"}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200 ${form.itbis_exento ? "left-0.5" : "left-5"}`} />
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-400 -mt-2 px-1">Estado actual: <span className="font-semibold">{form.itbis_exento ? "Exento de ITBIS" : "Gravado con ITBIS"}</span></p>
-
-                  {/* Oferta temporal */}
-                  <div className="border border-dashed border-red-200 rounded-xl p-4 space-y-3 bg-red-50/40">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-red-600 uppercase tracking-wide">Precio de oferta</span>
-                      <span className="text-[10px] text-red-400 font-medium">(opcional — deja vacío para desactivar)</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Precio oferta (RD$)</label>
-                        <input type="number" value={form.precio_oferta} onChange={f("precio_oferta")}
-                          placeholder="0.00" step="0.01"
-                          className="border border-red-200 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-300 bg-white w-full" />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Desde</label>
-                        <input type="date" value={form.oferta_inicio} onChange={f("oferta_inicio")}
-                          className="border border-red-200 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-300 bg-white w-full" />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Hasta</label>
-                        <input type="date" value={form.oferta_fin} onChange={f("oferta_fin")}
-                          className="border border-red-200 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-300 bg-white w-full" />
-                      </div>
-                    </div>
-                    {form.precio_oferta && form.precio_venta && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        Descuento: {(((Number(form.precio_venta) - Number(form.precio_oferta)) / Number(form.precio_venta)) * 100).toFixed(1)}% off
-                      </p>
+                </div>
+                <CardContent className="p-3">
+                  <p className="font-semibold text-sm text-foreground line-clamp-2 leading-tight">{p.nombre}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{p.sku || p.codigo_barras || "—"}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-sm font-bold text-brand-600">{formatCurrency(p.en_oferta ? p.precio_vigente : p.precio_venta)}</span>
+                    {p.categoria_nombre && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5">{p.categoria_nombre}</Badge>
                     )}
                   </div>
-                </div>
-              )}
-
-              {tabModal === "detalles" && (
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha de vencimiento</label>
-                      <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-500">
-                        <input type="checkbox" checked={form.sin_vencimiento}
-                          onChange={(e) => setForm((p) => ({ ...p, sin_vencimiento: e.target.checked, fecha_vencimiento: e.target.checked ? "" : p.fecha_vencimiento }))}
-                          className="w-3.5 h-3.5 accent-indigo-600" />
-                        No aplica
-                      </label>
+                  <div className="mt-2 space-y-1">
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Stock: {Number(p.stock_actual).toFixed(0)} {p.unidad_medida}</span>
+                      <span>Mín: {p.stock_minimo}</span>
                     </div>
-                    <input type="date" value={form.fecha_vencimiento} onChange={f("fecha_vencimiento")}
-                      disabled={form.sin_vencimiento}
-                      className={`${inputCls} w-full disabled:opacity-40 disabled:cursor-not-allowed`} />
+                    <Progress value={pct} className={cn("h-1", p.stock_bajo ? "[&>div]:bg-rose-500" : pct < 50 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500")} />
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Notas internas</label>
-                    <textarea value={form.notas} onChange={(e) => setForm((p) => ({ ...p, notas: e.target.value }))}
-                      rows={4} placeholder="Observaciones internas (opcional)..."
-                      className={`${inputCls} w-full resize-none`} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
-              <button onClick={() => { setModal(null); setTabModal("general"); }}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm font-semibold transition-colors duration-150 active:scale-95">
-                Cancelar
-              </button>
-              <button onClick={guardar} disabled={guardando}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
-                {guardando ? (
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                ) : <><Check size={15} /> Guardar</>}
-              </button>
-            </div>
-          </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
+
+      {/* Sheet drawer crear/editar */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
+          <SheetHeader className="px-6 pt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-950 flex items-center justify-center">
+                <Package size={17} className="text-brand-600" />
+              </div>
+              <SheetTitle>{modal === "crear" ? "Nuevo Producto" : "Editar Producto"}</SheetTitle>
+              <div className="ml-auto flex items-center gap-2">
+                <Label htmlFor="activo-switch" className="text-xs text-muted-foreground">
+                  {form.activo ? "Activo" : "Inactivo"}
+                </Label>
+                <Switch
+                  id="activo-switch"
+                  checked={form.activo}
+                  onCheckedChange={(v) => setForm((p) => ({ ...p, activo: v }))}
+                />
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <Tabs defaultValue="general">
+              <TabsList className="w-full mb-5">
+                <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
+                <TabsTrigger value="precios" className="flex-1">Precios & Stock</TabsTrigger>
+                <TabsTrigger value="detalles" className="flex-1">Detalles</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="general" className="space-y-4 mt-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground cursor-pointer hover:border-brand-400 hover:text-brand-500 transition-colors shrink-0 group">
+                    <Camera size={20} className="group-hover:scale-110 transition-transform" />
+                    <span className="text-[10px] mt-1 font-medium">Foto</span>
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-xs mb-1.5 block">Nombre *</Label>
+                    <Input value={form.nombre} onChange={f("nombre")} placeholder="Ej: Arroz Cristal 1lb" autoFocus />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs mb-1.5 block">SKU</Label>
+                    <div className="relative">
+                      <Input value={form.sku} onChange={f("sku")} placeholder="SKU-001" className="pr-20" />
+                      <button type="button"
+                        onClick={() => setForm((p) => ({ ...p, sku: `SKU-${Date.now().toString().slice(-5)}` }))}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 rounded-md bg-brand-50 hover:bg-brand-100 text-brand-600 text-xs font-semibold transition-colors">
+                        <Sparkles size={10} /> Auto
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Código de barras</Label>
+                    <div className="relative">
+                      <Input value={form.codigo_barras} onChange={f("codigo_barras")} placeholder="7891234567890" className="pr-9" />
+                      <ScanBarcode size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Categoría</Label>
+                    <CustomSelect value={form.categoria} onChange={(v) => setForm((p) => ({ ...p, categoria: v }))}
+                      placeholder="Sin categoría"
+                      options={[{ value: "", label: "Sin categoría" }, ...categorias.map((c) => ({ value: String(c.id), label: c.nombre }))]} />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Tipo</Label>
+                    <CustomSelect value={form.tipo} onChange={(v) => setForm((p) => ({ ...p, tipo: v }))}
+                      options={[{ value: "UNIDAD", label: "Por unidad" }, { value: "GRANEL", label: "A granel" }]} />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs mb-1.5 block">Proveedor</Label>
+                    <Input value={form.proveedor} onChange={f("proveedor")} placeholder="Nombre del proveedor (opcional)" />
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="precios" className="space-y-4 mt-0">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Precio costo (RD$)</Label>
+                    <Input type="number" value={form.precio_costo} onChange={f("precio_costo")} placeholder="0.00" step="0.01" />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Precio venta (RD$) *</Label>
+                    <Input type="number" value={form.precio_venta} onChange={f("precio_venta")} placeholder="0.00" step="0.01" />
+                  </div>
+                </div>
+
+                {margen !== null && (
+                  <div className={cn(
+                    "rounded-xl px-4 py-3 flex items-center justify-between text-sm font-medium border",
+                    margen >= 15
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900"
+                      : "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900"
+                  )}>
+                    <span>Margen: <strong>{margen.toFixed(1)}%</strong></span>
+                    <span>Ganancia: <strong>{formatCurrency(Number(form.precio_venta) - Number(form.precio_costo))}</strong></span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Unidad de medida</Label>
+                    <CustomSelect value={form.unidad_medida} onChange={(v) => setForm((p) => ({ ...p, unidad_medida: v }))}
+                      options={UNIDADES.map((u) => ({ value: u, label: u }))} />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Unidades por caja</Label>
+                    <Input type="number" min="1" value={form.unidades_por_caja} onChange={f("unidades_por_caja")} placeholder="Ej: 12" />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Stock actual</Label>
+                    <Input type="number" value={form.stock_actual} onChange={f("stock_actual")} step="0.001" />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Stock mínimo</Label>
+                    <Input type="number" value={form.stock_minimo} onChange={f("stock_minimo")} step="0.001" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">ITBIS (18%)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Activar si el producto está gravado</p>
+                  </div>
+                  <Switch
+                    checked={!form.itbis_exento}
+                    onCheckedChange={(v) => setForm((p) => ({ ...p, itbis_exento: !v }))}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-dashed border-rose-200 dark:border-rose-800 p-4 space-y-3 bg-rose-50/30 dark:bg-rose-950/10">
+                  <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Precio de oferta (opcional)</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-[10px] mb-1 block">Precio (RD$)</Label>
+                      <Input type="number" value={form.precio_oferta} onChange={f("precio_oferta")} placeholder="0.00" step="0.01" className="border-rose-200" />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] mb-1 block">Desde</Label>
+                      <Input type="date" value={form.oferta_inicio} onChange={f("oferta_inicio")} className="border-rose-200" />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] mb-1 block">Hasta</Label>
+                      <Input type="date" value={form.oferta_fin} onChange={f("oferta_fin")} className="border-rose-200" />
+                    </div>
+                  </div>
+                  {form.precio_oferta && form.precio_venta && (
+                    <p className="text-xs text-rose-600 font-semibold">
+                      Descuento: {(((Number(form.precio_venta) - Number(form.precio_oferta)) / Number(form.precio_venta)) * 100).toFixed(1)}% off
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="detalles" className="space-y-4 mt-0">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label className="text-xs">Fecha de vencimiento</Label>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+                      <input type="checkbox" checked={form.sin_vencimiento}
+                        onChange={(e) => setForm((p) => ({ ...p, sin_vencimiento: e.target.checked, fecha_vencimiento: e.target.checked ? "" : p.fecha_vencimiento }))}
+                        className="w-3.5 h-3.5 accent-brand-600" />
+                      No aplica
+                    </label>
+                  </div>
+                  <Input type="date" value={form.fecha_vencimiento} onChange={f("fecha_vencimiento")}
+                    disabled={form.sin_vencimiento} />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Notas internas</Label>
+                  <textarea
+                    value={form.notas}
+                    onChange={f("notas")}
+                    rows={4}
+                    placeholder="Observaciones internas (opcional)..."
+                    className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setSheetOpen(false)} className="flex-1">Cancelar</Button>
+            <Button onClick={guardar} disabled={guardando} className="flex-1 gap-2">
+              {guardando
+                ? <><span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Guardando...</>
+                : <><Check size={14} /> Guardar</>
+              }
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

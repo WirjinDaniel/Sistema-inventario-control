@@ -1,45 +1,66 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import {
-  Search, Plus, X, Check, UserCheck, Wallet,
-  History, AlertCircle, DollarSign, ChevronRight, Users, BarChart2,
+  Search, Plus, UserCheck, Wallet, History,
+  DollarSign, Users, BarChart2, Phone, CreditCard, TrendingDown,
+  Check, Edit2, MoreHorizontal, BadgeCheck,
+  UserX, RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
 import type { Cliente, AbonoFiado } from "@/types";
+import { cn, formatCurrency, getInitials } from "@/lib/utils";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
-interface AgingCliente { id: number; nombre: string; telefono: string; saldo_deuda: number; dias: number; ultima_fecha: string; }
+interface AgingCliente {
+  id: number; nombre: string; telefono: string;
+  saldo_deuda: number; dias: number; ultima_fecha: string;
+}
 interface AgingBucket { label: string; clientes: AgingCliente[]; total: number; }
 interface AgingData { buckets: Record<string, AgingBucket>; total: number; }
-
 interface FormCliente { nombre: string; telefono: string; cedula: string; limite_credito: string; }
+
 const FORM_EMPTY: FormCliente = { nombre: "", telefono: "", cedula: "", limite_credito: "0" };
 
-const inputCls = "border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-150 bg-white w-full";
 
-const AGING_COLORS: Record<string, { bar: string; badge: string; text: string }> = {
-  '0_30':   { bar: 'bg-emerald-400', badge: 'bg-emerald-100 text-emerald-700', text: 'text-emerald-600' },
-  '31_60':  { bar: 'bg-amber-400',   badge: 'bg-amber-100 text-amber-700',     text: 'text-amber-600'   },
-  '61_90':  { bar: 'bg-orange-400',  badge: 'bg-orange-100 text-orange-700',   text: 'text-orange-600'  },
-  '90_mas': { bar: 'bg-red-500',     badge: 'bg-red-100 text-red-700',         text: 'text-red-600'     },
-};
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', maximumFractionDigits: 0 }).format(n);
+function ClienteSkeleton() {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg">
+      <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+      <div className="flex-1 space-y-1.5">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+      <Skeleton className="h-5 w-16" />
+    </div>
+  );
+}
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
-  const [vista, setVista] = useState<'clientes' | 'aging'>('clientes');
   const [aging, setAging] = useState<AgingData | null>(null);
-  const [loadingAging, setLoadingAging] = useState(false);
-  const [modal, setModal] = useState<"crear" | "editar" | "abono" | "historial" | null>(null);
-  const [seleccionado, setSeleccionado] = useState<Cliente | null>(null);
+  const [, setLoadingAging] = useState(false);
+  const [clienteActivo, setClienteActivo] = useState<Cliente | null>(null);
+  const [historial, setHistorial] = useState<AbonoFiado[]>([]);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
+  const [modal, setModal] = useState<"crear" | "editar" | "abono" | null>(null);
   const [form, setForm] = useState<FormCliente>(FORM_EMPTY);
   const [montoAbono, setMontoAbono] = useState("");
   const [notaAbono, setNotaAbono] = useState("");
-  const [historial, setHistorial] = useState<AbonoFiado[]>([]);
   const [guardando, setGuardando] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -48,7 +69,9 @@ export default function ClientesPage() {
       const params = busqueda ? `?search=${encodeURIComponent(busqueda)}` : "";
       const { data } = await api.get(`/clientes/${params}`);
       setClientes(data.results ?? data);
-    } catch { toast.error("Error cargando clientes"); }
+    } catch {
+      toast.error("Error cargando clientes");
+    }
     setLoading(false);
   }, [busqueda]);
 
@@ -58,55 +81,80 @@ export default function ClientesPage() {
     if (aging) return;
     setLoadingAging(true);
     try {
-      const { data } = await api.get('/clientes/aging/');
+      const { data } = await api.get("/clientes/aging/");
       setAging(data);
-    } catch { toast.error('Error cargando reporte de antigüedad'); }
+    } catch {
+      toast.error("Error cargando antigüedad");
+    }
     setLoadingAging(false);
   }
 
-  function cambiarVista(v: 'clientes' | 'aging') {
-    setVista(v);
-    if (v === 'aging') cargarAging();
+  async function seleccionarCliente(c: Cliente) {
+    setClienteActivo(c);
+    setLoadingHistorial(true);
+    try {
+      const { data } = await api.get(`/clientes/abonos/?cliente=${c.id}`);
+      setHistorial(data.results ?? data);
+    } catch {
+      setHistorial([]);
+    }
+    setLoadingHistorial(false);
   }
 
-  function abrirCrear() { setForm(FORM_EMPTY); setSeleccionado(null); setModal("crear"); }
+  function abrirCrear() {
+    setForm(FORM_EMPTY);
+    setModal("crear");
+  }
+
   function abrirEditar(c: Cliente) {
     setForm({ nombre: c.nombre, telefono: c.telefono, cedula: c.cedula, limite_credito: c.limite_credito });
-    setSeleccionado(c); setModal("editar");
+    setClienteActivo(c);
+    setModal("editar");
   }
-  async function abrirHistorial(c: Cliente) {
-    setSeleccionado(c);
-    const { data } = await api.get(`/clientes/abonos/?cliente=${c.id}`);
-    setHistorial(data.results ?? data);
-    setModal("historial");
-  }
-  function abrirAbono(c: Cliente) { setSeleccionado(c); setMontoAbono(""); setNotaAbono(""); setModal("abono"); }
 
-  const f = (k: keyof FormCliente) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  function abrirAbono(c: Cliente) {
+    setClienteActivo(c);
+    setMontoAbono("");
+    setNotaAbono("");
+    setModal("abono");
+  }
+
+  const setField = (k: keyof FormCliente) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
   async function guardar() {
-    if (!form.nombre) return toast.error("El nombre es requerido.");
+    if (!form.nombre.trim()) return toast.error("El nombre es requerido.");
     setGuardando(true);
     try {
-      if (modal === "crear") await api.post("/clientes/", form);
-      else await api.patch(`/clientes/${seleccionado!.id}/`, form);
-      toast.success(modal === "crear" ? "Cliente creado" : "Cliente actualizado");
-      setModal(null); cargar();
-    } catch { toast.error("Error al guardar"); }
+      if (modal === "crear") {
+        await api.post("/clientes/", form);
+        toast.success("Cliente creado exitosamente");
+      } else {
+        await api.patch(`/clientes/${clienteActivo!.id}/`, form);
+        toast.success("Cliente actualizado");
+      }
+      setModal(null);
+      cargar();
+    } catch {
+      toast.error("Error al guardar");
+    }
     setGuardando(false);
   }
 
   async function registrarAbono() {
     const monto = Number(montoAbono);
     if (!monto || monto <= 0) return toast.error("Ingresa un monto válido.");
-    if (monto > Number(seleccionado!.saldo_deuda)) return toast.error("El abono supera la deuda actual.");
+    if (monto > Number(clienteActivo!.saldo_deuda)) return toast.error("El abono supera la deuda.");
     setGuardando(true);
     try {
-      await api.post("/clientes/abonos/", { cliente: seleccionado!.id, monto, nota: notaAbono });
-      toast.success(`Abono de RD$${monto.toFixed(2)} registrado`);
-      setModal(null); cargar();
-    } catch { toast.error("Error al registrar abono"); }
+      await api.post("/clientes/abonos/", { cliente: clienteActivo!.id, monto, nota: notaAbono });
+      toast.success(`Abono de ${formatCurrency(monto)} registrado`);
+      setModal(null);
+      cargar();
+      if (clienteActivo) seleccionarCliente({ ...clienteActivo, saldo_deuda: (Number(clienteActivo.saldo_deuda) - monto).toString() } as unknown as Cliente);
+    } catch {
+      toast.error("Error al registrar abono");
+    }
     setGuardando(false);
   }
 
@@ -114,386 +162,458 @@ export default function ClientesPage() {
   const conDeuda = clientes.filter((c) => Number(c.saldo_deuda) > 0).length;
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800">Clientes / Fiado</h1>
-          <p className="text-slate-400 text-sm mt-0.5">{clientes.length} clientes registrados</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Pestañas */}
-          <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-            <button
-              onClick={() => cambiarVista('clientes')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'clientes' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Users size={13} /> Clientes
-            </button>
-            <button
-              onClick={() => cambiarVista('aging')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'aging' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <BarChart2 size={13} /> Antigüedad CxC
-            </button>
+    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+      {/* ── Panel izquierdo: lista ── */}
+      <div className="w-80 flex flex-col border-r border-border bg-background shrink-0">
+        {/* Header lista */}
+        <div className="p-4 border-b border-border space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Clientes</h2>
+            <Button size="sm" onClick={abrirCrear} className="h-7 text-xs gap-1.5">
+              <Plus size={13} /> Nuevo
+            </Button>
           </div>
-          {vista === 'clientes' && (
-            <button onClick={abrirCrear}
-              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-200 active:scale-95">
-              <Plus size={16} /> Nuevo cliente
-            </button>
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar cliente..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* KPIs rápidos */}
+        <div className="grid grid-cols-2 gap-2 p-3 border-b border-border">
+          <div className="bg-rose-50 dark:bg-rose-950/30 rounded-lg p-2.5">
+            <p className="text-[10px] font-medium text-rose-600 dark:text-rose-400 uppercase tracking-wide">Total fiados</p>
+            <p className="text-sm font-bold text-rose-700 dark:text-rose-300 tabular-nums mt-0.5">{formatCurrency(totalDeudas)}</p>
+          </div>
+          <div className="bg-muted rounded-lg p-2.5">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Con deuda</p>
+            <p className="text-sm font-bold text-foreground tabular-nums mt-0.5">{conDeuda} / {clientes.length}</p>
+          </div>
+        </div>
+
+        {/* Lista scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-2 space-y-1">
+              {Array.from({ length: 8 }).map((_, i) => <ClienteSkeleton key={i} />)}
+            </div>
+          ) : clientes.length === 0 ? (
+            <EmptyState icon={Users} title="Sin clientes" description="Agrega el primer cliente." />
+          ) : (
+            <div className="p-2 space-y-0.5">
+              {clientes.map((c) => {
+                const deuda = Number(c.saldo_deuda);
+                const limite = Number(c.limite_credito);
+                const pct = limite > 0 ? Math.min((deuda / limite) * 100, 100) : 0;
+                const activo = clienteActivo?.id === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => seleccionarCliente(c)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-2.5 rounded-lg text-left transition-all",
+                      activo
+                        ? "bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    {/* Avatar */}
+                    <div className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                      deuda > 0
+                        ? "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400"
+                        : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                    )}>
+                      {getInitials(c.nombre)}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className={cn(
+                        "text-xs font-semibold truncate",
+                        activo ? "text-brand-700 dark:text-brand-300" : "text-foreground"
+                      )}>
+                        {c.nombre}
+                      </p>
+                      {deuda > 0 && limite > 0 && (
+                        <Progress value={pct} className="h-1 mt-1" />
+                      )}
+                    </div>
+                    {/* Saldo */}
+                    <div className="text-right shrink-0">
+                      {deuda > 0 ? (
+                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                          {formatCurrency(deuda)}
+                        </span>
+                      ) : (
+                        <Badge variant="success" className="text-[10px] h-4">Al día</Badge>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Resumen fiados */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-shadow duration-200">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
-            <DollarSign size={20} className="text-amber-600" />
+      {/* ── Panel derecho: detalle / aging ── */}
+      <div className="flex-1 overflow-y-auto bg-muted/30">
+        {!clienteActivo ? (
+          /* Estado vacío — seleccionar cliente */
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                <UserCheck size={28} className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Selecciona un cliente</p>
+              <p className="text-sm text-muted-foreground mt-1">Haz clic en cualquier cliente para ver sus detalles</p>
+              <Button variant="outline" size="sm" className="mt-4 gap-2" onClick={() => { setModal(null); cargarAging(); }}>
+                <BarChart2 size={14} /> Ver antigüedad CxC
+              </Button>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Total en fiados</p>
-            <p className="text-xl font-black text-amber-600 tabular-nums">RD${totalDeudas.toFixed(2)}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-shadow duration-200">
-          <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center">
-            <AlertCircle size={20} className="text-red-500" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Clientes con deuda</p>
-            <p className="text-xl font-black text-red-500">{conDeuda} de {clientes.length}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== VISTA AGING ===== */}
-      {vista === 'aging' && (
-        <div className="space-y-4">
-          {loadingAging ? (
-            [...Array(4)].map((_, i) => <div key={i} className="h-28 bg-slate-100 rounded-2xl animate-pulse" />)
-          ) : aging ? (
-            <>
-              {/* Total general */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <DollarSign size={18} className="text-indigo-600" />
+        ) : (
+          <div className="p-6 max-w-3xl mx-auto space-y-5">
+            {/* Header del cliente */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold",
+                  Number(clienteActivo.saldo_deuda) > 0
+                    ? "bg-rose-100 dark:bg-rose-900/40 text-rose-600"
+                    : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600"
+                )}>
+                  {getInitials(clienteActivo.nombre)}
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-medium">Total cuentas por cobrar</p>
-                  <p className="text-2xl font-black text-indigo-600 tabular-nums">{fmt(aging.total)}</p>
-                </div>
-              </div>
-
-              {/* Buckets */}
-              {Object.entries(aging.buckets).map(([key, bucket]) => {
-                const colors = AGING_COLORS[key];
-                if (bucket.clientes.length === 0) return null;
-                return (
-                  <div key={key} className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2.5 h-2.5 rounded-full ${colors.bar}`} />
-                        <span className="font-bold text-slate-800 text-sm">{bucket.label}</span>
-                        <span className="text-xs text-slate-400">({bucket.clientes.length} cliente{bucket.clientes.length !== 1 ? 's' : ''})</span>
-                      </div>
-                      <span className={`font-bold tabular-nums text-sm ${colors.text}`}>{fmt(bucket.total)}</span>
-                    </div>
-                    <table className="w-full text-sm">
-                      <tbody className="divide-y divide-slate-50">
-                        {bucket.clientes.map((c: AgingCliente) => (
-                          <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-5 py-3">
-                              <p className="font-semibold text-slate-800">{c.nombre}</p>
-                              <p className="text-xs text-slate-400">{c.telefono || 'Sin teléfono'}</p>
-                            </td>
-                            <td className="px-5 py-3 text-center">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${colors.badge}`}>
-                                {c.dias} días
-                              </span>
-                            </td>
-                            <td className="px-5 py-3 text-right">
-                              <p className={`font-bold tabular-nums ${colors.text}`}>{fmt(c.saldo_deuda)}</p>
-                              <p className="text-xs text-slate-400">Desde {new Date(c.ultima_fecha).toLocaleDateString('es-DO', { day: '2-digit', month: 'short' })}</p>
-                            </td>
-                            <td className="px-4 py-3">
-                              <button
-                                onClick={() => { setSeleccionado(clientes.find(cl => cl.id === c.id) ?? null); setMontoAbono(''); setNotaAbono(''); setModal('abono'); }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors active:scale-95"
-                              >
-                                <Wallet size={12} /> Abonar
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })}
-            </>
-          ) : null}
-        </div>
-      )}
-
-      {/* ===== VISTA CLIENTES ===== */}
-      {vista === 'clientes' && <>
-
-      {/* Búsqueda */}
-      <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input placeholder="Buscar por nombre, teléfono, cédula..." value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-150" />
-      </div>
-
-      {/* Lista de clientes */}
-      <div className="space-y-2">
-        {loading ? (
-          [...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 animate-pulse h-20" />
-          ))
-        ) : clientes.length === 0 ? (
-          <div className="bg-white rounded-2xl p-14 text-center text-slate-300 border border-slate-100">
-            <UserCheck size={44} className="mx-auto mb-3 opacity-20" />
-            <p className="font-medium text-slate-400">No hay clientes</p>
-            <p className="text-xs mt-1">Agrega el primero con el botón de arriba</p>
-          </div>
-        ) : clientes.map((c) => {
-          const deuda = Number(c.saldo_deuda);
-          const limite = Number(c.limite_credito);
-          const pct = limite > 0 ? Math.min((deuda / limite) * 100, 100) : 0;
-          const enRojo = deuda > 0 && deuda >= limite * 0.9;
-          return (
-            <div key={c.id}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex items-center gap-4 px-5 py-4">
-                {/* Avatar */}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 text-sm ${
-                  deuda > 0 ? "bg-red-100 text-red-600" : "bg-indigo-100 text-indigo-600"
-                }`}>
-                  {c.nombre[0].toUpperCase()}
-                </div>
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-slate-800 truncate">{c.nombre}</p>
-                    {enRojo && (
-                      <span className="shrink-0 text-xs bg-red-50 text-red-500 border border-red-100 rounded-full px-2 py-0.5 font-medium">Límite al tope</span>
+                  <h1 className="text-xl font-bold text-foreground">{clienteActivo.nombre}</h1>
+                  <div className="flex items-center gap-3 mt-1">
+                    {clienteActivo.telefono && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Phone size={11} /> {clienteActivo.telefono}
+                      </span>
                     )}
+                    {clienteActivo.cedula && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <CreditCard size={11} /> {clienteActivo.cedula}
+                      </span>
+                    )}
+                    <Badge variant={clienteActivo.activo ? "success" : "secondary"} className="text-[10px] h-4">
+                      {clienteActivo.activo ? "Activo" : "Inactivo"}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-slate-400">{c.telefono || "Sin teléfono"}{c.cedula ? ` · ${c.cedula}` : ""}</p>
-                  {deuda > 0 && limite > 0 && (
-                    <div className="mt-2 w-48">
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-700 ${pct > 85 ? "bg-red-400" : pct > 60 ? "bg-amber-400" : "bg-emerald-400"}`}
-                          style={{ width: `${pct}%` }} />
-                      </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{pct.toFixed(0)}% del límite usado</p>
-                    </div>
-                  )}
-                </div>
-                {/* Deuda */}
-                <div className="text-right shrink-0">
-                  <p className={`font-black text-lg tabular-nums ${deuda > 0 ? "text-red-500" : "text-emerald-500"}`}>
-                    RD${deuda.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-slate-400">Límite: RD${limite.toFixed(2)}</p>
-                </div>
-                {/* Acciones */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {deuda > 0 && (
-                    <button onClick={() => abrirAbono(c)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors duration-150 active:scale-95">
-                      <Wallet size={13} /> Abonar
-                    </button>
-                  )}
-                  <button onClick={() => abrirHistorial(c)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors duration-150">
-                    <History size={15} />
-                  </button>
-                  <button onClick={() => abrirEditar(c)}
-                    className="p-1.5 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors duration-150">
-                    <ChevronRight size={15} />
-                  </button>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      </> /* fin vista clientes */}
-
-      {/* Modal crear/editar cliente */}
-      {(modal === "crear" || modal === "editar") && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              {/* Acciones */}
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                  <Users size={15} className="text-indigo-600" />
-                </div>
-                <h2 className="font-bold text-slate-800">{modal === "crear" ? "Nuevo Cliente" : "Editar Cliente"}</h2>
+                {Number(clienteActivo.saldo_deuda) > 0 && (
+                  <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/30"
+                    onClick={() => abrirAbono(clienteActivo)}>
+                    <Wallet size={14} /> Abonar
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal size={16} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => abrirEditar(clienteActivo)} className="gap-2">
+                      <Edit2 size={14} /> Editar cliente
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2 text-muted-foreground">
+                      <UserX size={14} /> Desactivar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <button onClick={() => setModal(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                <X size={18} />
-              </button>
             </div>
-            <div className="px-6 py-4 flex flex-col gap-4">
+
+            {/* KPIs del cliente */}
+            <div className="grid grid-cols-3 gap-3">
               {[
-                { key: "nombre" as const, label: "Nombre *", placeholder: "Nombre completo", type: "text" },
-                { key: "telefono" as const, label: "Teléfono", placeholder: "809-000-0000", type: "tel" },
-                { key: "cedula" as const, label: "Cédula", placeholder: "000-0000000-0", type: "text" },
-              ].map(({ key, label, placeholder, type }) => (
-                <div key={key} className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</label>
-                  <input type={type} value={form[key]} onChange={f(key)} placeholder={placeholder} className={inputCls} />
+                {
+                  label: "Deuda actual",
+                  value: formatCurrency(Number(clienteActivo.saldo_deuda)),
+                  icon: TrendingDown,
+                  color: Number(clienteActivo.saldo_deuda) > 0
+                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
+                    : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400",
+                  iconBg: Number(clienteActivo.saldo_deuda) > 0
+                    ? "bg-rose-100 dark:bg-rose-900/40"
+                    : "bg-emerald-100 dark:bg-emerald-900/40",
+                },
+                {
+                  label: "Límite de crédito",
+                  value: formatCurrency(Number(clienteActivo.limite_credito)),
+                  icon: DollarSign,
+                  color: "bg-card text-foreground",
+                  iconBg: "bg-brand-50 dark:bg-brand-950/30",
+                },
+                {
+                  label: "Crédito disponible",
+                  value: formatCurrency(Math.max(Number(clienteActivo.limite_credito) - Number(clienteActivo.saldo_deuda), 0)),
+                  icon: BadgeCheck,
+                  color: "bg-card text-foreground",
+                  iconBg: "bg-emerald-50 dark:bg-emerald-950/30",
+                },
+              ].map((kpi) => (
+                <div key={kpi.label} className={cn("rounded-xl p-4 border border-border", kpi.color)}>
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center mb-2", kpi.iconBg)}>
+                    <kpi.icon size={16} className="opacity-70" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                  <p className="text-lg font-bold tabular-nums mt-0.5">{kpi.value}</p>
                 </div>
               ))}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Límite de crédito (RD$)</label>
-                <input type="number" value={form.limite_credito} onChange={f("limite_credito")} placeholder="0.00" className={inputCls} />
-              </div>
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button onClick={() => setModal(null)}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors duration-150 active:scale-95">
-                Cancelar
-              </button>
-              <button onClick={guardar} disabled={guardando}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
-                {guardando ? (
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                ) : <><Check size={15} /> Guardar</>}
-              </button>
+
+            {/* Barra de crédito usado */}
+            {Number(clienteActivo.limite_credito) > 0 && (
+              <div className="bg-card border border-border rounded-xl p-4">
+                <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                  <span>Crédito usado</span>
+                  <span className="font-medium text-foreground">
+                    {Math.min(
+                      (Number(clienteActivo.saldo_deuda) / Number(clienteActivo.limite_credito)) * 100,
+                      100
+                    ).toFixed(0)}%
+                  </span>
+                </div>
+                <Progress
+                  value={Math.min(
+                    (Number(clienteActivo.saldo_deuda) / Number(clienteActivo.limite_credito)) * 100,
+                    100
+                  )}
+                  className="h-2"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>RD$0</span>
+                  <span>{formatCurrency(Number(clienteActivo.limite_credito))}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Historial de abonos */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <History size={15} className="text-muted-foreground" />
+                  <h3 className="text-sm font-semibold text-foreground">Historial de abonos</h3>
+                </div>
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5"
+                  onClick={() => seleccionarCliente(clienteActivo)}>
+                  <RefreshCw size={12} /> Actualizar
+                </Button>
+              </div>
+
+              {loadingHistorial ? (
+                <div className="p-4 space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Skeleton className="w-8 h-8 rounded-full" />
+                      <div className="flex-1 space-y-1">
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
+                </div>
+              ) : historial.length === 0 ? (
+                <div className="py-10 text-center">
+                  <History size={28} className="mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">Sin abonos registrados</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {historial.map((a, idx) => (
+                    <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+                      {/* Timeline dot */}
+                      <div className="relative flex flex-col items-center shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                          <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        {idx < historial.length - 1 && (
+                          <div className="absolute top-8 w-px h-4 bg-border" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground">
+                          Abono registrado
+                          {(a as { cajero_nombre?: string }).cajero_nombre && (
+                            <span className="font-normal text-muted-foreground"> · {(a as { cajero_nombre: string }).cajero_nombre}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(a.fecha).toLocaleDateString("es-DO", {
+                            day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
+                        {a.nota && <p className="text-xs text-muted-foreground italic mt-0.5">{a.nota}</p>}
+                      </div>
+                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums shrink-0">
+                        +{formatCurrency(Number(a.monto))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Modal abono */}
-      {modal === "abono" && seleccionado && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                  <Wallet size={15} className="text-emerald-600" />
-                </div>
-                <h2 className="font-bold text-slate-800">Registrar Abono</h2>
+      {/* ── Aging sheet (bottom sheet via Dialog) ── */}
+
+      {/* ── Modal crear / editar ── */}
+      <Dialog open={modal === "crear" || modal === "editar"} onOpenChange={(o) => !o && setModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-brand-50 dark:bg-brand-950/40 flex items-center justify-center">
+                <Users size={14} className="text-brand-600 dark:text-brand-400" />
               </div>
-              <button onClick={() => setModal(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
-                <X size={18} />
-              </button>
+              {modal === "crear" ? "Nuevo cliente" : "Editar cliente"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            {(["nombre", "telefono", "cedula"] as const).map((key) => (
+              <div key={key} className="space-y-1.5">
+                <Label className="text-xs font-medium capitalize">
+                  {key === "nombre" ? "Nombre completo *" : key === "telefono" ? "Teléfono" : "Cédula"}
+                </Label>
+                <Input
+                  value={form[key]}
+                  onChange={setField(key)}
+                  placeholder={key === "nombre" ? "Ej: Juan Pérez" : key === "telefono" ? "809-000-0000" : "000-0000000-0"}
+                />
+              </div>
+            ))}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Límite de crédito (RD$)</Label>
+              <Input
+                type="number"
+                value={form.limite_credito}
+                onChange={setField("limite_credito")}
+                placeholder="0.00"
+              />
             </div>
-            <div className="px-6 py-4 flex flex-col gap-4">
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                <p className="font-semibold text-amber-800 text-sm">{seleccionado.nombre}</p>
-                <p className="text-amber-600 text-sm">Deuda actual: <span className="font-bold tabular-nums">RD${Number(seleccionado.saldo_deuda).toFixed(2)}</span></p>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
+            <Button onClick={guardar} disabled={guardando} className="gap-2">
+              {guardando ? (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : <Check size={14} />}
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal abono ── */}
+      <Dialog open={modal === "abono"} onOpenChange={(o) => !o && setModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                <Wallet size={14} className="text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Monto del abono (RD$)</label>
-                <input type="number" value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)}
-                  placeholder="0.00" step="0.01" autoFocus
-                  className="border border-slate-200 rounded-xl px-3 py-3 text-xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 transition-all duration-150 tabular-nums" />
+              Registrar abono
+            </DialogTitle>
+          </DialogHeader>
+
+          {clienteActivo && (
+            <div className="space-y-4 py-2">
+              {/* Info cliente */}
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{clienteActivo.nombre}</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  Deuda actual:{" "}
+                  <span className="font-bold tabular-nums">{formatCurrency(Number(clienteActivo.saldo_deuda))}</span>
+                </p>
               </div>
+
+              {/* Input monto */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Monto del abono (RD$)</Label>
+                <Input
+                  type="number"
+                  value={montoAbono}
+                  onChange={(e) => setMontoAbono(e.target.value)}
+                  placeholder="0.00"
+                  className="text-center text-xl font-bold h-12 tabular-nums"
+                  autoFocus
+                />
+              </div>
+
               {/* Botones rápidos */}
               <div className="grid grid-cols-3 gap-2">
-                {[100, 200, 500, 1000, Number(seleccionado.saldo_deuda)].slice(0, 6).map((v) => (
-                  <button key={v} onClick={() => setMontoAbono(String(v))}
-                    className={`text-xs rounded-xl py-2.5 font-semibold transition-all duration-150 active:scale-95 ${
-                      Number(montoAbono) === v
-                        ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                        : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-                    }`}>
-                    RD${v}
-                  </button>
+                {[100, 200, 500, 1000, 2000, Number(clienteActivo.saldo_deuda)].slice(0, 6).map((v) => (
+                  <Button
+                    key={v}
+                    variant={Number(montoAbono) === v ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs h-8"
+                    onClick={() => setMontoAbono(String(v))}
+                  >
+                    {formatCurrency(v)}
+                  </Button>
                 ))}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nota (opcional)</label>
-                <input value={notaAbono} onChange={(e) => setNotaAbono(e.target.value)} placeholder="Ej: Pago en efectivo"
-                  className={inputCls} />
+
+              {/* Nota */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Nota (opcional)</Label>
+                <Input
+                  value={notaAbono}
+                  onChange={(e) => setNotaAbono(e.target.value)}
+                  placeholder="Ej: Pago en efectivo"
+                />
               </div>
-              {montoAbono && Number(montoAbono) > 0 && (
-                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-sm text-emerald-700 flex items-center justify-between">
-                  <span>Nuevo saldo:</span>
-                  <span className="font-bold tabular-nums">
-                    RD${Math.max(Number(seleccionado.saldo_deuda) - Number(montoAbono), 0).toFixed(2)}
+
+              {/* Preview nuevo saldo */}
+              {Number(montoAbono) > 0 && (
+                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 text-sm">
+                  <span className="text-emerald-700 dark:text-emerald-300">Nuevo saldo:</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                    {formatCurrency(Math.max(Number(clienteActivo.saldo_deuda) - Number(montoAbono), 0))}
                   </span>
                 </div>
               )}
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button onClick={() => setModal(null)}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors duration-150 active:scale-95">
-                Cancelar
-              </button>
-              <button onClick={registrarAbono} disabled={guardando}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
-                {guardando ? (
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                ) : <><Check size={15} /> Registrar abono</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Modal historial */}
-      {modal === "historial" && seleccionado && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <History size={15} className="text-slate-600" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-slate-800 text-sm">Historial de abonos</h2>
-                  <p className="text-xs text-slate-400">{seleccionado.nombre}</p>
-                </div>
-              </div>
-              <button onClick={() => setModal(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 px-6 py-4 divide-y divide-slate-50">
-              {historial.length === 0 ? (
-                <div className="text-center text-slate-300 py-10">
-                  <History size={36} className="mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium text-slate-400">Sin abonos registrados</p>
-                </div>
-              ) : historial.map((a) => (
-                <div key={a.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 tabular-nums">RD${Number(a.monto).toFixed(2)}</p>
-                    <p className="text-xs text-slate-400">
-                      {new Date(a.fecha).toLocaleDateString("es-DO")} · {a.cajero_nombre}
-                    </p>
-                    {a.nota && <p className="text-xs text-slate-400 italic mt-0.5">{a.nota}</p>}
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                    <Check size={14} className="text-emerald-600" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
+            <Button
+              onClick={registrarAbono}
+              disabled={guardando}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {guardando ? (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : <Check size={14} />}
+              Registrar abono
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
