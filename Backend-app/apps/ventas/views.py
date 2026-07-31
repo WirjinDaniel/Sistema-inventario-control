@@ -32,11 +32,10 @@ class SesionCajaViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='activa')
     def sesion_activa(self, request):
-        try:
-            sesion = SesionCaja.objects.get(colmado=request.user.colmado, cajero=request.user, cierre__isnull=True)
-            return Response(SesionCajaSerializer(sesion).data)
-        except SesionCaja.DoesNotExist:
+        sesion = SesionCaja.objects.filter(colmado=request.user.colmado, cajero=request.user, cierre__isnull=True).first()
+        if sesion is None:
             return Response({'detail': 'No hay sesión activa.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(SesionCajaSerializer(sesion).data)
 
     @action(detail=True, methods=['post'], url_path='cerrar')
     def cerrar(self, request, pk=None):
@@ -44,7 +43,8 @@ class SesionCajaViewSet(viewsets.ModelViewSet):
         if not sesion.esta_abierta:
             return Response({'detail': 'La sesión ya está cerrada.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        efectivo_declarado = float(request.data.get('efectivo_final_declarado', 0))
+        from decimal import Decimal
+        efectivo_declarado = Decimal(str(request.data.get('efectivo_final_declarado', 0)))
 
         # Calcular efectivo esperado (efectivo inicial + ventas en efectivo)
         ventas_efectivo = sesion.ventas.filter(
