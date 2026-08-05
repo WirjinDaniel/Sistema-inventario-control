@@ -45,8 +45,8 @@ export default function SuperadminDashboard() {
     const fetchData = async () => {
       try {
         const [statsRes, ventasRes] = await Promise.all([
-          api.get('/dashboard/stats/'),
-          api.get('/dashboard/ventas-por-colmado/'),
+          api.get('/dashboard/stats'),
+          api.get('/dashboard/ventas-por-colmado'),
         ]);
         setData(statsRes.data);
         setVentasColmado(ventasRes.data.results ?? ventasRes.data);

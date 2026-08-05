@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Sum
 from .models import CategoriaGasto, Gasto
 from .serializers import CategoriaGastoSerializer, GastoSerializer
+from apps.dashboard.permissions import IsAdminOfColmado
 
 CATEGORIAS_PREDEFINIDAS = [
     # (nombre, tipo, icono)
@@ -40,7 +41,9 @@ CATEGORIAS_PREDEFINIDAS = [
 
 
 class CategoriaGastoViewSet(viewsets.ModelViewSet):
+    """Categorías de gasto — solo ADMIN del colmado."""
     serializer_class = CategoriaGastoSerializer
+    permission_classes = [IsAdminOfColmado]
 
     def get_queryset(self):
         return CategoriaGasto.objects.filter(colmado=self.request.user.colmado, activo=True)
@@ -63,7 +66,9 @@ class CategoriaGastoViewSet(viewsets.ModelViewSet):
 
 
 class GastoViewSet(viewsets.ModelViewSet):
+    """Gastos — solo ADMIN del colmado."""
     serializer_class = GastoSerializer
+    permission_classes = [IsAdminOfColmado]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['descripcion', 'comprobante']
     ordering_fields = ['fecha', 'monto']

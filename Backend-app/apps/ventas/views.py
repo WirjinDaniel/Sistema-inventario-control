@@ -9,10 +9,13 @@ from .serializers import BancoCuentaSerializer, SesionCajaSerializer, VentaSeria
 from apps.inventario.models import MovimientoInventario
 from apps.usuarios.audit import log as audit_log
 from apps.usuarios.models import AuditoriaLog
+from apps.dashboard.permissions import IsAdminOfColmado, IsCajeroOrAdmin
 
 
 class BancoCuentaViewSet(viewsets.ModelViewSet):
+    """Cuentas bancarias del colmado — solo ADMIN puede administrarlas."""
     serializer_class = BancoCuentaSerializer
+    permission_classes = [IsAdminOfColmado]
 
     def get_queryset(self):
         return BancoCuenta.objects.filter(colmado=self.request.user.colmado, activo=True)
@@ -22,7 +25,9 @@ class BancoCuentaViewSet(viewsets.ModelViewSet):
 
 
 class SesionCajaViewSet(viewsets.ModelViewSet):
+    """Sesiones de caja — CAJERO y ADMIN pueden gestionar sus sesiones."""
     serializer_class = SesionCajaSerializer
+    permission_classes = [IsCajeroOrAdmin]
 
     def get_queryset(self):
         return SesionCaja.objects.filter(colmado=self.request.user.colmado).select_related('cajero')
@@ -46,7 +51,6 @@ class SesionCajaViewSet(viewsets.ModelViewSet):
         from decimal import Decimal
         efectivo_declarado = Decimal(str(request.data.get('efectivo_final_declarado', 0)))
 
-        # Calcular efectivo esperado (efectivo inicial + ventas en efectivo)
         ventas_efectivo = sesion.ventas.filter(
             estado=Venta.ESTADO_COMPLETADA,
             metodo_pago=Venta.PAGO_EFECTIVO,
@@ -67,7 +71,17 @@ class SesionCajaViewSet(viewsets.ModelViewSet):
 
 
 class VentaViewSet(viewsets.ModelViewSet):
+    """
+    Ventas:
+    - Registrar / consultar: CAJERO o ADMIN.
+    - Anular: solo ADMIN (acción destructiva con impacto en inventario y fiados).
+    """
     http_method_names = ['get', 'post', 'patch']
+
+    def get_permissions(self):
+        if self.action == 'anular':
+            return [IsAdminOfColmado()]
+        return [IsCajeroOrAdmin()]
 
     def get_queryset(self):
         return Venta.objects.filter(colmado=self.request.user.colmado).select_related('cajero', 'cliente')
@@ -94,7 +108,6 @@ class VentaViewSet(viewsets.ModelViewSet):
         if not motivo:
             return Response({'detail': 'Se requiere un motivo para anular.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Revertir stock
         for detalle in venta.detalles.all():
             prod = detalle.producto
             prod.stock_actual += detalle.cantidad
@@ -108,7 +121,6 @@ class VentaViewSet(viewsets.ModelViewSet):
                 nota=f'Anulación venta #{venta.pk}: {motivo}',
             )
 
-        # Revertir fiado si aplica
         if venta.metodo_pago == Venta.PAGO_FIADO and venta.cliente:
             venta.cliente.saldo_deuda -= venta.total
             venta.cliente.saldo_deuda = max(venta.cliente.saldo_deuda, 0)

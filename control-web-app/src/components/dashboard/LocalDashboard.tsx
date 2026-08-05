@@ -3,13 +3,15 @@ import { useEffect, useState } from "react";
 import {
   DollarSign, ShoppingBag, Users, AlertTriangle,
   TrendingUp, RefreshCw, ArrowUpRight,
-  ArrowDownRight, Package, Clock,
+  ArrowDownRight, Package, Clock, TrendingDown, BarChart2, Receipt,
+  Layers,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie,
 } from "recharts";
 import api from "@/lib/api";
+import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +20,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
+
+interface Suscripcion {
+  plan_nombre: string;
+  estado: string;
+  dias_restantes: number;
+  fecha_vencimiento: string;
+}
 
 interface Venta { id: number; fecha: string; estado: string; total: string; cliente_nombre?: string; metodo_pago?: string; }
 interface Cliente { saldo_deuda: string; }
@@ -33,6 +42,9 @@ interface Stats {
   ventas_por_hora: { hora: number; total: number }[];
   metodos_pago: { metodo: string; total: number; count: number }[];
   productos_bajo: Producto[];
+  gastos_hoy: number;
+  fiado_total: number;
+  ticket_promedio: number;
 }
 
 const METODO_COLORS: Record<string, string> = {
@@ -82,19 +94,31 @@ function KpiCard({ icon: Icon, label, value, sub, delta, color, loading }: {
 }
 
 export default function LocalDashboard() {
+  const { esAdmin } = useAuthStore();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hora, setHora] = useState<Date | null>(null);
+  const [suscripcion, setSuscripcion] = useState<Suscripcion | null>(null);
 
   useEffect(() => {
     setHora(new Date());
     cargarStats();
+    if (esAdmin()) cargarSuscripcion();
     const tick = setInterval(() => setHora(new Date()), 60000);
     const refresh = setInterval(cargarStats, 60000);
     return () => { clearInterval(tick); clearInterval(refresh); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function cargarSuscripcion() {
+    try {
+      const r = await api.get("/suscripciones/mi-suscripcion/");
+      setSuscripcion(r.data);
+    } catch {
+      // No suscripción activa o endpoint no disponible — silencioso
+    }
+  }
 
   async function cargarStats(manual = false) {
     if (manual) setRefreshing(true);
@@ -102,10 +126,11 @@ export default function LocalDashboard() {
       const hoy = new Date().toISOString().split("T")[0];
       const ayer = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-      const [ventasRes, clientesRes, productosRes] = await Promise.all([
+      const [ventasRes, clientesRes, productosRes, gastosRes] = await Promise.all([
         api.get(`/ventas/?estado=COMPLETADA&page_size=200`),
         api.get("/clientes/"),
         api.get("/inventario/productos/?stock_bajo=true&page_size=50"),
+        api.get(`/gastos/?fecha_desde=${hoy}&fecha_hasta=${hoy}&page_size=100`).catch(() => ({ data: [] })),
       ]);
 
       const lista: Venta[] = ventasRes.data.results ?? ventasRes.data;
@@ -116,6 +141,10 @@ export default function LocalDashboard() {
 
       const listaClientes: Cliente[] = clientesRes.data.results ?? clientesRes.data;
       const conDeuda = listaClientes.filter((c) => Number(c.saldo_deuda) > 0).length;
+      const fiado_total = listaClientes.reduce((a, c) => a + Number(c.saldo_deuda), 0);
+      const listaGastos: { monto: string }[] = gastosRes.data.results ?? gastosRes.data ?? [];
+      const gastos_hoy = listaGastos.reduce((a, g) => a + Number(g.monto), 0);
+      const ticket_promedio = ventasHoy.length ? totalHoy / ventasHoy.length : 0;
 
       const prods: Producto[] = productosRes.data.results ?? productosRes.data;
 
@@ -145,6 +174,9 @@ export default function LocalDashboard() {
         ventas_por_hora: Array.from({ length: 24 }, (_, i) => ({ hora: i, total: porHora[i] ?? 0 })),
         metodos_pago: Object.entries(metodos).map(([metodo, d]) => ({ metodo, ...d })),
         productos_bajo: prods.slice(0, 5),
+        gastos_hoy,
+        fiado_total,
+        ticket_promedio,
       });
     } catch {
       toast.error("Error al cargar el dashboard. Intenta de nuevo.");
@@ -183,6 +215,46 @@ export default function LocalDashboard() {
         </Button>
       </div>
 
+      {/* Banner de suscripción */}
+      {suscripcion && (() => {
+        const vencida = suscripcion.estado === "VENCIDA" || suscripcion.estado === "SUSPENDIDA";
+        const proxima = !vencida && suscripcion.dias_restantes <= 7;
+        if (!vencida && !proxima) return null;
+        return (
+          <div className={cn(
+            "flex items-start gap-3 rounded-xl border p-4",
+            vencida
+              ? "bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/50"
+              : "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/50"
+          )}>
+            <div className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+              vencida ? "bg-rose-100 dark:bg-rose-900/50" : "bg-amber-100 dark:bg-amber-900/50"
+            )}>
+              <Layers size={16} className={vencida ? "text-rose-600" : "text-amber-600"} />
+            </div>
+            <div className="flex-1">
+              <p className={cn(
+                "text-sm font-semibold",
+                vencida ? "text-rose-800 dark:text-rose-300" : "text-amber-800 dark:text-amber-300"
+              )}>
+                {vencida
+                  ? `Suscripción ${suscripcion.estado.toLowerCase()} — Plan ${suscripcion.plan_nombre}`
+                  : `Tu suscripción vence en ${suscripcion.dias_restantes} día(s) — Plan ${suscripcion.plan_nombre}`}
+              </p>
+              <p className={cn(
+                "text-xs mt-0.5",
+                vencida ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400"
+              )}>
+                {vencida
+                  ? "Contacta al administrador de la plataforma para renovar tu plan."
+                  : `Vence el ${new Date(suscripcion.fecha_vencimiento).toLocaleDateString("es-DO", { day: "numeric", month: "long", year: "numeric" })}.`}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
@@ -209,6 +281,43 @@ export default function LocalDashboard() {
           sub="productos a reponer"
           color="bg-rose-50 dark:bg-rose-950 text-rose-600"
         />
+      </div>
+
+      {/* KPIs secundarios */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950 flex items-center justify-center">
+              <BarChart2 size={14} className="text-purple-600" />
+            </div>
+            <span className="text-xs text-muted-foreground">Ticket promedio hoy</span>
+          </div>
+          {loading ? <Skeleton className="h-6 w-24" /> : (
+            <p className="text-lg font-bold tabular-nums">{formatCurrency(stats?.ticket_promedio ?? 0)}</p>
+          )}
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950 flex items-center justify-center">
+              <TrendingDown size={14} className="text-rose-600" />
+            </div>
+            <span className="text-xs text-muted-foreground">Gastos del día</span>
+          </div>
+          {loading ? <Skeleton className="h-6 w-24" /> : (
+            <p className="text-lg font-bold tabular-nums text-rose-600">{formatCurrency(stats?.gastos_hoy ?? 0)}</p>
+          )}
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center">
+              <Receipt size={14} className="text-amber-600" />
+            </div>
+            <span className="text-xs text-muted-foreground">Total fiado pendiente</span>
+          </div>
+          {loading ? <Skeleton className="h-6 w-24" /> : (
+            <p className="text-lg font-bold tabular-nums text-amber-600">{formatCurrency(stats?.fiado_total ?? 0)}</p>
+          )}
+        </div>
       </div>
 
       {/* Gráfica + Métodos de pago */}

@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Plus, X, Check, Search, Shield, User2,
-  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash,
+  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -50,6 +50,56 @@ export default function UsuariosPage() {
   const [form, setForm] = useState<FormUsuario>(FORM_EMPTY);
   const [showPass, setShowPass] = useState(false);
   const [guardando, setGuardando] = useState(false);
+
+  // Permisos granulares
+  const [permsTarget, setPermsTarget] = useState<UsuarioAPI | null>(null);
+  const [perms, setPerms] = useState<Record<string, boolean>>({});
+  const [guardandoPerms, setGuardandoPerms] = useState(false);
+
+  const MODULOS_PERMS = [
+    { key: "ver_reportes", label: "Ver reportes", grupo: "Reportes" },
+    { key: "exportar_reportes", label: "Exportar reportes (CSV)", grupo: "Reportes" },
+    { key: "ver_ventas", label: "Ver historial de ventas", grupo: "Ventas" },
+    { key: "anular_ventas", label: "Anular ventas", grupo: "Ventas" },
+    { key: "aplicar_descuentos", label: "Aplicar descuentos en POS", grupo: "Ventas" },
+    { key: "ver_clientes", label: "Ver clientes", grupo: "Clientes" },
+    { key: "crear_clientes", label: "Crear/editar clientes", grupo: "Clientes" },
+    { key: "ver_productos", label: "Ver productos", grupo: "Inventario" },
+    { key: "editar_productos", label: "Crear/editar productos", grupo: "Inventario" },
+    { key: "ajustar_inventario", label: "Ajustar inventario", grupo: "Inventario" },
+    { key: "ver_compras", label: "Ver compras", grupo: "Compras" },
+    { key: "crear_compras", label: "Crear órdenes de compra", grupo: "Compras" },
+    { key: "ver_gastos", label: "Ver gastos", grupo: "Finanzas" },
+    { key: "crear_gastos", label: "Registrar gastos", grupo: "Finanzas" },
+    { key: "ver_caja", label: "Ver movimientos de caja", grupo: "Finanzas" },
+    { key: "cerrar_caja", label: "Cerrar sesión de caja", grupo: "Finanzas" },
+    { key: "ver_devoluciones", label: "Ver devoluciones", grupo: "Devoluciones" },
+    { key: "crear_devoluciones", label: "Registrar devoluciones", grupo: "Devoluciones" },
+  ];
+
+  async function abrirPermisos(u: UsuarioAPI) {
+    setPermsTarget(u);
+    try {
+      const { data } = await api.get(`/usuarios/${u.id}/permisos/`);
+      setPerms(data);
+    } catch {
+      // Si no existe el endpoint, inicializar con permisos según rol
+      const defaults: Record<string, boolean> = {};
+      MODULOS_PERMS.forEach((m) => { defaults[m.key] = u.rol === "ADMIN"; });
+      setPerms(defaults);
+    }
+  }
+
+  async function guardarPermisos() {
+    if (!permsTarget) return;
+    setGuardandoPerms(true);
+    try {
+      await api.patch(`/usuarios/${permsTarget.id}/permisos/`, perms);
+      toast.success("Permisos actualizados");
+      setPermsTarget(null);
+    } catch { toast.error("Error al guardar permisos"); }
+    setGuardandoPerms(false);
+  }
 
   // Reset contraseña
   const [resetTarget, setResetTarget] = useState<UsuarioAPI | null>(null);
@@ -102,10 +152,13 @@ export default function UsuariosPage() {
 
   async function toggleActivo(u: UsuarioAPI) {
     try {
-      await api.patch(`/usuarios/${u.id}/`, { is_active: !u.is_active });
+      await api.post(`/usuarios/${u.id}/toggle-activo/`);
       toast.success(u.is_active ? "Usuario desactivado" : "Usuario activado");
       cargar();
-    } catch { toast.error("Error al actualizar estado"); }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      toast.error(msg ?? "Error al actualizar estado");
+    }
   }
 
   async function resetearPassword() {
@@ -113,11 +166,14 @@ export default function UsuariosPage() {
     if (!nuevaPass || nuevaPass.length < 6) return toast.error("La contraseña debe tener al menos 6 caracteres.");
     setReseteando(true);
     try {
-      await api.patch(`/usuarios/${resetTarget.id}/`, { password: nuevaPass });
+      await api.post(`/usuarios/${resetTarget.id}/reset-password/`, { password: nuevaPass });
       toast.success(`Contraseña de ${resetTarget.nombre} restablecida`);
       setResetTarget(null);
       setNuevaPass("");
-    } catch { toast.error("Error al restablecer la contraseña"); }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      toast.error(msg ?? "Error al restablecer la contraseña");
+    }
     setReseteando(false);
   }
 
@@ -242,6 +298,10 @@ export default function UsuariosPage() {
                         className="p-1.5 rounded-lg hover:bg-amber-100 text-slate-400 hover:text-amber-600 transition-all duration-150 active:scale-90">
                         <KeyRound size={15} />
                       </button>
+                      <button onClick={() => abrirPermisos(u)} title="Permisos granulares"
+                        className="p-1.5 rounded-lg hover:bg-violet-100 text-slate-400 hover:text-violet-600 transition-all duration-150 active:scale-90">
+                        <Lock size={15} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -302,6 +362,68 @@ export default function UsuariosPage() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
                 ) : <><Check size={15} /> Confirmar</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal permisos granulares */}
+      {permsTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                  <Lock size={15} className="text-violet-600" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-slate-800 text-sm">Permisos de {permsTarget.nombre}</h2>
+                  <p className="text-xs text-slate-400">{ROL_CONFIG[permsTarget.rol]?.label}</p>
+                </div>
+              </div>
+              <button onClick={() => setPermsTarget(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-5">
+              <p className="text-xs text-slate-400">
+                Los permisos granulares se suman a los permisos del rol. El administrador siempre tiene acceso total.
+              </p>
+              {Array.from(new Set(MODULOS_PERMS.map((m) => m.grupo))).map((grupo) => (
+                <div key={grupo}>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{grupo}</p>
+                  <div className="space-y-2">
+                    {MODULOS_PERMS.filter((m) => m.grupo === grupo).map((m) => (
+                      <label key={m.key} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-slate-50 cursor-pointer group">
+                        <span className="text-sm text-slate-600 group-hover:text-slate-800 transition-colors">{m.label}</span>
+                        <div
+                          onClick={() => setPerms((p) => ({ ...p, [m.key]: !p[m.key] }))}
+                          className={`relative rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${perms[m.key] ? "bg-indigo-500" : "bg-slate-200"}`}
+                          style={{ width: 40, height: 22 }}>
+                          <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${perms[m.key] ? "translate-x-[18px]" : "translate-x-0"}`}
+                            style={{ width: 18, height: 18 }} />
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+              <button onClick={() => setPermsTarget(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button onClick={guardarPermisos} disabled={guardandoPerms}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
+                {guardandoPerms ? (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                ) : <><Check size={15} /> Guardar permisos</>}
               </button>
             </div>
           </div>

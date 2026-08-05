@@ -19,4 +19,10 @@ urlpatterns = [
     path('api/gastos/', include('apps.gastos.urls')),
     path('api/reportes/', include('apps.reportes.urls')),
     path('api/dashboard/', include('apps.dashboard.urls')),
+    path('api/devoluciones/', include('apps.devoluciones.urls')),
+    path('api/promociones/', include('apps.promociones.urls')),
+    path('api/historial-precios/', include('apps.historial_precios.urls')),
+    path('api/facturacion/', include('apps.facturacion.urls')),
+    path('api/devoluciones-suplidores/', include('apps.devoluciones_suplidores.urls')),
+    path('api/suscripciones/', include('apps.suscripciones.urls')),
 ]

@@ -5,8 +5,7 @@ import LocalDashboard from '@/components/dashboard/LocalDashboard';
 import SuperadminDashboard from '@/components/dashboard/SuperadminDashboard';
 
 export default function DashboardPage() {
-  const usuario = useAuthStore((state) => state.usuario);
-  const hydrated = useAuthStore((state) => state.hydrated);
+  const { esSuperadmin, hydrated } = useAuthStore();
 
   if (!hydrated) {
     return (
@@ -22,7 +21,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (usuario?.is_superuser) {
+  // esSuperadmin() lee is_superuser directamente del JWT — no manipulable desde localStorage
+  if (esSuperadmin()) {
     return <SuperadminDashboard />;
   }
 

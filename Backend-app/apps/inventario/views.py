@@ -6,10 +6,13 @@ from .serializers import (
     CategoriaSerializer, MarcaSerializer, ProductoSerializer,
     PresentacionProductoSerializer, MovimientoInventarioSerializer, ReglaDescuentoSerializer,
 )
+from apps.dashboard.permissions import IsAdminOfColmado, IsInventarioOrAdmin
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
+    """Categorías de producto — INVENTARIO y ADMIN pueden gestionarlas."""
     serializer_class = CategoriaSerializer
+    permission_classes = [IsInventarioOrAdmin]
 
     def get_queryset(self):
         return Categoria.objects.filter(colmado=self.request.user.colmado, activo=True)
@@ -19,7 +22,9 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 
 
 class MarcaViewSet(viewsets.ModelViewSet):
+    """Marcas — INVENTARIO y ADMIN pueden gestionarlas."""
     serializer_class = MarcaSerializer
+    permission_classes = [IsInventarioOrAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'pais_origen']
 
@@ -31,7 +36,9 @@ class MarcaViewSet(viewsets.ModelViewSet):
 
 
 class PresentacionProductoViewSet(viewsets.ModelViewSet):
+    """Presentaciones de producto — INVENTARIO y ADMIN."""
     serializer_class = PresentacionProductoSerializer
+    permission_classes = [IsInventarioOrAdmin]
 
     def get_queryset(self):
         qs = PresentacionProducto.objects.filter(producto__colmado=self.request.user.colmado)
@@ -42,13 +49,25 @@ class PresentacionProductoViewSet(viewsets.ModelViewSet):
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
+    """
+    Productos:
+    - Consultar / buscar: INVENTARIO y ADMIN (también CAJERO necesita leer para el POS).
+    - Crear / editar / eliminar: solo INVENTARIO y ADMIN.
+    """
     serializer_class = ProductoSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'codigo_barras', 'sku']
     ordering_fields = ['nombre', 'stock_actual', 'precio_venta']
 
+    def get_permissions(self):
+        # Lectura: cualquier autenticado (CAJERO necesita ver productos en el POS)
+        if self.action in ('list', 'retrieve', 'buscar_por_barras'):
+            from rest_framework.permissions import IsAuthenticated
+            return [IsAuthenticated()]
+        # Escritura: solo INVENTARIO o ADMIN
+        return [IsInventarioOrAdmin()]
+
     def get_queryset(self):
-        # Para acciones de detalle (retrieve, update, destroy) incluir productos inactivos
         if self.action in ('retrieve', 'update', 'partial_update', 'destroy'):
             qs = Producto.objects.filter(colmado=self.request.user.colmado)
         else:
@@ -74,7 +93,6 @@ class ProductoViewSet(viewsets.ModelViewSet):
             )
             return Response(ProductoSerializer(producto).data)
         except Producto.DoesNotExist:
-            # buscar en presentaciones también
             from .models import PresentacionProducto as PP
             try:
                 pres = PP.objects.select_related('producto').get(
@@ -93,7 +111,9 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
 
 class ReglaDescuentoViewSet(viewsets.ModelViewSet):
+    """Reglas de descuento — solo ADMIN."""
     serializer_class = ReglaDescuentoSerializer
+    permission_classes = [IsAdminOfColmado]
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'producto__nombre', 'categoria__nombre']
 
@@ -112,7 +132,12 @@ class ReglaDescuentoViewSet(viewsets.ModelViewSet):
 
 
 class MovimientoInventarioViewSet(viewsets.ModelViewSet):
+    """
+    Movimientos de inventario — INVENTARIO y ADMIN pueden consultar y registrar.
+    Solo GET y POST (los movimientos no se editan ni eliminan).
+    """
     serializer_class = MovimientoInventarioSerializer
+    permission_classes = [IsInventarioOrAdmin]
     http_method_names = ['get', 'post']
 
     def get_queryset(self):

@@ -30,6 +30,17 @@ function deleteCookie(name: string) {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(base64);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   usuario: null,
   token: null,
@@ -68,5 +79,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   esAdmin: () => get().usuario?.rol === "ADMIN",
   esCajero: () => ["ADMIN", "CAJERO"].includes(get().usuario?.rol ?? ""),
-  esSuperadmin: () => get().usuario?.is_superuser === true,
+  // Lee is_superuser desde el JWT para evitar manipulación de localStorage
+  esSuperadmin: () => {
+    const token = get().token;
+    if (!token) return false;
+    const payload = decodeJwtPayload(token);
+    return payload?.is_superuser === true;
+  },
 }));

@@ -49,6 +49,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     nombre = models.CharField(max_length=200)
     rol = models.CharField(max_length=20, choices=ROLES, default=ROL_CAJERO)
     pin_caja = models.CharField(max_length=6, blank=True)
+    permisos_extra = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)

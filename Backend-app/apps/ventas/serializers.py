@@ -84,7 +84,7 @@ class VentaCreateSerializer(serializers.ModelSerializer):
             producto = detalle_data['producto']
             cantidad = detalle_data['cantidad']
 
-            prod = Producto.objects.select_for_update().get(pk=producto.pk)
+            prod = Producto.objects.select_for_update().get(pk=producto.pk, colmado=request.user.colmado)
             if prod.stock_actual < cantidad:
                 raise serializers.ValidationError(
                     f'Stock insuficiente para {prod.nombre}. Disponible: {prod.stock_actual}'
@@ -120,4 +120,9 @@ class VentaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Venta
-        fields = '__all__'
+        fields = [
+            'id', 'colmado', 'cajero', 'cajero_nombre', 'sesion_caja', 'cliente', 'cliente_nombre',
+            'banco_cuenta', 'banco_nombre', 'fecha', 'subtotal', 'descuento', 'total',
+            'metodo_pago', 'monto_pagado', 'cambio', 'estado', 'motivo_anulacion', 'detalles',
+        ]
+        read_only_fields = ['colmado', 'cajero', 'fecha']

@@ -7,6 +7,8 @@ import {
   Users, Banknote, TrendingDown, TrendingUp, BarChart3, Settings,
   ShieldCheck, ArrowLeftRight, BookOpen, CreditCard, Wallet,
   Store, ChevronLeft, ChevronRight, Sun, Moon,
+  RotateCcw, Gift, FileText, DollarSign, History,
+  Building2, Globe, UserCog, BadgeDollarSign, Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
@@ -23,12 +25,15 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string | number;
   roles?: ("all" | "admin" | "catalogo" | "cajero")[];
+  superadminOnly?: boolean;
 }
 
 interface NavGroup {
   title: string;
   items: NavItem[];
   roles?: ("all" | "admin" | "catalogo" | "cajero")[];
+  superadminOnly?: boolean;
+  adminColmadoOnly?: boolean;
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -69,6 +74,8 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "POS", href: "/pos", icon: Store, roles: ["all"] },
       { label: "Ventas", href: "/ventas", icon: TrendingUp, roles: ["all"] },
       { label: "Clientes", href: "/clientes", icon: Users, roles: ["all"] },
+      { label: "Devoluciones", href: "/devoluciones", icon: RotateCcw, roles: ["all"] },
+      { label: "Promociones", href: "/promociones", icon: Gift, roles: ["admin"] },
     ],
   },
   {
@@ -79,16 +86,37 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Cuentas x Pagar", href: "/cuentas-por-pagar", icon: Wallet, roles: ["admin"] },
       { label: "Gastos", href: "/gastos", icon: TrendingDown, roles: ["admin"] },
       { label: "Caja", href: "/caja", icon: Banknote, roles: ["admin"] },
+      { label: "Facturación", href: "/facturacion", icon: FileText, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "Análisis",
+    roles: ["admin"],
+    items: [
+      { label: "Reportes", href: "/reportes", icon: BarChart3, roles: ["admin"] },
+      { label: "Historial Precios", href: "/historial-precios", icon: History, roles: ["admin"] },
+      { label: "Dev. Suplidores", href: "/devoluciones-suplidores", icon: DollarSign, roles: ["admin"] },
     ],
   },
   {
     title: "Sistema",
     roles: ["admin"],
+    adminColmadoOnly: true,
     items: [
-      { label: "Reportes", href: "/reportes", icon: BarChart3, roles: ["admin"] },
       { label: "Usuarios", href: "/usuarios", icon: Users, roles: ["admin"] },
       { label: "Auditoría", href: "/auditoria", icon: ShieldCheck, roles: ["admin"] },
       { label: "Configuración", href: "/configuracion", icon: Settings, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "Superadmin",
+    superadminOnly: true,
+    items: [
+      { label: "Dashboard Global", href: "/superadmin/dashboard", icon: Globe, superadminOnly: true },
+      { label: "Colmados", href: "/superadmin/colmados", icon: Building2, superadminOnly: true },
+      { label: "Usuarios Global", href: "/superadmin/usuarios", icon: UserCog, superadminOnly: true },
+      { label: "Suscripciones", href: "/superadmin/suscripciones", icon: BadgeDollarSign, superadminOnly: true },
+      { label: "Planes", href: "/superadmin/planes", icon: Layers, superadminOnly: true },
     ],
   },
 ];
@@ -103,12 +131,19 @@ export default function Sidebar() {
     : usuario?.rol === "INVENTARIO" ? "catalogo"
     : "cajero";
 
+  const isSuperadmin = esSuperadmin();
+
   function canSeeGroup(group: NavGroup): boolean {
+    if (group.superadminOnly) return isSuperadmin;
+    if (group.adminColmadoOnly && isSuperadmin) return false;
+    if (isSuperadmin) return true;
     if (!group.roles) return true;
     return group.roles.includes("all") || group.roles.includes(userRole as "admin" | "catalogo" | "cajero");
   }
 
   function canSeeItem(item: NavItem): boolean {
+    if (item.superadminOnly) return isSuperadmin;
+    if (isSuperadmin) return true;
     if (!item.roles) return true;
     return item.roles.includes("all") || item.roles.includes(userRole as "admin" | "catalogo" | "cajero");
   }

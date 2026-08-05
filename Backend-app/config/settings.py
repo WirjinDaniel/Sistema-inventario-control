@@ -31,6 +31,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'channels',
     'django_celery_beat',
@@ -45,6 +46,12 @@ LOCAL_APPS = [
     'apps.gastos',
     'apps.reportes',
     'apps.dashboard',
+    'apps.devoluciones',
+    'apps.promociones',
+    'apps.historial_precios',
+    'apps.facturacion',
+    'apps.devoluciones_suplidores',
+    'apps.suscripciones',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -56,6 +63,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.usuarios.middleware.ColmadoActivoMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -155,7 +163,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=config('ACCESS_TOKEN_LIFETIME_MINUTES', default=60, cast=int)),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=config('REFRESH_TOKEN_LIFETIME_DAYS', default=7, cast=int)),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
@@ -207,6 +215,8 @@ UNFOLD = {
                 "separator": True,
                 "items": [
                     {"title": "Usuarios", "icon": "person", "link": "/admin/usuarios/usuario/"},
+                    {"title": "Colmados", "icon": "store", "link": "/admin/usuarios/colmado/"},
+                    {"title": "Auditoría", "icon": "history", "link": "/admin/usuarios/auditorialog/"},
                 ],
             },
             {
@@ -215,7 +225,9 @@ UNFOLD = {
                 "items": [
                     {"title": "Productos", "icon": "inventory_2", "link": "/admin/inventario/producto/"},
                     {"title": "Categorías", "icon": "category", "link": "/admin/inventario/categoria/"},
+                    {"title": "Marcas", "icon": "label", "link": "/admin/inventario/marca/"},
                     {"title": "Movimientos", "icon": "swap_horiz", "link": "/admin/inventario/movimientoinventario/"},
+                    {"title": "Historial Precios", "icon": "price_change", "link": "/admin/historial_precios/historialprecio/"},
                 ],
             },
             {
@@ -223,23 +235,56 @@ UNFOLD = {
                 "separator": True,
                 "items": [
                     {"title": "Ventas", "icon": "point_of_sale", "link": "/admin/ventas/venta/"},
+                    {"title": "Sesiones de Caja", "icon": "account_balance_wallet", "link": "/admin/ventas/sesioncaja/"},
+                    {"title": "Cuentas Bancarias", "icon": "credit_card", "link": "/admin/ventas/bancocuenta/"},
+                ],
+            },
+            {
+                "title": "Clientes",
+                "separator": True,
+                "items": [
                     {"title": "Clientes", "icon": "group", "link": "/admin/clientes/cliente/"},
+                    {"title": "Abonos (Fiado)", "icon": "payments", "link": "/admin/clientes/abonofiado/"},
                 ],
             },
             {
                 "title": "Compras",
                 "separator": True,
                 "items": [
-                    {"title": "Compras", "icon": "shopping_cart", "link": "/admin/compras/ordencompra/"},
+                    {"title": "Órdenes de Compra", "icon": "shopping_cart", "link": "/admin/compras/ordencompra/"},
                     {"title": "Suplidores", "icon": "local_shipping", "link": "/admin/compras/suplidor/"},
+                ],
+            },
+            {
+                "title": "Devoluciones",
+                "separator": True,
+                "items": [
+                    {"title": "Dev. de Clientes", "icon": "undo", "link": "/admin/devoluciones/devolucion/"},
+                    {"title": "Dev. a Suplidores", "icon": "keyboard_return", "link": "/admin/devoluciones_suplidores/devolucionsuplidor/"},
                 ],
             },
             {
                 "title": "Finanzas",
                 "separator": True,
                 "items": [
-                    {"title": "Gastos", "icon": "payments", "link": "/admin/gastos/gasto/"},
-                    {"title": "Caja", "icon": "account_balance_wallet", "link": "/admin/ventas/sesioncaja/"},
+                    {"title": "Gastos", "icon": "money_off", "link": "/admin/gastos/gasto/"},
+                    {"title": "Categorías Gasto", "icon": "folder", "link": "/admin/gastos/categoriagasto/"},
+                    {"title": "Facturación (NCF)", "icon": "receipt_long", "link": "/admin/facturacion/factura/"},
+                    {"title": "Secuencias NCF", "icon": "tag", "link": "/admin/facturacion/secuenciancf/"},
+                ],
+            },
+            {
+                "title": "Comercial",
+                "separator": True,
+                "items": [
+                    {"title": "Promociones", "icon": "sell", "link": "/admin/promociones/promocion/"},
+                ],
+            },
+            {
+                "title": "Sistema",
+                "separator": True,
+                "items": [
+                    {"title": "Tareas Programadas", "icon": "schedule", "link": "/admin/django_celery_beat/periodictask/"},
                 ],
             },
         ],

@@ -6,10 +6,13 @@ from django.utils import timezone
 from .models import Suplidor, OrdenCompra, OrdenCompraItem, PagoSuplidor
 from .serializers import SuplidorSerializer, OrdenCompraSerializer, OrdenCompraItemSerializer, PagoSuplidorSerializer
 from apps.inventario.models import Producto, MovimientoInventario
+from apps.dashboard.permissions import IsAdminOfColmado
 
 
 class SuplidorViewSet(viewsets.ModelViewSet):
+    """Proveedores — solo ADMIN del colmado."""
     serializer_class = SuplidorSerializer
+    permission_classes = [IsAdminOfColmado]
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'rnc', 'telefono', 'contacto']
 
@@ -21,7 +24,9 @@ class SuplidorViewSet(viewsets.ModelViewSet):
 
 
 class OrdenCompraViewSet(viewsets.ModelViewSet):
+    """Órdenes de compra — solo ADMIN del colmado."""
     serializer_class = OrdenCompraSerializer
+    permission_classes = [IsAdminOfColmado]
 
     def get_queryset(self):
         qs = OrdenCompra.objects.filter(suplidor__colmado=self.request.user.colmado).select_related('suplidor', 'usuario')
@@ -39,7 +44,7 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
 
         total = 0
         for item in items_data:
-            prod = Producto.objects.get(pk=item['producto'])
+            prod = Producto.objects.get(pk=item['producto'], colmado=request.user.colmado)
             cantidad = item['cantidad']
             precio = item['precio_costo']
             subtotal = float(cantidad) * float(precio)
@@ -68,9 +73,8 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
         orden.fecha_recepcion = timezone.now()
         orden.save()
 
-        # Actualizar stock por cada item
         for item in orden.items.all():
-            prod = Producto.objects.select_for_update().get(pk=item.producto_id)
+            prod = Producto.objects.select_for_update().get(pk=item.producto_id, colmado=request.user.colmado)
             prod.stock_actual += item.cantidad
             prod.precio_costo = item.precio_costo
             prod.save(update_fields=['stock_actual', 'precio_costo'])
@@ -88,7 +92,9 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
 
 
 class OrdenCompraItemViewSet(viewsets.ModelViewSet):
+    """Items de órdenes de compra — solo ADMIN del colmado."""
     serializer_class = OrdenCompraItemSerializer
+    permission_classes = [IsAdminOfColmado]
 
     def get_queryset(self):
         qs = OrdenCompraItem.objects.filter(orden__suplidor__colmado=self.request.user.colmado)
@@ -99,7 +105,9 @@ class OrdenCompraItemViewSet(viewsets.ModelViewSet):
 
 
 class PagoSuplidorViewSet(viewsets.ModelViewSet):
+    """Pagos a suplidores — solo ADMIN del colmado."""
     serializer_class = PagoSuplidorSerializer
+    permission_classes = [IsAdminOfColmado]
     http_method_names = ['get', 'post']
 
     def get_queryset(self):

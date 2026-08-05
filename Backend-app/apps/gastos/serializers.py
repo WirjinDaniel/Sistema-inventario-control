@@ -6,7 +6,7 @@ class CategoriaGastoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CategoriaGasto
         fields = ['id', 'colmado', 'nombre', 'tipo', 'icono', 'activo', 'predefinida']
-        read_only_fields = ['predefinida']
+        read_only_fields = ['predefinida', 'colmado']
 
 
 class GastoSerializer(serializers.ModelSerializer):
@@ -21,4 +21,4 @@ class GastoSerializer(serializers.ModelSerializer):
             'id', 'colmado', 'categoria', 'categoria_nombre', 'categoria_tipo', 'categoria_icono',
             'usuario', 'usuario_nombre', 'descripcion', 'monto', 'metodo_pago', 'fecha', 'comprobante', 'nota',
         ]
-        read_only_fields = ['fecha']
+        read_only_fields = ['colmado', 'usuario', 'fecha']

@@ -6,12 +6,23 @@ from .models import Cliente, AbonoFiado
 from .serializers import ClienteSerializer, AbonoFiadoSerializer
 from apps.usuarios.audit import log as audit_log
 from apps.usuarios.models import AuditoriaLog
+from apps.dashboard.permissions import IsCajeroOrAdmin, IsAdminOfColmado
 
 
 class ClienteViewSet(viewsets.ModelViewSet):
+    """
+    Clientes:
+    - Consultar / crear / editar: CAJERO y ADMIN (cajeros registran clientes en el POS).
+    - Eliminar: solo ADMIN.
+    """
     serializer_class = ClienteSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'telefono', 'cedula']
+
+    def get_permissions(self):
+        if self.action == 'destroy':
+            return [IsAdminOfColmado()]
+        return [IsCajeroOrAdmin()]
 
     def get_queryset(self):
         return Cliente.objects.filter(colmado=self.request.user.colmado, activo=True)
@@ -19,13 +30,10 @@ class ClienteViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(colmado=self.request.user.colmado)
 
-    @action(detail=False, methods=['get'], url_path='aging')
+    @action(detail=False, methods=['get'], url_path='aging',
+            permission_classes=[IsAdminOfColmado])
     def aging(self, request):
-        """
-        Aging report de cuentas por cobrar (fiados).
-        Agrupa clientes con saldo > 0 por antigüedad del último movimiento.
-        Rangos: 0-30, 31-60, 61-90, +90 días.
-        """
+        """Aging report de cuentas por cobrar — solo ADMIN."""
         hoy = timezone.now().date()
         clientes_con_deuda = Cliente.objects.filter(
             colmado=request.user.colmado,
@@ -41,11 +49,9 @@ class ClienteViewSet(viewsets.ModelViewSet):
         }
 
         for c in clientes_con_deuda:
-            # Fecha del movimiento más reciente (venta fiada o abono)
             ultima_venta = c.ventas.filter(
                 metodo_pago='FIADO', estado='COMPLETADA'
             ).order_by('-fecha').values_list('fecha', flat=True).first()
-
             ultimo_abono = c.abonos.order_by('-fecha').values_list('fecha', flat=True).first()
 
             fechas = [f for f in [ultima_venta, ultimo_abono] if f]
@@ -56,12 +62,8 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
             dias = (hoy - ultima_fecha).days
             registro = {
-                'id': c.id,
-                'nombre': c.nombre,
-                'telefono': c.telefono,
-                'saldo_deuda': float(c.saldo_deuda),
-                'dias': dias,
-                'ultima_fecha': str(ultima_fecha),
+                'id': c.id, 'nombre': c.nombre, 'telefono': c.telefono,
+                'saldo_deuda': float(c.saldo_deuda), 'dias': dias, 'ultima_fecha': str(ultima_fecha),
             }
 
             if dias <= 30:
@@ -81,11 +83,15 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
 
 class AbonoFiadoViewSet(viewsets.ModelViewSet):
+    """Abonos a fiados — CAJERO y ADMIN pueden registrarlos."""
     serializer_class = AbonoFiadoSerializer
+    permission_classes = [IsCajeroOrAdmin]
     http_method_names = ['get', 'post']
 
     def get_queryset(self):
-        qs = AbonoFiado.objects.filter(cliente__colmado=self.request.user.colmado).select_related('cliente', 'cajero')
+        qs = AbonoFiado.objects.filter(
+            cliente__colmado=self.request.user.colmado
+        ).select_related('cliente', 'cajero')
         cliente_id = self.request.query_params.get('cliente')
         if cliente_id:
             qs = qs.filter(cliente_id=cliente_id)
