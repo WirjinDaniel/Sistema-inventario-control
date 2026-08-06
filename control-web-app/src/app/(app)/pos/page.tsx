@@ -4,7 +4,7 @@ import {
   Search, ShoppingCart, Trash2, CreditCard, Banknote,
   Smartphone, UserCheck, Building2,
   DollarSign, Lock, LogOut, Plus, Minus, AlertCircle,
-  Wifi, WifiOff, X, Tag,
+  Wifi, WifiOff, X, Tag, FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -64,6 +64,11 @@ export default function POSPage() {
   const [cerrando, setCerrando] = useState(false);
   const [resumenCierre, setResumenCierre] = useState<null | { efectivo_calculado: string; efectivo_final_declarado: string; diferencia_caja: string | null; apertura: string; }>(null);
   const [ultimaVenta, setUltimaVenta] = useState<VentaResponse | null>(null);
+  const [ultimoNcf, setUltimoNcf] = useState<{ ncf: string; tipo_nombre: string; cliente_nombre: string } | null>(null);
+  const [emitirNcf, setEmitirNcf] = useState(false);
+  const [ncfTipo, setNcfTipo] = useState("02");
+  const [ncfRnc, setNcfRnc] = useState("");
+  const [ncfInstitucion, setNcfInstitucion] = useState("");
   const barrasRef = useRef<HTMLInputElement>(null);
 
   const subtotal = carrito.reduce((a, i) => a + i.precio_unitario * i.cantidad, 0);
@@ -152,7 +157,7 @@ export default function POSPage() {
     setCarrito((prev) => { const next = [...prev]; next[idx] = { ...next[idx], cantidad: n, descuento: calcularDescuentoVolumen(next[idx].producto, n) }; return next; });
   }
 
-  function limpiarCarrito() { setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO"); setBancoId(""); barrasRef.current?.focus(); }
+  function limpiarCarrito() { setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO"); setBancoId(""); setEmitirNcf(false); setNcfTipo("02"); setNcfRnc(""); setNcfInstitucion(""); barrasRef.current?.focus(); }
 
   async function procesarVenta() {
     if (!sesionId) return toast.error("Abre una sesión de caja primero.");
@@ -169,7 +174,65 @@ export default function POSPage() {
         descuento: descuentoTotal,
         detalles: carrito.map((i) => ({ producto: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario, descuento: i.descuento, subtotal: i.precio_unitario * i.cantidad - i.descuento })),
       });
-      setUltimaVenta(data); limpiarCarrito();
+      setUltimaVenta(data);
+      setUltimoNcf(null);
+      if (emitirNcf) {
+        try {
+          const ncfRes = await api.post("/facturacion/facturas/", {
+            tipo: ncfTipo,
+            venta: data.id,
+            cliente_nombre: ncfTipo === "15" ? (ncfInstitucion || "Institución Gubernamental")
+              : ncfTipo === "01" ? (ncfInstitucion || data.cliente_nombre || "Consumidor Final")
+              : (data.cliente_nombre ?? "Consumidor Final"),
+            cliente_rnc: ncfRnc,
+            subtotal: data.subtotal,
+            itbis: "0",
+            total: data.total,
+            datos_especificos: ncfTipo === "15" ? { institucion_nombre: ncfInstitucion || "Institución Gubernamental" } : {},
+          });
+          setUltimoNcf({
+            ncf: ncfRes.data.ncf,
+            tipo_nombre: ncfRes.data.tipo_nombre,
+            cliente_nombre: ncfRes.data.cliente_nombre,
+          });
+          toast.success("Comprobante fiscal emitido");
+        } catch (ncfErr: unknown) {
+          const e = ncfErr as { response?: { data?: unknown } };
+          const d = e.response?.data;
+          let msg = "Error al emitir el NCF";
+          if (typeof d === "string") {
+            msg = d;
+          } else if (Array.isArray(d)) {
+            msg = d[0] ?? msg;
+          } else if (d && typeof d === "object") {
+            const obj = d as Record<string, unknown>;
+            msg = (obj.non_field_errors as string[])?.[0]
+              ?? (obj.detail as string)
+              ?? Object.values(obj).flat().filter(Boolean)[0] as string
+              ?? msg;
+          }
+          const esSecuencia = msg.toLowerCase().includes("secuencia");
+          toast(
+            (t) => (
+              <div className="flex flex-col gap-1.5">
+                <span className="font-medium text-sm">Venta guardada ✓ — NCF falló</span>
+                <span className="text-xs text-muted-foreground">{msg}</span>
+                {esSecuencia && (
+                  <a
+                    href="/facturacion"
+                    className="text-xs font-semibold text-brand-600 underline mt-1"
+                    onClick={() => toast.dismiss(t.id)}
+                  >
+                    Ir a Facturación &gt; Secuencias NCF →
+                  </a>
+                )}
+              </div>
+            ),
+            { duration: 10000, icon: "⚠️" }
+          );
+        }
+      }
+      limpiarCarrito();
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
       const d = e.response?.data;
@@ -529,6 +592,72 @@ export default function POSPage() {
           )}
         </div>
 
+        {/* Comprobante fiscal */}
+        {carrito.length > 0 && (
+          <div className="px-5 py-3 border-t border-border space-y-2">
+            <button
+              onClick={() => setEmitirNcf((v) => !v)}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all",
+                emitirNcf
+                  ? "border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
+                  : "border-border text-muted-foreground hover:border-muted-foreground/40 bg-muted/30"
+              )}
+            >
+              <FileText size={15} />
+              <span className="flex-1 text-left">Emitir comprobante fiscal</span>
+              <span className={cn("w-8 h-4 rounded-full transition-colors relative shrink-0", emitirNcf ? "bg-brand-600" : "bg-muted-foreground/30")}>
+                <span className={cn("absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all", emitirNcf ? "left-4" : "left-0.5")} />
+              </span>
+            </button>
+            {emitirNcf && (
+              <div className="space-y-2 pl-1">
+                <select
+                  value={ncfTipo}
+                  onChange={(e) => setNcfTipo(e.target.value)}
+                  className="w-full h-8 text-xs border border-border rounded-lg bg-background px-2"
+                >
+                  <option value="02">B02 — Consumo (consumidor final)</option>
+                  <option value="01">B01 — Crédito Fiscal (empresa con RNC)</option>
+                  <option value="15">B15 — Gubernamental</option>
+                </select>
+                {ncfTipo === "01" && (
+                  <>
+                    <Input
+                      placeholder="Nombre / Razón social del cliente *"
+                      value={ncfInstitucion}
+                      onChange={(e) => setNcfInstitucion(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <Input
+                      placeholder="RNC / Cédula *"
+                      value={ncfRnc}
+                      onChange={(e) => setNcfRnc(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </>
+                )}
+                {ncfTipo === "15" && (
+                  <>
+                    <Input
+                      placeholder="Nombre de la institución *"
+                      value={ncfInstitucion}
+                      onChange={(e) => setNcfInstitucion(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <Input
+                      placeholder="RNC de la institución (opcional)"
+                      value={ncfRnc}
+                      onChange={(e) => setNcfRnc(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Cobrar */}
         <div className="px-5 pb-5 pt-3 border-t border-border">
           <button onClick={procesarVenta}
@@ -554,7 +683,7 @@ export default function POSPage() {
         </div>
       </div>
 
-      {ultimaVenta && <TicketPrint venta={ultimaVenta} colmadoNombre={colmadoNombre} onClose={() => setUltimaVenta(null)} />}
+      {ultimaVenta && <TicketPrint venta={ultimaVenta} colmadoNombre={colmadoNombre} ncf={ultimoNcf ?? undefined} onClose={() => { setUltimaVenta(null); setUltimoNcf(null); }} />}
     </div>
   );
 }

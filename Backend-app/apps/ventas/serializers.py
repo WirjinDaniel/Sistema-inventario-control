@@ -117,6 +117,7 @@ class VentaSerializer(serializers.ModelSerializer):
     cajero_nombre = serializers.CharField(source='cajero.nombre', read_only=True)
     cliente_nombre = serializers.CharField(source='cliente.nombre', read_only=True)
     banco_nombre = serializers.CharField(source='banco_cuenta.banco', read_only=True)
+    factura_ncf = serializers.SerializerMethodField()
 
     class Meta:
         model = Venta
@@ -124,5 +125,12 @@ class VentaSerializer(serializers.ModelSerializer):
             'id', 'colmado', 'cajero', 'cajero_nombre', 'sesion_caja', 'cliente', 'cliente_nombre',
             'banco_cuenta', 'banco_nombre', 'fecha', 'subtotal', 'descuento', 'total',
             'metodo_pago', 'monto_pagado', 'cambio', 'estado', 'motivo_anulacion', 'detalles',
+            'factura_ncf',
         ]
         read_only_fields = ['colmado', 'cajero', 'fecha']
+
+    def get_factura_ncf(self, obj):
+        try:
+            return obj.factura.ncf if obj.factura else None
+        except Exception:
+            return None

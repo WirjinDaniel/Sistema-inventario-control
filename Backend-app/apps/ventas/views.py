@@ -91,11 +91,14 @@ class VentaViewSet(viewsets.ModelViewSet):
             return VentaCreateSerializer
         return VentaSerializer
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = VentaCreateSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
         venta = serializer.save()
-        audit_log(self.request, AuditoriaLog.ACCION_VENTA, 'ventas',
+        audit_log(request, AuditoriaLog.ACCION_VENTA, 'ventas',
                   f'Venta #{venta.pk} — RD${venta.total} — {venta.metodo_pago}',
                   objeto_id=venta.pk)
+        return Response(VentaSerializer(venta, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='anular')
     @transaction.atomic

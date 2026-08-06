@@ -25,9 +25,16 @@ interface VentaTicket {
   detalles: DetalleTicket[];
 }
 
+interface NcfInfo {
+  ncf: string;
+  tipo_nombre: string;
+  cliente_nombre: string;
+}
+
 interface Props {
   venta: VentaTicket;
   colmadoNombre: string;
+  ncf?: NcfInfo;
   onClose: () => void;
 }
 
@@ -38,7 +45,7 @@ const METODO_LABEL: Record<string, string> = {
   FIADO: "Fiado / Crédito",
 };
 
-export default function TicketPrint({ venta, colmadoNombre, onClose }: Props) {
+export default function TicketPrint({ venta, colmadoNombre, ncf, onClose }: Props) {
   const ticketRef = useRef<HTMLDivElement>(null);
 
   function imprimir() {
@@ -116,6 +123,18 @@ export default function TicketPrint({ venta, colmadoNombre, onClose }: Props) {
               <div className="fila">
                 <span>Cliente:</span><span>{venta.cliente_nombre}</span>
               </div>
+            )}
+
+            {ncf && (
+              <>
+                <div className="linea" />
+                <div className="centro negrita" style={{ fontSize: 11 }}>COMPROBANTE FISCAL</div>
+                <div className="centro" style={{ fontSize: 10, letterSpacing: 1 }}>{ncf.ncf}</div>
+                <div className="centro" style={{ fontSize: 10 }}>{ncf.tipo_nombre}</div>
+                {ncf.cliente_nombre && ncf.cliente_nombre !== "Consumidor Final" && (
+                  <div className="centro" style={{ fontSize: 10 }}>{ncf.cliente_nombre}</div>
+                )}
+              </>
             )}
 
             <div className="linea" />
