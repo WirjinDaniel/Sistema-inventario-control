@@ -21,13 +21,15 @@ interface AuthState {
   esSuperadmin: () => boolean;
 }
 
-function setCookie(name: string, value: string, days: number) {
+// Cookies con SameSite=Strict son más seguras que localStorage para tokens
+function setSecureCookie(name: string, value: string, days: number) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
 }
 
-function deleteCookie(name: string) {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+
+function deleteSecureCookie(name: string) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`;
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -47,29 +49,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   hydrated: false,
 
   setAuth: (token, refresh, usuario) => {
-    localStorage.setItem("access_token", token);
-    localStorage.setItem("refresh_token", refresh);
+    // access_token: memoria + cookie SameSite=Strict (el middleware del servidor lo necesita)
+    // refresh_token: cookie SameSite=Strict (más seguro que localStorage)
+    // usuario: localStorage solo para nombre/rol (sin tokens)
+    setSecureCookie("access_token", token, 1);   // expira en 1 día (sincronizado con JWT 60 min)
+    setSecureCookie("refresh_token", refresh, 7);
     localStorage.setItem("usuario", JSON.stringify(usuario));
-    setCookie("access_token", token, 1);
     set({ token, usuario });
   },
 
   logout: () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    deleteSecureCookie("access_token");
+    deleteSecureCookie("refresh_token");
     localStorage.removeItem("usuario");
-    deleteCookie("access_token");
     set({ token: null, usuario: null });
   },
 
   hydrate: () => {
     if (get().hydrated) return;
-    const token = localStorage.getItem("access_token");
+    // Restauramos datos del usuario desde localStorage (no contiene tokens)
     const raw = localStorage.getItem("usuario");
-    if (token && raw) {
+    if (raw) {
       try {
         const usuario = JSON.parse(raw) as Usuario;
-        set({ token, usuario });
+        // access_token está en memoria: vacío tras recarga.
+        // El interceptor de api.ts renovará automáticamente usando refresh_token cookie.
+        set({ usuario });
       } catch {
         localStorage.removeItem("usuario");
       }
@@ -77,13 +82,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ hydrated: true });
   },
 
-  esAdmin: () => get().usuario?.rol === "ADMIN",
-  esCajero: () => ["ADMIN", "CAJERO"].includes(get().usuario?.rol ?? ""),
-  // Lee is_superuser desde el JWT para evitar manipulación de localStorage
+  // ADMIN de colmado — excluye SUPERADMIN (que también tiene rol='ADMIN' en BD)
+  esAdmin: () => get().usuario?.rol === "ADMIN" && !get().usuario?.is_superuser,
+  esCajero: () => ["ADMIN", "CAJERO"].includes(get().usuario?.rol ?? "") && !get().usuario?.is_superuser,
   esSuperadmin: () => {
+    // Prioridad 1: token en memoria (más seguro, anti-manipulación de localStorage)
     const token = get().token;
-    if (!token) return false;
-    const payload = decodeJwtPayload(token);
-    return payload?.is_superuser === true;
+    if (token) {
+      const payload = decodeJwtPayload(token);
+      if (payload?.is_superuser === true) return true;
+    }
+    // Fallback tras recarga de página: token es null en memoria pero usuario persiste
+    // en localStorage. El middleware del servidor valida el JWT cookie independientemente.
+    return get().usuario?.is_superuser === true;
   },
 }));

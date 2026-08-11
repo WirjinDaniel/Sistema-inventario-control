@@ -21,6 +21,8 @@ import { Separator } from "@/components/ui/separator";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 const ESTADO_CONFIG = {
   PENDIENTE: { label: "Pendiente", variant: "warning" as const },
@@ -36,6 +38,7 @@ interface LineaOrden {
 }
 
 export default function ComprasPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const router = useRouter();
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +129,8 @@ export default function ComprasPage() {
   }
 
   const pendientes = ordenes.filter((o) => o.estado === "PENDIENTE").length;
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

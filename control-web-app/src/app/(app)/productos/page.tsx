@@ -9,6 +9,8 @@ import {
 import toast from "react-hot-toast";
 import api from "@/lib/api";
 import type { Producto, Categoria } from "@/types";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 import CustomSelect from "@/components/CustomSelect";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,9 +50,11 @@ const FORM_EMPTY: FormData = {
 };
 
 export default function ProductosPage() {
+  const { esAdmin, esSuperadmin, usuario } = useAuthStore();
   const router = useRouter();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [suplidores, setSuplidores] = useState<{ id: number; nombre: string }[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroStockBajo, setFiltroStockBajo] = useState(false);
   const [filtroCat, setFiltroCat] = useState("");
@@ -61,6 +65,7 @@ export default function ProductosPage() {
   const [editando, setEditando] = useState<Producto | null>(null);
   const [form, setForm] = useState<FormData>(FORM_EMPTY);
   const [guardando, setGuardando] = useState(false);
+  const [proveedorOpen, setProveedorOpen] = useState(false);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -69,12 +74,14 @@ export default function ProductosPage() {
       if (busqueda) params.append("search", busqueda);
       if (filtroStockBajo) params.append("stock_bajo", "true");
       if (filtroCat) params.append("categoria", filtroCat);
-      const [{ data: p }, { data: c }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: s }] = await Promise.all([
         api.get(`/inventario/productos/?${params}`),
         api.get("/inventario/categorias/"),
+        api.get("/compras/suplidores/"),
       ]);
       setProductos(p.results ?? p);
       setCategorias(c.results ?? c);
+      setSuplidores(s.results ?? s);
     } catch { toast.error("Error cargando productos"); }
     setLoading(false);
   }, [busqueda, filtroStockBajo, filtroCat]);
@@ -102,6 +109,13 @@ export default function ProductosPage() {
 
   async function guardar() {
     if (!form.nombre || !form.precio_venta) return toast.error("Nombre y precio de venta son requeridos.");
+    if (Number(form.precio_venta) <= 0) return toast.error("El precio de venta debe ser mayor a 0.");
+    if (form.precio_costo && Number(form.precio_venta) < Number(form.precio_costo))
+      return toast.error("El precio de venta no puede ser menor al precio de costo.");
+    if (Number(form.stock_actual) < 0) return toast.error("El stock no puede ser negativo.");
+    if (Number(form.stock_minimo) < 0) return toast.error("El stock mínimo no puede ser negativo.");
+    if (form.oferta_inicio && form.oferta_fin && form.oferta_inicio >= form.oferta_fin)
+      return toast.error("La fecha de inicio de oferta debe ser anterior a la fecha de fin.");
     setGuardando(true);
     try {
       const payload = {
@@ -130,6 +144,8 @@ export default function ProductosPage() {
     : null;
 
   const stockBajoCount = productos.filter((p) => p.stock_bajo).length;
+
+  if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">
@@ -450,8 +466,35 @@ export default function ProductosPage() {
                       options={[{ value: "UNIDAD", label: "Por unidad" }, { value: "GRANEL", label: "A granel" }]} />
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-xs mb-1.5 block">Proveedor</Label>
-                    <Input value={form.proveedor} onChange={f("proveedor")} placeholder="Nombre del proveedor (opcional)" />
+                    <Label className="text-xs mb-1.5 block">Proveedor <span className="text-muted-foreground">(opcional)</span></Label>
+                    <div className="relative">
+                      <Input
+                        value={form.proveedor}
+                        onChange={(e) => { setForm((p) => ({ ...p, proveedor: e.target.value })); setProveedorOpen(true); }}
+                        onFocus={() => setProveedorOpen(true)}
+                        onBlur={() => setTimeout(() => setProveedorOpen(false), 150)}
+                        placeholder="Escribe o selecciona un proveedor..."
+                      />
+                      {proveedorOpen && suplidores.filter((s) => s.nombre.toLowerCase().includes(form.proveedor.toLowerCase())).length > 0 && (
+                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+                          {suplidores
+                            .filter((s) => s.nombre.toLowerCase().includes(form.proveedor.toLowerCase()))
+                            .map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onMouseDown={() => { setForm((p) => ({ ...p, proveedor: s.nombre })); setProveedorOpen(false); }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors",
+                                  form.proveedor === s.nombre && "bg-accent font-medium"
+                                )}
+                              >
+                                {s.nombre}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </TabsContent>

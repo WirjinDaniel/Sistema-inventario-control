@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 const METODOS_PAGO = [
   { value: "EFECTIVO",      label: "Efectivo",      icon: Banknote },
@@ -47,6 +49,7 @@ interface Resumen {
 }
 
 export default function GastosPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [categorias, setCategorias] = useState<CategoriaGasto[]>([]);
   const [resumen, setResumen] = useState<Resumen | null>(null);
@@ -113,6 +116,8 @@ export default function GastosPage() {
     const q = busqueda.toLowerCase();
     return g.descripcion.toLowerCase().includes(q) || g.categoria_nombre.toLowerCase().includes(q);
   });
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

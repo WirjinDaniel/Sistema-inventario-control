@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn, formatCurrency } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -94,7 +95,7 @@ const DETALLE_EMPTY = {
 };
 
 export default function FacturacionPage() {
-  const { esAdmin } = useAuthStore();
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [tab, setTab] = useState("dashboard");
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [secuencias, setSecuencias] = useState<SecuenciaNCF[]>([]);
@@ -158,7 +159,7 @@ export default function FacturacionPage() {
         api.get(`/facturacion/facturas/?${params}`),
         api.get("/facturacion/secuencias/"),
       ];
-      if (esAdmin()) requests.push(api.get("/facturacion/facturas/dashboard/"));
+      if (esAdmin() || esSuperadmin()) requests.push(api.get("/facturacion/facturas/dashboard/"));
 
       const [facRes, secRes, dashRes] = await Promise.all(requests);
       setFacturas(facRes.data.results ?? facRes.data);
@@ -168,7 +169,7 @@ export default function FacturacionPage() {
       setFacturas([]); setSecuencias([]);
     }
     setLoading(false);
-  }, [busqueda, fechaDesde, fechaHasta, filtroEstado, filtroTipo, esAdmin]);
+  }, [busqueda, fechaDesde, fechaHasta, filtroEstado, filtroTipo, esAdmin, esSuperadmin]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -326,6 +327,10 @@ export default function FacturacionPage() {
 
   const totales = calcTotales();
 
+  if (!esAdmin() && !esSuperadmin()) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="p-6 space-y-5">
       <PageHeader
@@ -345,14 +350,14 @@ export default function FacturacionPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-8">
-          {esAdmin() && <TabsTrigger value="dashboard" className="text-xs h-6">Dashboard</TabsTrigger>}
+          {(esAdmin() || esSuperadmin()) && <TabsTrigger value="dashboard" className="text-xs h-6">Dashboard</TabsTrigger>}
           <TabsTrigger value="facturas" className="text-xs h-6">Facturas NCF</TabsTrigger>
           <TabsTrigger value="secuencias" className="text-xs h-6">Secuencias NCF</TabsTrigger>
           <TabsTrigger value="tipos" className="text-xs h-6">Tipos de NCF</TabsTrigger>
         </TabsList>
 
         {/* ── DASHBOARD ── */}
-        {esAdmin() && (
+        {(esAdmin() || esSuperadmin()) && (
           <TabsContent value="dashboard" className="mt-4 space-y-4">
             {loading ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -466,7 +471,7 @@ export default function FacturacionPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      {["", "NCF", "Tipo", "Fecha", "Cliente / RNC", "Total", "Saldo", "Estado", ...(esAdmin() ? [""] : [])].map((h, i) => (
+                      {["", "NCF", "Tipo", "Fecha", "Cliente / RNC", "Total", "Saldo", "Estado", ...((esAdmin() || esSuperadmin()) ? [""] : [])].map((h, i) => (
                         <th key={i} className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
                       ))}
                     </tr>
@@ -503,7 +508,7 @@ export default function FacturacionPage() {
                               {f.estado_nombre ?? f.estado}
                             </Badge>
                           </td>
-                          {esAdmin() && (
+                          {(esAdmin() || esSuperadmin()) && (
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-2">
                                 {f.estado !== "ANULADA" && f.estado !== "PAGADA" && (
@@ -529,7 +534,7 @@ export default function FacturacionPage() {
 
                         {expandedId === f.id && (
                           <tr>
-                            <td colSpan={esAdmin() ? 9 : 8} className="px-4 py-3 bg-muted/20">
+                            <td colSpan={(esAdmin() || esSuperadmin()) ? 9 : 8} className="px-4 py-3 bg-muted/20">
                               <div className="grid md:grid-cols-2 gap-4 text-xs">
                                 {/* Detalles ítems */}
                                 <div>
@@ -611,7 +616,7 @@ export default function FacturacionPage() {
 
         {/* ── SECUENCIAS ── */}
         <TabsContent value="secuencias" className="mt-4 space-y-3">
-          {esAdmin() && (
+          {(esAdmin() || esSuperadmin()) && (
             <div className="flex items-center justify-between gap-2">
               {(() => {
                 const tiposFaltantes = ["02", "01"].filter(
@@ -646,7 +651,7 @@ export default function FacturacionPage() {
                     <br />El tipo más común para ventas al consumidor es <span className="font-mono font-bold">B02 — Consumo</span>.
                   </p>
                 </div>
-                {esAdmin() && (
+                {(esAdmin() || esSuperadmin()) && (
                   <Button
                     size="sm"
                     className="gap-2 mx-auto"
@@ -689,7 +694,7 @@ export default function FacturacionPage() {
                           <p className="mt-0.5 tabular-nums">{s.secuencia_actual} / {s.secuencia_hasta}</p>
                           <p className="mt-0.5">{s.disponibles.toLocaleString("es-DO")} disponibles</p>
                         </div>
-                        {esAdmin() && (
+                        {(esAdmin() || esSuperadmin()) && (
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => {

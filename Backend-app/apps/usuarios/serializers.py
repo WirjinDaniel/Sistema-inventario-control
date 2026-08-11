@@ -49,31 +49,48 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_rol(self, value):
-        # Un ADMIN de colmado no puede crear otro ADMIN si no tiene permiso explícito.
-        # El SUPERADMIN puede asignar cualquier rol.
         from apps.usuarios.models import Usuario as U
         request = self.context.get('request')
         if request and not request.user.is_superuser:
-            # Roles no disponibles para ADMIN al crear usuarios
-            if value not in (U.ROL_CAJERO, U.ROL_INVENTARIO, U.ROL_ADMIN):
+            if value == U.ROL_ADMIN:
+                raise serializers.ValidationError(
+                    'Solo el Superadministrador puede crear usuarios Administrador.'
+                )
+            if value not in (U.ROL_CAJERO, U.ROL_INVENTARIO):
                 raise serializers.ValidationError('Rol no válido.')
         return value
 
     def create(self, validated_data):
+        from django.contrib.auth.hashers import make_password
         password = validated_data.pop('password')
+        if validated_data.get('pin_caja'):
+            validated_data['pin_caja'] = make_password(validated_data['pin_caja'])
         user = Usuario(**validated_data)
         user.set_password(password)
         user.save()
         return user
 
+    def update(self, instance, validated_data):
+        from django.contrib.auth.hashers import make_password
+        password = validated_data.pop('password', None)
+        if 'pin_caja' in validated_data and validated_data['pin_caja']:
+            validated_data['pin_caja'] = make_password(validated_data['pin_caja'])
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
+
 
 class AuditoriaLogSerializer(serializers.ModelSerializer):
-    usuario_nombre = serializers.CharField(source='usuario.nombre', read_only=True)
+    usuario_nombre = serializers.CharField(source='usuario.nombre', read_only=True, default=None)
 
     class Meta:
         model = AuditoriaLog
         fields = ['id', 'usuario', 'usuario_nombre', 'accion', 'modulo',
-                  'objeto_id', 'descripcion', 'ip', 'fecha', 'extra']
+                  'objeto_id', 'descripcion', 'ip', 'fecha', 'extra',
+                  'valor_anterior', 'valor_nuevo', 'user_agent']
 
 
 class CustomTokenSerializer(TokenObtainPairSerializer):

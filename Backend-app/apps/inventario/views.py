@@ -6,13 +6,17 @@ from .serializers import (
     CategoriaSerializer, MarcaSerializer, ProductoSerializer,
     PresentacionProductoSerializer, MovimientoInventarioSerializer, ReglaDescuentoSerializer,
 )
-from apps.dashboard.permissions import IsAdminOfColmado, IsInventarioOrAdmin
+from apps.dashboard.permissions import IsAdminOfColmado, IsInventarioOrAdmin, IsSuperadmin
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
-    """Categorías de producto — INVENTARIO y ADMIN pueden gestionarlas."""
+    """Categorías de producto — INVENTARIO y ADMIN gestionan; solo SUPERADMIN elimina."""
     serializer_class = CategoriaSerializer
-    permission_classes = [IsInventarioOrAdmin]
+
+    def get_permissions(self):
+        if self.action == 'destroy':
+            return [IsSuperadmin()]
+        return [IsInventarioOrAdmin()]
 
     def get_queryset(self):
         return Categoria.objects.filter(colmado=self.request.user.colmado, activo=True)
@@ -60,11 +64,11 @@ class ProductoViewSet(viewsets.ModelViewSet):
     ordering_fields = ['nombre', 'stock_actual', 'precio_venta']
 
     def get_permissions(self):
-        # Lectura: cualquier autenticado (CAJERO necesita ver productos en el POS)
         if self.action in ('list', 'retrieve', 'buscar_por_barras'):
             from rest_framework.permissions import IsAuthenticated
             return [IsAuthenticated()]
-        # Escritura: solo INVENTARIO o ADMIN
+        if self.action == 'destroy':
+            return [IsSuperadmin()]
         return [IsInventarioOrAdmin()]
 
     def get_queryset(self):
@@ -82,6 +86,11 @@ class ProductoViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        from apps.suscripciones.utils import verificar_limite_plan
+        if not self.request.user.is_superuser:
+            colmado = self.request.user.colmado
+            if colmado:
+                verificar_limite_plan(colmado, 'max_productos', Producto)
         serializer.save(colmado=self.request.user.colmado)
 
     @action(detail=False, methods=['get'], url_path='buscar-barras')

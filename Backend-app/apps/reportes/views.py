@@ -123,7 +123,8 @@ class AnalisisABCView(APIView):
                 'pct_total': round(t / total_global * 100, 2) if total_global else 0,
                 'clase': 'A' if pct_acum <= 80 else 'B' if pct_acum <= 95 else 'C',
             })
-        return Response({'desde': desde, 'hasta': hasta, 'total_global': total_global, 'productos': resultado})
+        limit = min(int(request.query_params.get('limit', 200)), 500)
+        return Response({'desde': desde, 'hasta': hasta, 'total_global': total_global, 'productos': resultado[:limit]})
 
 
 class ExportarVentasCSVView(APIView):
@@ -164,13 +165,14 @@ class StockBajoReporteView(APIView):
 
     def get(self, request):
         from apps.inventario.models import Producto
+        from django.db.models import F
         productos = list(
             Producto.objects.filter(colmado=request.user.colmado, activo=True)
-            .extra(where=['stock_actual <= stock_minimo'])
+            .filter(stock_actual__lte=F('stock_minimo'))
             .values('id', 'nombre', 'sku', 'stock_actual', 'stock_minimo', 'categoria__nombre', 'precio_costo')
             .order_by('stock_actual')
         )
-        return Response({'cantidad': len(productos), 'productos': productos})
+        return Response({'cantidad': len(productos), 'productos': productos[:200]})
 
 
 class CuentasPorCobrarReporteView(APIView):

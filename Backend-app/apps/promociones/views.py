@@ -17,7 +17,7 @@ class PromocionViewSet(viewsets.ModelViewSet):
     serializer_class = PromocionSerializer
 
     def get_permissions(self):
-        if self.action in ('list', 'retrieve', 'por_cupon'):
+        if self.action in ('list', 'retrieve', 'por_cupon', 'usar'):
             return [IsCajeroOrAdmin()]
         return [IsAdminOfColmado()]
 
@@ -70,3 +70,10 @@ class PromocionViewSet(viewsets.ModelViewSet):
         if promo.limite_usos and promo.usos >= promo.limite_usos:
             return Response({'detail': 'Cupón agotado.'}, status=400)
         return Response(PromocionSerializer(promo).data)
+
+    @action(detail=True, methods=['post'], url_path='usar')
+    def usar(self, request, pk=None):
+        promo = self.get_object()
+        promo.usos += 1
+        promo.save(update_fields=['usos'])
+        return Response({'usos': promo.usos})

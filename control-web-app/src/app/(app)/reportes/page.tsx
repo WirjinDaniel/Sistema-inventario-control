@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 type Rango = "hoy" | "semana" | "mes" | "personalizado";
 
@@ -73,6 +75,7 @@ function calcularABC(ventasDetalle: VentaDetalle[]) {
 }
 
 export default function ReportesPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [rango, setRango] = useState<Rango>("hoy");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
@@ -159,6 +162,8 @@ export default function ReportesPage() {
   ];
 
   const rangoLabel = rango === "hoy" ? "hoy" : rango === "semana" ? "7-dias" : rango === "mes" ? "mes" : "personalizado";
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

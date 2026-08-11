@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 interface ResumenVentas {
   efectivo: number; tarjeta: number;
@@ -31,6 +33,7 @@ const fmtFecha = (s: string) =>
   });
 
 export default function CajaPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [sesionActiva, setSesionActiva] = useState<SesionCaja | null>(null);
   const [historial, setHistorial] = useState<SesionCaja[]>([]);
   const [resumen, setResumen] = useState<ResumenVentas | null>(null);
@@ -105,6 +108,8 @@ export default function CajaPage() {
   const esperadoEnCaja = sesionActiva && resumen
     ? Number(sesionActiva.efectivo_inicial) + resumen.efectivo
     : null;
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   if (loading) {
     return (

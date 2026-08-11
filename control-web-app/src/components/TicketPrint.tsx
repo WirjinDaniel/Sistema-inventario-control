@@ -19,6 +19,7 @@ interface VentaTicket {
   banco_nombre?: string | null;
   subtotal: number | string;
   descuento: number | string;
+  itbis?: number | string;
   total: number | string;
   monto_pagado: number | string;
   cambio: number | string;
@@ -157,6 +158,9 @@ export default function TicketPrint({ venta, colmadoNombre, ncf, onClose }: Prop
             <div className="fila"><span>Subtotal:</span><span>{fmt(venta.subtotal)}</span></div>
             {Number(venta.descuento) > 0 && (
               <div className="fila"><span>Descuento:</span><span>-{fmt(venta.descuento)}</span></div>
+            )}
+            {Number(venta.itbis ?? 0) > 0 && (
+              <div className="fila"><span>ITBIS (18%):</span><span>{fmt(venta.itbis!)}</span></div>
             )}
             <div className="total-fila" style={{ marginTop: 4 }}>
               <span>TOTAL:</span><span>{fmt(venta.total)}</span>

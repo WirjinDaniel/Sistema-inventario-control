@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
-from apps.usuarios.views import CustomTokenView
+from apps.usuarios.views import CustomTokenView, LogoutView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -9,6 +9,7 @@ urlpatterns = [
     # Auth
     path('api/auth/login/', CustomTokenView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/logout/', LogoutView.as_view({'post': 'logout'}), name='token_logout'),
 
     # Apps
     path('api/usuarios/', include('apps.usuarios.urls')),

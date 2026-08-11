@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import serializers
 from .models import CategoriaGasto, Gasto
 
@@ -22,3 +23,8 @@ class GastoSerializer(serializers.ModelSerializer):
             'usuario', 'usuario_nombre', 'descripcion', 'monto', 'metodo_pago', 'fecha', 'comprobante', 'nota',
         ]
         read_only_fields = ['colmado', 'usuario', 'fecha']
+
+    def validate_monto(self, value):
+        if value <= Decimal('0'):
+            raise serializers.ValidationError('El monto debe ser mayor a 0.')
+        return value

@@ -8,6 +8,8 @@ import toast from "react-hot-toast";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import CustomSelect from "@/components/CustomSelect";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Rol = "ADMIN" | "CAJERO" | "INVENTARIO";
 
@@ -38,7 +40,6 @@ const ROL_CONFIG: Record<Rol, { label: string; color: string; Icon: React.Elemen
   INVENTARIO: { label: "Inventario",    color: "bg-emerald-50 text-emerald-700 border border-emerald-100", Icon: Package },
 };
 
-const inputCls = "border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-150 bg-white w-full";
 
 export default function UsuariosPage() {
   const { esAdmin } = useAuthStore();
@@ -252,7 +253,7 @@ export default function UsuariosPage() {
               [...Array(4)].map((_, i) => (
                 <tr key={i} className="border-b border-slate-50">
                   {[...Array(5)].map((__, j) => (
-                    <td key={j} className="px-5 py-4"><div className="h-4 bg-slate-100 rounded-lg animate-pulse" /></td>
+                    <td key={j} className="px-5 py-4"><Skeleton className="h-4 w-full" /></td>
                   ))}
                 </tr>
               ))
@@ -334,12 +335,12 @@ export default function UsuariosPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nueva contraseña</label>
                 <div className="relative">
-                  <input
+                  <Input
                     type={showNuevaPass ? "text" : "password"}
                     value={nuevaPass}
                     onChange={e => setNuevaPass(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className={inputCls + " pr-10"}
+                    className="pr-10"
                     autoFocus
                   />
                   <button type="button" onClick={() => setShowNuevaPass(v => !v)}
@@ -449,11 +450,11 @@ export default function UsuariosPage() {
             <div className="px-6 py-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre completo *</label>
-                <input value={form.nombre} onChange={f("nombre")} placeholder="Ej: Juan Pérez" className={inputCls} autoFocus />
+                <Input value={form.nombre} onChange={f("nombre")} placeholder="Ej: Juan Pérez" autoFocus />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre de usuario *</label>
-                <input value={form.username} onChange={f("username")} placeholder="Ej: jperez" className={inputCls} />
+                <Input value={form.username} onChange={f("username")} placeholder="Ej: jperez" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Rol</label>
@@ -472,12 +473,12 @@ export default function UsuariosPage() {
                   Contraseña {modal === "editar" && <span className="normal-case font-normal text-slate-400">(dejar vacío para no cambiar)</span>}
                 </label>
                 <div className="relative">
-                  <input
+                  <Input
                     type={showPass ? "text" : "password"}
                     value={form.password}
                     onChange={f("password")}
                     placeholder={modal === "crear" ? "Contraseña segura" : "••••••••"}
-                    className={inputCls + " pr-10"}
+                    className="pr-10"
                   />
                   <button type="button" onClick={() => setShowPass((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
@@ -489,13 +490,12 @@ export default function UsuariosPage() {
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                   <Hash size={12} /> PIN de Caja <span className="normal-case font-normal text-slate-400">(4–6 dígitos, opcional)</span>
                 </label>
-                <input
+                <Input
                   type="number"
                   value={form.pin_caja}
                   onChange={f("pin_caja")}
                   placeholder="Ej: 1234"
                   maxLength={6}
-                  className={inputCls}
                 />
               </div>
               {modal === "editar" && (

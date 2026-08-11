@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Store, Bell, Shield, Save, MapPin, Phone, FileText,
-  Percent, Package, Building2, Plus, X, Loader2,
+  Percent, Package, Building2, Plus, X, Loader2, Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 interface Config {
   nombre: string; ruc: string; telefono: string; direccion: string;
@@ -30,13 +31,6 @@ const CONFIG_EMPTY: Config = {
 };
 
 type Seccion = "negocio" | "alertas" | "credito" | "bancos";
-
-const SECCIONES: { key: Seccion; label: string; icon: React.ElementType; iconBg: string; iconColor: string }[] = [
-  { key: "negocio", label: "Negocio",      icon: Store,    iconBg: "bg-brand-50 dark:bg-brand-950/30",    iconColor: "text-brand-600 dark:text-brand-400" },
-  { key: "alertas", label: "Alertas",      icon: Bell,     iconBg: "bg-amber-50 dark:bg-amber-950/30",    iconColor: "text-amber-600 dark:text-amber-400" },
-  { key: "credito", label: "Crédito",      icon: Shield,   iconBg: "bg-emerald-50 dark:bg-emerald-950/30",iconColor: "text-emerald-600 dark:text-emerald-400" },
-  { key: "bancos",  label: "Bancos",       icon: Building2,iconBg: "bg-violet-50 dark:bg-violet-950/30",  iconColor: "text-violet-600 dark:text-violet-400" },
-];
 
 function ConfigRow({ icon: Icon, iconBg, iconColor, title, desc, children }: {
   icon: React.ElementType; iconBg: string; iconColor: string;
@@ -58,8 +52,25 @@ function ConfigRow({ icon: Icon, iconBg, iconColor, title, desc, children }: {
   );
 }
 
+function ReadonlyField({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ElementType }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium flex items-center gap-1.5">
+        {Icon && <Icon size={11} />}{label}
+        <Lock size={10} className="text-muted-foreground/60 ml-1" />
+      </Label>
+      <div className="h-9 px-3 py-2 text-sm rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center">
+        {value || <span className="italic text-muted-foreground/50">Sin valor</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function ConfiguracionPage() {
-  const { esAdmin, usuario } = useAuthStore();
+  const { esAdmin, esSuperadmin, usuario } = useAuthStore();
+  const isSuperadmin = esSuperadmin();
+  const isAdmin = esAdmin();
+
   const [config, setConfig] = useState<Config>(CONFIG_EMPTY);
   const [guardando, setGuardando] = useState(false);
   const [seccion, setSeccion] = useState<Seccion>("negocio");
@@ -67,6 +78,14 @@ export default function ConfiguracionPage() {
   const [loadingBancos, setLoadingBancos] = useState(false);
   const [bancoForm, setBancoForm] = useState({ banco: "", numero_cuenta: "", titular: "" });
   const [savingBanco, setSavingBanco] = useState(false);
+
+  // Tabs disponibles según rol
+  const SECCIONES: { key: Seccion; label: string; icon: React.ElementType; iconBg: string; iconColor: string }[] = [
+    { key: "negocio", label: "Negocio",  icon: Store,    iconBg: "bg-brand-50 dark:bg-brand-950/30",    iconColor: "text-brand-600 dark:text-brand-400" },
+    { key: "alertas", label: "Alertas",  icon: Bell,     iconBg: "bg-amber-50 dark:bg-amber-950/30",    iconColor: "text-amber-600 dark:text-amber-400" },
+    { key: "credito" as Seccion, label: "Crédito", icon: Shield,    iconBg: "bg-emerald-50 dark:bg-emerald-950/30", iconColor: "text-emerald-600 dark:text-emerald-400" },
+    { key: "bancos"  as Seccion, label: "Bancos",  icon: Building2, iconBg: "bg-violet-50 dark:bg-violet-950/30",  iconColor: "text-violet-600 dark:text-violet-400" },
+  ];
 
   useEffect(() => {
     if (seccion === "bancos") {
@@ -92,19 +111,31 @@ export default function ConfiguracionPage() {
   }, []);
 
   async function guardar() {
-    if (!config.nombre) return toast.error("El nombre del negocio es requerido.");
     setGuardando(true);
     try {
-      await api.patch("/usuarios/colmado/", {
-        nombre: config.nombre, ruc: config.ruc,
-        telefono: config.telefono, direccion: config.direccion,
-        config_json: {
-          moneda: config.moneda, itbis: config.itbis,
-          stock_minimo_default: config.stock_minimo_default,
-          dias_vencimiento_alerta: config.dias_vencimiento_alerta,
-          limite_credito_default: config.limite_credito_default,
-        },
-      });
+      if (isSuperadmin) {
+        // SUPERADMIN puede guardar todo
+        if (!config.nombre) { toast.error("El nombre del negocio es requerido."); setGuardando(false); return; }
+        await api.patch("/usuarios/colmado/", {
+          nombre: config.nombre, ruc: config.ruc,
+          telefono: config.telefono, direccion: config.direccion,
+          config_json: {
+            moneda: config.moneda, itbis: config.itbis,
+            stock_minimo_default: config.stock_minimo_default,
+            dias_vencimiento_alerta: config.dias_vencimiento_alerta,
+            limite_credito_default: config.limite_credito_default,
+          },
+        });
+      } else {
+        // ADMIN puede guardar alertas y límite de crédito
+        await api.patch("/usuarios/colmado/", {
+          config_json: {
+            stock_minimo_default: config.stock_minimo_default,
+            dias_vencimiento_alerta: config.dias_vencimiento_alerta,
+            limite_credito_default: config.limite_credito_default,
+          },
+        });
+      }
       toast.success("Configuración guardada");
     } catch { toast.error("Error al guardar la configuración"); }
     setGuardando(false);
@@ -135,16 +166,8 @@ export default function ConfiguracionPage() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setConfig((p) => ({ ...p, [k]: e.target.value }));
 
-  if (!esAdmin()) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Shield size={44} className="mx-auto mb-3 text-muted-foreground/20" />
-          <h2 className="text-lg font-bold text-foreground">Acceso restringido</h2>
-          <p className="text-sm text-muted-foreground mt-1">Solo los administradores pueden modificar la configuración.</p>
-        </div>
-      </div>
-    );
+  if (!isAdmin && !isSuperadmin) {
+    return <AccessDenied mensaje="Solo los administradores pueden acceder a la configuración." />;
   }
 
   const activeSection = SECCIONES.find((s) => s.key === seccion);
@@ -153,7 +176,7 @@ export default function ConfiguracionPage() {
     <div className="p-6 max-w-3xl space-y-6">
       <PageHeader
         title="Configuración"
-        description="Ajustes del sistema y del negocio"
+        description={isSuperadmin ? "Ajustes completos del sistema y del negocio" : "Ajustes de alertas del negocio"}
         actions={
           <Button onClick={guardar} disabled={guardando} className="gap-2">
             {guardando
@@ -163,6 +186,17 @@ export default function ConfiguracionPage() {
           </Button>
         }
       />
+
+      {/* Aviso de restricción para ADMIN */}
+      {!isSuperadmin && (
+        <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
+          <Lock size={15} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            Como Administrador, puedes ver los datos del negocio pero solo puedes modificar las <strong>alertas de stock</strong>.
+            Los datos fiscales (ITBIS, moneda, RNC) y las cuentas bancarias son administrados por el Superadministrador.
+          </p>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-muted rounded-xl p-1">
@@ -184,7 +218,6 @@ export default function ConfiguracionPage() {
 
       {/* Panel contenido */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        {/* Cabecera sección */}
         {activeSection && (
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
             <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", activeSection.iconBg)}>
@@ -203,54 +236,66 @@ export default function ConfiguracionPage() {
         {seccion === "negocio" && (
           <div className="p-5 space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5"><Store size={11} /> Nombre del negocio *</Label>
-                <Input value={config.nombre} onChange={setField("nombre")} placeholder="Mi Colmado El Éxito" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5"><FileText size={11} /> RNC / RUC</Label>
-                <Input value={config.ruc} onChange={setField("ruc")} placeholder="1-23-45678-9" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5"><Phone size={11} /> Teléfono</Label>
-                <Input value={config.telefono} onChange={setField("telefono")} placeholder="809-000-0000" />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5"><MapPin size={11} /> Dirección</Label>
-                <Input value={config.direccion} onChange={setField("direccion")} placeholder="Calle Principal #1, Santo Domingo" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5"><Percent size={11} /> ITBIS (%)</Label>
-                <Input type="number" value={config.itbis} onChange={setField("itbis")} placeholder="18" step="0.01" min="0" max="100" />
-                <p className="text-xs text-muted-foreground">Usa 0 si no aplica ITBIS</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Moneda</Label>
-                <select
-                  value={config.moneda}
-                  onChange={setField("moneda")}
-                  className="w-full h-9 px-3 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="RD$">RD$ — Peso Dominicano</option>
-                  <option value="US$">US$ — Dólar Americano</option>
-                </select>
-              </div>
+              {isSuperadmin ? (
+                <>
+                  <div className="col-span-2 space-y-1.5">
+                    <Label className="text-xs font-medium flex items-center gap-1.5"><Store size={11} /> Nombre del negocio *</Label>
+                    <Input value={config.nombre} onChange={setField("nombre")} placeholder="Mi Colmado El Éxito" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium flex items-center gap-1.5"><FileText size={11} /> RNC / RUC</Label>
+                    <Input value={config.ruc} onChange={setField("ruc")} placeholder="1-23-45678-9" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium flex items-center gap-1.5"><Phone size={11} /> Teléfono</Label>
+                    <Input value={config.telefono} onChange={setField("telefono")} placeholder="809-000-0000" />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <Label className="text-xs font-medium flex items-center gap-1.5"><MapPin size={11} /> Dirección</Label>
+                    <Input value={config.direccion} onChange={setField("direccion")} placeholder="Calle Principal #1, Santo Domingo" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium flex items-center gap-1.5"><Percent size={11} /> ITBIS (%)</Label>
+                    <Input type="number" value={config.itbis} onChange={setField("itbis")} placeholder="18" step="0.01" min="0" max="100" />
+                    <p className="text-xs text-muted-foreground">Usa 0 si no aplica ITBIS</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Moneda</Label>
+                    <select
+                      value={config.moneda}
+                      onChange={setField("moneda")}
+                      className="w-full h-9 px-3 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="RD$">RD$ — Peso Dominicano</option>
+                      <option value="US$">US$ — Dólar Americano</option>
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ReadonlyField label="Nombre del negocio" value={config.nombre} icon={Store} />
+                  <ReadonlyField label="RNC / RUC" value={config.ruc} icon={FileText} />
+                  <ReadonlyField label="Teléfono" value={config.telefono} icon={Phone} />
+                  <ReadonlyField label="Dirección" value={config.direccion} icon={MapPin} />
+                  <ReadonlyField label="ITBIS (%)" value={config.itbis ? `${config.itbis}%` : "0%"} icon={Percent} />
+                  <ReadonlyField label="Moneda" value={config.moneda} />
+                </>
+              )}
             </div>
             <Separator />
-            {/* Sesión activa */}
             <div className="flex items-center gap-3 bg-brand-50 dark:bg-brand-950/20 border border-brand-200 dark:border-brand-800 rounded-lg p-3">
               <div className="w-8 h-8 rounded-full bg-brand-200 dark:bg-brand-800 flex items-center justify-center text-brand-700 dark:text-brand-300 text-xs font-bold shrink-0">
                 {usuario?.nombre?.[0]?.toUpperCase()}
               </div>
               <div>
                 <p className="text-xs font-semibold text-brand-800 dark:text-brand-300">Sesión activa: {usuario?.nombre}</p>
-                <p className="text-xs text-brand-500 dark:text-brand-400">Rol: {usuario?.rol}</p>
+                <p className="text-xs text-brand-500 dark:text-brand-400">Rol: {isSuperadmin ? "Superadministrador" : usuario?.rol}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Alertas */}
+        {/* Alertas — disponible para ADMIN y SUPERADMIN */}
         {seccion === "alertas" && (
           <div className="p-5 divide-y divide-border">
             <ConfigRow
@@ -280,7 +325,7 @@ export default function ConfiguracionPage() {
           </div>
         )}
 
-        {/* Crédito */}
+        {/* Crédito — ADMIN y SUPERADMIN */}
         {seccion === "credito" && (
           <div className="p-5 space-y-4">
             <ConfigRow
@@ -309,7 +354,7 @@ export default function ConfiguracionPage() {
           </div>
         )}
 
-        {/* Bancos */}
+        {/* Bancos — ADMIN y SUPERADMIN */}
         {seccion === "bancos" && (
           <div className="p-5 space-y-4">
             <form onSubmit={agregarBanco} className="grid grid-cols-3 gap-3 items-end">

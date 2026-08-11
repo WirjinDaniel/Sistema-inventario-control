@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Suplidor, OrdenCompra } from "@/types";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 interface DevolucionSuplidor {
   id: number; fecha: string; suplidor: number; suplidor_nombre: string;
@@ -39,6 +41,7 @@ const fmtFecha = (s: string) =>
   new Date(s).toLocaleString("es-DO", { day: "2-digit", month: "short", year: "numeric" });
 
 export default function DevolucionesSuplidoresPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [devoluciones, setDevoluciones] = useState<DevolucionSuplidor[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -132,6 +135,8 @@ export default function DevolucionesSuplidoresPage() {
     pendientes: devoluciones.filter((d) => d.estado === "PENDIENTE").length,
     monto: devoluciones.reduce((a, d) => a + Number(d.monto_credito), 0),
   };
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

@@ -55,3 +55,25 @@ class IsInventarioOrAdmin(permissions.BasePermission):
         return request.user.is_superuser or request.user.rol in (
             Usuario.ROL_INVENTARIO, Usuario.ROL_ADMIN
         )
+
+
+class TienePermiso(permissions.BasePermission):
+    """
+    Verifica un permiso granular del campo permisos_extra del usuario.
+    ADMIN y SUPERADMIN siempre tienen acceso. Cajeros/Inventario solo si
+    el permiso específico está en True dentro de permisos_extra.
+
+    Uso:
+        permission_classes = [TienePermiso('ver_reportes')]
+    """
+    def __init__(self, permiso: str):
+        self.permiso = permiso
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        from apps.usuarios.models import Usuario
+        if request.user.is_superuser or request.user.rol == Usuario.ROL_ADMIN:
+            return True
+        permisos = getattr(request.user, 'permisos_extra', {}) or {}
+        return bool(permisos.get(self.permiso, False))

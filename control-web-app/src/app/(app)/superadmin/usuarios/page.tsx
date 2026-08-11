@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { UserCog, Plus, Search, Power, Edit2, X, Check, Lock, KeyRound } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api";
 
 interface Colmado { id: number; nombre: string; }
 interface Usuario {
@@ -49,7 +50,7 @@ const MODULOS_PERMS = [
 ];
 
 export default function UsuariosGlobalPage() {
-  const { token, esSuperadmin, hydrated } = useAuthStore();
+  const { esSuperadmin, hydrated } = useAuthStore();
   const router = useRouter();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [colmados, setColmados] = useState<Colmado[]>([]);
@@ -88,14 +89,9 @@ export default function UsuariosGlobalPage() {
   async function cargarUsuarios() {
     setLoading(true);
     try {
-      const url = filtroColmado ? `/api/usuarios?colmado=${filtroColmado}` : "/api/usuarios";
-      const r = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (r.ok) {
-        const data = await r.json();
-        setUsuarios(Array.isArray(data) ? data : data.results ?? []);
-      }
+      const url = filtroColmado ? `/usuarios?colmado=${filtroColmado}` : "/usuarios";
+      const { data } = await api.get(url);
+      setUsuarios(Array.isArray(data) ? data : data.results ?? []);
     } catch {
       // backend no disponible
     } finally {
@@ -105,13 +101,8 @@ export default function UsuariosGlobalPage() {
 
   async function cargarColmados() {
     try {
-      const r = await fetch("/api/usuarios/colmados", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (r.ok) {
-        const data = await r.json();
-        setColmados(Array.isArray(data) ? data : data.results ?? []);
-      }
+      const { data } = await api.get("/usuarios/colmados");
+      setColmados(Array.isArray(data) ? data : data.results ?? []);
     } catch {
       // backend no disponible
     }
@@ -134,50 +125,46 @@ export default function UsuariosGlobalPage() {
   async function guardar() {
     setGuardando(true);
     setError(null);
-    const url = editId ? `/api/usuarios/${editId}` : "/api/usuarios";
-    const method = editId ? "PATCH" : "POST";
     const body: Record<string, unknown> = { username: form.username, nombre: form.nombre, rol: form.rol, colmado: form.colmado || null };
     if (form.password) body.password = form.password;
     try {
-      const r = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) {
-        let msg = `Error ${r.status}`;
-        try {
-          const d = await r.json();
-          msg = Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ");
-        } catch {}
+      if (editId) {
+        await api.patch(`/usuarios/${editId}`, body);
+      } else {
+        await api.post("/usuarios", body);
+      }
+      setModal(null);
+      cargarUsuarios();
+    } catch (err: unknown) {
+      const d = (err as { response?: { data?: unknown } })?.response?.data;
+      if (d && typeof d === "object") {
+        const msg = Object.entries(d as Record<string, unknown>)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join(" | ");
         setError(msg);
       } else {
-        setModal(null);
-        cargarUsuarios();
+        setError("No se pudo conectar con el servidor.");
       }
-    } catch {
-      setError("No se pudo conectar con el servidor.");
     } finally {
       setGuardando(false);
     }
   }
 
   async function toggleActivo(u: Usuario) {
-    await fetch(`/api/usuarios/${u.id}/toggle-activo`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    cargarUsuarios();
+    try {
+      await api.post(`/usuarios/${u.id}/toggle-activo`);
+      cargarUsuarios();
+    } catch {
+      // error manejado por interceptor
+    }
   }
 
   async function abrirPermisos(u: Usuario) {
     setPermsTarget(u);
-    const r = await fetch(`/api/usuarios/${u.id}/permisos`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (r.ok) {
-      setPerms(await r.json());
-    } else {
+    try {
+      const { data } = await api.get(`/usuarios/${u.id}/permisos`);
+      setPerms(data);
+    } catch {
       const defaults: Record<string, boolean> = {};
       MODULOS_PERMS.forEach(m => { defaults[m.key] = u.rol === "ADMIN"; });
       setPerms(defaults);
@@ -188,11 +175,7 @@ export default function UsuariosGlobalPage() {
     if (!permsTarget) return;
     setGuardandoPerms(true);
     try {
-      await fetch(`/api/usuarios/${permsTarget.id}/permisos`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(perms),
-      });
+      await api.patch(`/usuarios/${permsTarget.id}/permisos`, perms);
       setPermsTarget(null);
     } finally {
       setGuardandoPerms(false);
@@ -205,18 +188,12 @@ export default function UsuariosGlobalPage() {
     setGuardandoReset(true);
     setResetError(null);
     try {
-      const r = await fetch(`/api/usuarios/${resetTarget.id}/reset-password`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ password: nuevaPass }),
-      });
-      if (r.ok) {
-        setResetTarget(null);
-        setNuevaPass("");
-      } else {
-        const d = await r.json();
-        setResetError(d.error ?? "Error al resetear");
-      }
+      await api.post(`/usuarios/${resetTarget.id}/reset-password`, { password: nuevaPass });
+      setResetTarget(null);
+      setNuevaPass("");
+    } catch (err: unknown) {
+      const d = (err as { response?: { data?: { error?: string } } })?.response?.data;
+      setResetError(d?.error ?? "Error al resetear");
     } finally {
       setGuardandoReset(false);
     }
@@ -233,7 +210,7 @@ export default function UsuariosGlobalPage() {
     INVENTARIO: "bg-amber-100 text-amber-700",
   };
 
-  const grupos = [...new Set(MODULOS_PERMS.map(m => m.grupo))];
+  const grupos = Array.from(new Set(MODULOS_PERMS.map(m => m.grupo)));
 
   return (
     <div className="space-y-6">

@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Plan, Suscripcion, PagoSuscripcion
 from .serializers import (
-    PlanSerializer, SuscripcionSerializer, SuscripcionResumenSerializer, PagoSuscripcionSerializer,
+    PlanSerializer, SuscripcionSerializer, SuscripcionResumenSerializer,
+    PagoSuscripcionSerializer, AjustarCapacidadSerializer,
 )
 from apps.dashboard.permissions import IsSuperadmin
 
@@ -62,6 +63,73 @@ class SuscripcionViewSet(viewsets.ModelViewSet):
             )
         suscripcion.estado = nuevo_estado
         suscripcion.save(update_fields=['estado', 'actualizado_en'])
+        return Response(SuscripcionSerializer(suscripcion).data)
+
+    @action(detail=True, methods=['post'], url_path='ajustar-capacidad',
+            permission_classes=[IsSuperadmin])
+    def ajustar_capacidad(self, request, pk=None):
+        """
+        Ajusta los límites personalizados del colmado (max_productos, max_usuarios, precio_mensual).
+        Valida que no se reduzca por debajo del uso actual.
+        Registra el pago si se envía pago_monto.
+        """
+        from apps.inventario.models import Producto
+        from apps.usuarios.models import Usuario
+        from django.utils import timezone
+
+        suscripcion = self.get_object()
+        serializer = AjustarCapacidadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        colmado = suscripcion.colmado
+        campos_actualizar = ['actualizado_en']
+
+        nuevo_max_productos = data.get('max_productos')
+        if nuevo_max_productos is not None:
+            productos_activos = Producto.objects.filter(colmado=colmado, activo=True).count()
+            if nuevo_max_productos < productos_activos:
+                return Response(
+                    {'error': f'No se puede reducir a {nuevo_max_productos} productos. '
+                              f'El colmado tiene {productos_activos} productos activos. '
+                              f'Debe eliminar al menos {productos_activos - nuevo_max_productos} primero.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            suscripcion.max_productos = nuevo_max_productos
+            campos_actualizar.append('max_productos')
+
+        nuevo_max_usuarios = data.get('max_usuarios')
+        if nuevo_max_usuarios is not None:
+            usuarios_activos = Usuario.objects.filter(colmado=colmado, is_active=True).count()
+            if nuevo_max_usuarios < usuarios_activos:
+                return Response(
+                    {'error': f'No se puede reducir a {nuevo_max_usuarios} usuarios. '
+                              f'El colmado tiene {usuarios_activos} usuarios activos. '
+                              f'Debe desactivar al menos {usuarios_activos - nuevo_max_usuarios} primero.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            suscripcion.max_usuarios = nuevo_max_usuarios
+            campos_actualizar.append('max_usuarios')
+
+        nuevo_precio = data.get('precio_mensual')
+        if nuevo_precio is not None:
+            suscripcion.precio_mensual = nuevo_precio
+            campos_actualizar.append('precio_mensual')
+
+        suscripcion.save(update_fields=campos_actualizar)
+
+        # Registrar pago si se envió
+        if data.get('pago_monto'):
+            PagoSuscripcion.objects.create(
+                suscripcion=suscripcion,
+                monto=data['pago_monto'],
+                fecha=timezone.now().date(),
+                metodo=data.get('pago_metodo', PagoSuscripcion.METODO_EFECTIVO),
+                referencia=data.get('pago_referencia', ''),
+                nota=data.get('nota', 'Pago por ajuste de capacidad'),
+                registrado_por=request.user,
+            )
+
         return Response(SuscripcionSerializer(suscripcion).data)
 
     @action(detail=True, methods=['post'], url_path='renovar',

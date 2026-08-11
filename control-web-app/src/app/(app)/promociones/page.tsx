@@ -21,6 +21,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Categoria, Producto } from "@/types";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 type TipoPromo = "PORCENTAJE" | "MONTO_FIJO" | "2X1" | "NXPRECIO" | "CUPON";
 
@@ -52,6 +54,7 @@ const FORM_EMPTY = {
 const fmtFecha = (s: string) => s ? new Date(s).toLocaleDateString("es-DO") : "—";
 
 export default function PromocionesPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [tab, setTab] = useState<"activas" | "vencidas" | "todas">("activas");
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,18 +85,20 @@ export default function PromocionesPage() {
   useEffect(() => { cargar(); }, [cargar]);
 
   useEffect(() => {
-    api.get("/categorias/?page_size=100").then(({ data }) => setCategorias(data.results ?? data)).catch(() => {});
-    api.get("/productos/?page_size=100").then(({ data }) => setProductos(data.results ?? data)).catch(() => {});
+    api.get("/inventario/categorias/?page_size=100").then(({ data }) => setCategorias(data.results ?? data)).catch(() => {});
+    api.get("/inventario/productos/?page_size=100").then(({ data }) => setProductos(data.results ?? data)).catch(() => {});
   }, []);
 
   function abrirNueva() {
     setEditando(null);
+    setBusqProd("");
     setForm({ ...FORM_EMPTY });
     setModalOpen(true);
   }
 
   function abrirEditar(p: Promocion) {
     setEditando(p);
+    setBusqProd(p.producto_nombre ?? "");
     setForm({
       nombre: p.nombre, descripcion: p.descripcion, tipo: p.tipo,
       valor: p.valor, cantidad_minima: p.cantidad_minima, cantidad_paga: p.cantidad_paga,
@@ -128,6 +133,8 @@ export default function PromocionesPage() {
       limite_usos: form.limite_usos ? Number(form.limite_usos) : null,
       precio_especial: form.precio_especial || "0",
       valor: form.valor || "0",
+      fecha_inicio: form.fecha_inicio || null,
+      fecha_fin: form.fecha_fin || null,
     };
     try {
       if (editando) {
@@ -140,7 +147,15 @@ export default function PromocionesPage() {
       setModalOpen(false);
       cargar();
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail ?? "Error al guardar");
+      const data = e?.response?.data;
+      if (data && typeof data === "object") {
+        const msgs = Object.entries(data)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join(" | ");
+        toast.error(msgs || "Error al guardar");
+      } else {
+        toast.error("Error al guardar");
+      }
     }
     setGuardando(false);
   }
@@ -155,6 +170,8 @@ export default function PromocionesPage() {
     usosTotales: promociones.reduce((a, p) => a + p.usos, 0),
     cupones: promociones.filter((p) => p.tipo === "CUPON").length,
   };
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">
@@ -369,12 +386,14 @@ export default function PromocionesPage() {
                     />
                     {busqProd && (
                       <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg z-10 mt-1 max-h-40 overflow-y-auto">
-                        {prodFiltrados.map((p) => (
+                        {prodFiltrados.length > 0 ? prodFiltrados.map((p) => (
                           <button key={p.id} onClick={() => { setForm((f) => ({ ...f, producto: p.id, categoria: null })); setBusqProd(p.nombre); }}
                             className="w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors">
                             {p.nombre}
                           </button>
-                        ))}
+                        )) : (
+                          <p className="px-3 py-2 text-xs text-muted-foreground">Sin resultados</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -385,7 +404,7 @@ export default function PromocionesPage() {
                     onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value ? Number(e.target.value) : null, producto: null }))}
                     className="w-full h-8 text-sm border border-border rounded-md bg-background px-2">
                     <option value="">Todas las categorías</option>
-                    {categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    {categorias.map((c) => <option key={c.id} value={c.id.toString()}>{c.nombre}</option>)}
                   </select>
                 </div>
               </div>

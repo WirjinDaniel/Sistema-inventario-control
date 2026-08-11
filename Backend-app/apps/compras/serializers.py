@@ -1,3 +1,5 @@
+import re
+from decimal import Decimal
 from rest_framework import serializers
 from django.db.models import Sum
 from .models import Suplidor, OrdenCompra, OrdenCompraItem, PagoSuplidor
@@ -8,6 +10,7 @@ class SuplidorSerializer(serializers.ModelSerializer):
     total_pagado = serializers.SerializerMethodField()
     balance_pendiente = serializers.SerializerMethodField()
     ultima_compra = serializers.SerializerMethodField()
+    email = serializers.EmailField(allow_blank=True, required=False)
 
     class Meta:
         model = Suplidor
@@ -18,6 +21,14 @@ class SuplidorSerializer(serializers.ModelSerializer):
             'total_comprado', 'total_pagado', 'balance_pendiente', 'ultima_compra',
         ]
         read_only_fields = ['colmado', 'creado_en']
+
+    def validate_rnc(self, value):
+        if not value:
+            return value
+        digits = re.sub(r'[\-\s]', '', value)
+        if not re.match(r'^\d{9}$', digits):
+            raise serializers.ValidationError('El RNC del proveedor debe tener 9 dígitos.')
+        return value
 
     def get_total_comprado(self, obj):
         return float(obj.ordenes.filter(estado=OrdenCompra.ESTADO_RECIBIDA).aggregate(t=Sum('total'))['t'] or 0)
@@ -51,6 +62,11 @@ class PagoSuplidorSerializer(serializers.ModelSerializer):
         model = PagoSuplidor
         fields = ['id', 'orden', 'usuario', 'usuario_nombre', 'monto', 'fecha', 'metodo', 'referencia', 'nota']
         read_only_fields = ['usuario', 'fecha']
+
+    def validate_monto(self, value):
+        if value <= Decimal('0'):
+            raise serializers.ValidationError('El monto del pago debe ser mayor a 0.')
+        return value
 
 
 class OrdenCompraSerializer(serializers.ModelSerializer):

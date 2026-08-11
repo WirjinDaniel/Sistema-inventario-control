@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 interface Movimiento {
   id: number;
@@ -76,6 +78,7 @@ const fmtFecha = (s: string) =>
   });
 
 export default function MovimientosPage() {
+  const { esAdmin, esSuperadmin, usuario } = useAuthStore();
   const [movs, setMovs] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -112,6 +115,8 @@ export default function MovimientosPage() {
     AJUSTE:  movs.filter((m) => m.tipo === "AJUSTE").length,
     VENTA:   movs.filter((m) => m.tipo === "VENTA").reduce((s, m) => s + Number(m.cantidad), 0),
   };
+
+  if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

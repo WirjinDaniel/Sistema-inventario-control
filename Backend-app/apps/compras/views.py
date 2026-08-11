@@ -6,13 +6,17 @@ from django.utils import timezone
 from .models import Suplidor, OrdenCompra, OrdenCompraItem, PagoSuplidor
 from .serializers import SuplidorSerializer, OrdenCompraSerializer, OrdenCompraItemSerializer, PagoSuplidorSerializer
 from apps.inventario.models import Producto, MovimientoInventario
-from apps.dashboard.permissions import IsAdminOfColmado
+from apps.dashboard.permissions import IsAdminOfColmado, IsSuperadmin
 
 
 class SuplidorViewSet(viewsets.ModelViewSet):
-    """Proveedores — solo ADMIN del colmado."""
+    """Proveedores — ADMIN gestiona; solo SUPERADMIN elimina."""
     serializer_class = SuplidorSerializer
-    permission_classes = [IsAdminOfColmado]
+
+    def get_permissions(self):
+        if self.action == 'destroy':
+            return [IsSuperadmin()]
+        return [IsAdminOfColmado()]
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'rnc', 'telefono', 'contacto']
 
@@ -24,9 +28,13 @@ class SuplidorViewSet(viewsets.ModelViewSet):
 
 
 class OrdenCompraViewSet(viewsets.ModelViewSet):
-    """Órdenes de compra — solo ADMIN del colmado."""
+    """Órdenes de compra — ADMIN gestiona; solo SUPERADMIN elimina."""
     serializer_class = OrdenCompraSerializer
-    permission_classes = [IsAdminOfColmado]
+
+    def get_permissions(self):
+        if self.action == 'destroy':
+            return [IsSuperadmin()]
+        return [IsAdminOfColmado()]
 
     def get_queryset(self):
         qs = OrdenCompra.objects.filter(suplidor__colmado=self.request.user.colmado).select_related('suplidor', 'usuario')
@@ -92,9 +100,13 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
 
 
 class OrdenCompraItemViewSet(viewsets.ModelViewSet):
-    """Items de órdenes de compra — solo ADMIN del colmado."""
+    """Items de órdenes de compra — ADMIN gestiona; solo SUPERADMIN elimina."""
     serializer_class = OrdenCompraItemSerializer
-    permission_classes = [IsAdminOfColmado]
+
+    def get_permissions(self):
+        if self.action == 'destroy':
+            return [IsSuperadmin()]
+        return [IsAdminOfColmado()]
 
     def get_queryset(self):
         qs = OrdenCompraItem.objects.filter(orden__suplidor__colmado=self.request.user.colmado)

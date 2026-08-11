@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
+import { AccessDenied } from '@/components/shared/AccessDenied';
 import toast from 'react-hot-toast';
 import {
   Warehouse, ArrowLeft, Package, Truck,
@@ -311,6 +313,8 @@ function RecepcionContent() {
 }
 
 export default function RecepcionPage() {
+  const { esAdmin, esSuperadmin, usuario } = useAuthStore();
+  if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
   return (
     <Suspense fallback={<div className="p-6 text-slate-400">Cargando...</div>}>
       <RecepcionContent />

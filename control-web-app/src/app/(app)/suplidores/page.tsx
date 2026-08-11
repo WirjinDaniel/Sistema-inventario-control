@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { Suplidor, OrdenCompra, Producto } from '@/types';
+import { useAuthStore } from '@/store/auth';
+import { AccessDenied } from '@/components/shared/AccessDenied';
+import { Skeleton } from '@/components/ui/skeleton';
 import CustomSelect from '@/components/CustomSelect';
 import toast from 'react-hot-toast';
 import {
@@ -62,6 +65,7 @@ const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' });
 
 export default function SuplidoresPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [suplidores, setSuplidores] = useState<Suplidor[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -509,6 +513,8 @@ export default function SuplidoresPage() {
     );
   }
 
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
+
   // === LIST VIEW ===
   return (
     <div className="p-6 space-y-6">
@@ -568,7 +574,7 @@ export default function SuplidoresPage() {
                   <tr key={i}>
                     {[...Array(6)].map((_, j) => (
                       <td key={j} className="px-5 py-4">
-                        <div className="h-4 bg-slate-100 rounded animate-pulse" />
+                        <Skeleton className="h-4 w-full" />
                       </td>
                     ))}
                   </tr>

@@ -1,8 +1,18 @@
+import re
 from rest_framework import serializers
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from .models import SecuenciaNCF, Factura, FacturaDetalle, PagoFactura, TIPOS_REQUIEREN_RELACIONADO
+
+
+def _validar_rnc_cedula(value):
+    if not value:
+        return value
+    digits = re.sub(r'[\-\s]', '', value)
+    if not re.match(r'^\d{9}$|^\d{11}$', digits):
+        raise serializers.ValidationError('El RNC/Cédula debe tener 9 dígitos (RNC) o 11 dígitos (cédula).')
+    return value
 
 
 class SecuenciaNCFSerializer(serializers.ModelSerializer):
@@ -138,6 +148,7 @@ class FacturaCreateSerializer(serializers.Serializer):
             rnc = data.get('cliente_rnc', '').strip()
             if not rnc:
                 raise serializers.ValidationError({'cliente_rnc': 'El RNC/Cédula es obligatorio para Crédito Fiscal (B01).'})
+            _validar_rnc_cedula(rnc)
             nombre = data.get('cliente_nombre', '').strip()
             if not nombre or nombre == 'Consumidor Final':
                 raise serializers.ValidationError({'cliente_nombre': 'Se requiere nombre del contribuyente para Crédito Fiscal (B01).'})

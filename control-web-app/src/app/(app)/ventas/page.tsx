@@ -5,12 +5,11 @@ import api from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   BookOpen, Search, ShoppingCart, CreditCard, Building2,
-  Banknote, AlertTriangle, X, Check, ChevronDown, ChevronUp, FileText, RefreshCw,
+  Banknote, AlertTriangle, X, Check, ChevronDown, ChevronUp, FileText,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Venta } from "@/types";
@@ -21,6 +20,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import EmitirNCFModal from "@/components/EmitirNCFModal";
 
 interface VentaItem {
   id: number; producto_nombre: string;
@@ -58,10 +58,8 @@ export default function VentasPage() {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
 
-  // Modal emitir comprobante fiscal
   const [ncfModal, setNcfModal] = useState<VentaDetalle | null>(null);
-  const [ncfForm, setNcfForm] = useState({ tipo: "02", cliente_rnc: "" });
-  const [emitiendoNcf, setEmitiendoNcf] = useState(false);
+  const [confirmAnularId, setConfirmAnularId] = useState<number | null>(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -92,7 +90,6 @@ export default function VentasPage() {
   }
 
   async function anular(id: number) {
-    if (!confirm("¿Anular esta venta? Esta acción es irreversible.")) return;
     setAnulando(id);
     try {
       await api.post(`/ventas/${id}/anular/`);
@@ -103,37 +100,16 @@ export default function VentasPage() {
     setAnulando(null);
   }
 
-  async function emitirComprobante() {
-    if (!ncfModal) return;
-    setEmitiendoNcf(true);
-    try {
-      await api.post("/facturacion/facturas/", {
-        tipo: ncfForm.tipo,
-        venta: ncfModal.id,
-        cliente_nombre: ncfModal.cliente_nombre ?? "Consumidor Final",
-        cliente_rnc: ncfForm.cliente_rnc,
-        subtotal: ncfModal.subtotal,
-        itbis: ncfModal.itbis ?? "0",
-        total: ncfModal.total,
-      });
-      toast.success("Comprobante fiscal emitido");
-      setNcfModal(null);
-      setNcfForm({ tipo: "02", cliente_rnc: "" });
-      // Refrescar detalle para que muestre el NCF
-      if (expandedId === ncfModal.id) {
-        const { data } = await api.get(`/ventas/${ncfModal.id}/`);
-        setDetalle(data);
-      }
-    } catch (e: any) {
-      const msg = e?.response?.data?.non_field_errors?.[0]
-        ?? e?.response?.data?.detail
-        ?? "Error al emitir el comprobante";
-      toast.error(msg);
+  async function onNcfSuccess(_ncf: string, _tipoNombre: string, _clienteNombre: string) {
+    setNcfModal(null);
+    if (expandedId && detalle?.id === expandedId) {
+      const { data } = await api.get(`/ventas/${expandedId}/`);
+      setDetalle(data);
     }
-    setEmitiendoNcf(false);
+    cargar();
   }
 
-  const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, v) => s + Number(v.total), 0);
+const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, v) => s + Number(v.total), 0);
   const hayFiltros = !!(busqueda || filtroMetodo || filtroEstado || fechaDesde || fechaHasta);
 
   return (
@@ -277,7 +253,6 @@ export default function VentasPage() {
                                         className="h-7 text-xs gap-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/20"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setNcfForm({ tipo: "02", cliente_rnc: "" });
                                           setNcfModal(detalle);
                                         }}
                                       >
@@ -290,7 +265,7 @@ export default function VentasPage() {
                                       variant="ghost" size="sm"
                                       className="h-7 text-xs gap-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                                       disabled={anulando === v.id}
-                                      onClick={(e) => { e.stopPropagation(); anular(v.id); }}
+                                      onClick={(e) => { e.stopPropagation(); setConfirmAnularId(v.id); }}
                                     >
                                       <AlertTriangle size={12} />
                                       {anulando === v.id ? "Anulando..." : "Anular venta"}
@@ -311,58 +286,42 @@ export default function VentasPage() {
         )}
       </div>
 
-      {/* Modal emitir comprobante fiscal */}
-      <Dialog open={!!ncfModal} onOpenChange={(o) => { if (!o) setNcfModal(null); }}>
+      <Dialog open={!!confirmAnularId} onOpenChange={(o) => { if (!o) setConfirmAnularId(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText size={16} className="text-brand-500" /> Emitir comprobante fiscal
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <AlertTriangle size={16} /> Anular venta
             </DialogTitle>
           </DialogHeader>
-          {ncfModal && (
-            <div className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
-                <p><span className="text-muted-foreground text-xs">Cliente:</span> {ncfModal.cliente_nombre ?? "Consumidor Final"}</p>
-                <p><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold">{formatCurrency(Number(ncfModal.total))}</span></p>
-              </div>
-              <div>
-                <Label className="text-xs mb-1.5 block">Tipo de comprobante</Label>
-                <select
-                  value={ncfForm.tipo}
-                  onChange={(e) => setNcfForm((f) => ({ ...f, tipo: e.target.value }))}
-                  className="w-full h-8 text-sm border border-border rounded-md bg-background px-2"
-                >
-                  <option value="02">B02 — Factura de Consumo (consumidor final)</option>
-                  <option value="01">B01 — Crédito Fiscal (empresa con RNC)</option>
-                  <option value="03">B03 — Nota de Débito</option>
-                  <option value="04">B04 — Nota de Crédito</option>
-                </select>
-              </div>
-              {ncfForm.tipo === "01" && (
-                <div>
-                  <Label className="text-xs mb-1.5 block">RNC / Cédula del cliente *</Label>
-                  <Input
-                    placeholder="Ej: 101-12345-6"
-                    value={ncfForm.cliente_rnc}
-                    onChange={(e) => setNcfForm((f) => ({ ...f, cliente_rnc: e.target.value }))}
-                    className="h-8 text-sm"
-                  />
-                </div>
-              )}
-            </div>
-          )}
+          <p className="text-sm text-muted-foreground">
+            ¿Estás seguro que deseas anular esta venta? Esta acción es irreversible y restaurará el stock de los productos.
+          </p>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setNcfModal(null)}>Cancelar</Button>
+            <Button variant="outline" size="sm" onClick={() => setConfirmAnularId(null)}>Cancelar</Button>
             <Button
-              size="sm" onClick={emitirComprobante} disabled={emitiendoNcf}
-              className="gap-2"
+              variant="destructive" size="sm"
+              disabled={anulando === confirmAnularId}
+              onClick={() => {
+                if (confirmAnularId) { anular(confirmAnularId); setConfirmAnularId(null); }
+              }}
             >
-              {emitiendoNcf ? <RefreshCw size={13} className="animate-spin" /> : <FileText size={13} />}
-              Emitir NCF
+              {anulando === confirmAnularId ? "Anulando..." : "Sí, anular"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {ncfModal && (
+        <EmitirNCFModal
+          ventaId={ncfModal.id}
+          clienteNombre={ncfModal.cliente_nombre}
+          subtotal={ncfModal.subtotal}
+          itbis={ncfModal.itbis}
+          total={ncfModal.total}
+          onSuccess={onNcfSuccess}
+          onClose={() => setNcfModal(null)}
+        />
+      )}
     </div>
   );
 }

@@ -33,15 +33,18 @@ class Suscripcion(models.Model):
         (ESTADO_CANCELADA,  'Cancelada'),
     ]
 
-    colmado          = models.OneToOneField(Colmado, on_delete=models.CASCADE, related_name='suscripcion')
-    plan             = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='suscripciones')
-    fecha_inicio     = models.DateField()
+    colmado           = models.OneToOneField(Colmado, on_delete=models.CASCADE, related_name='suscripcion')
+    plan              = models.ForeignKey(Plan, on_delete=models.SET_NULL, null=True, blank=True, related_name='suscripciones')
+    fecha_inicio      = models.DateField()
     fecha_vencimiento = models.DateField()
-    estado           = models.CharField(max_length=15, choices=ESTADOS, default=ESTADO_ACTIVA)
-    precio_pagado    = models.DecimalField(max_digits=10, decimal_places=2)
-    nota             = models.TextField(blank=True)
-    creado_en        = models.DateTimeField(auto_now_add=True)
-    actualizado_en   = models.DateTimeField(auto_now=True)
+    estado            = models.CharField(max_length=15, choices=ESTADOS, default=ESTADO_ACTIVA)
+    precio_mensual    = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    precio_pagado     = models.DecimalField(max_digits=10, decimal_places=2)
+    max_productos     = models.PositiveIntegerField(default=300)
+    max_usuarios      = models.PositiveIntegerField(default=2)
+    nota              = models.TextField(blank=True)
+    creado_en         = models.DateTimeField(auto_now_add=True)
+    actualizado_en    = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'suscripcion'

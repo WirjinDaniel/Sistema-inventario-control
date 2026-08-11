@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 const METODO_CONFIG: Record<PagoSuplidor["metodo"], { label: string; icon: React.ElementType }> = {
   EFECTIVO:      { label: "Efectivo",      icon: Banknote },
@@ -32,6 +34,7 @@ interface PagoForm { monto: string; metodo: PagoSuplidor["metodo"]; referencia: 
 const PAGO_EMPTY: PagoForm = { monto: "", metodo: "EFECTIVO", referencia: "", nota: "" };
 
 export default function CuentasPorPagarPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState("PENDIENTE");
@@ -73,6 +76,8 @@ export default function CuentasPorPagarPage() {
     const diasDesde = Math.abs((new Date().getTime() - new Date(o.fecha).getTime()) / 86400000);
     return diasDesde <= 7;
   }).length;
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

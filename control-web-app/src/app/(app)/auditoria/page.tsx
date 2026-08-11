@@ -9,6 +9,8 @@ import {
   CreditCard, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
+import { useAuthStore } from '@/store/auth';
+import { AccessDenied } from '@/components/shared/AccessDenied';
 
 interface AuditoriaEntry {
   id: number;
@@ -46,6 +48,7 @@ const fmtFecha = (s: string) =>
   new Date(s).toLocaleString('es-DO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export default function AuditoriaPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [logs, setLogs] = useState<AuditoriaEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [usuarios, setUsuarios] = useState<UsuarioOpt[]>([]);
@@ -83,6 +86,8 @@ export default function AuditoriaPage() {
   }, []);
 
   const inputCls = 'border border-slate-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition bg-white';
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-6">

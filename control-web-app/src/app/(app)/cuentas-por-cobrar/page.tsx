@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 interface AgingCliente {
   id: number; nombre: string; telefono: string;
@@ -29,6 +31,7 @@ const BUCKET_CONFIG: Record<string, { badge: "success" | "warning" | "danger"; d
 };
 
 export default function CuentasPorCobrarPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [aging, setAging] = useState<AgingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [abonoModal, setAbonoModal] = useState<AgingCliente | null>(null);
@@ -63,6 +66,8 @@ export default function CuentasPorCobrarPage() {
   const buckets = aging?.buckets ?? {};
   const totalClientes = Object.values(buckets).reduce((s, b) => s + b.clientes.length, 0);
   const totalVencido = (buckets["31_60"]?.total ?? 0) + (buckets["61_90"]?.total ?? 0) + (buckets["90_mas"]?.total ?? 0);
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

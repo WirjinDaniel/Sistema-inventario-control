@@ -106,8 +106,15 @@ class VentaCreateSerializer(serializers.ModelSerializer):
             )
 
         if venta.metodo_pago == Venta.PAGO_FIADO and venta.cliente:
-            venta.cliente.saldo_deuda += total
-            venta.cliente.save(update_fields=['saldo_deuda'])
+            cliente = Cliente.objects.select_for_update().get(pk=venta.cliente_id)
+            if not cliente.puede_fiar(total):
+                raise serializers.ValidationError(
+                    f'El cliente {cliente.nombre} no tiene crédito suficiente. '
+                    f'Disponible: RD${cliente.credito_disponible:.2f}'
+                )
+            cliente.saldo_deuda += total
+            cliente.save(update_fields=['saldo_deuda'])
+            venta.cliente = cliente
 
         return venta
 

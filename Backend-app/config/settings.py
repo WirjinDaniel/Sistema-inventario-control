@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
 DJANGO_APPS = [
     'unfold',
@@ -90,10 +90,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 # ── Base de datos ─────────────────────────────────────────────────────────────
-# Usa SQLite localmente; cambia USE_SQLITE=False en .env para usar SQL Server
+# USE_SUPABASE=True → PostgreSQL en Supabase
+# USE_SQLITE=True   → SQLite local (default)
+# ambos False       → SQL Server
+USE_SUPABASE = config('USE_SUPABASE', default=False, cast=bool)
 USE_SQLITE = config('USE_SQLITE', default=True, cast=bool)
 
-if USE_SQLITE:
+if USE_SUPABASE:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('SUPABASE_DB_NAME', default='postgres'),
+            'USER': config('SUPABASE_DB_USER', default='postgres'),
+            'PASSWORD': config('SUPABASE_DB_PASSWORD', default=''),
+            'HOST': config('SUPABASE_DB_HOST', default=''),
+            'PORT': config('SUPABASE_DB_PORT', default='5432'),
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
+    }
+elif USE_SQLITE:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -120,9 +137,13 @@ AUTH_USER_MODEL = 'usuarios.Usuario'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
+    },
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {'NAME': 'apps.usuarios.validators.PasswordComplejidadValidator'},
 ]
 
 LANGUAGE_CODE = 'es-do'

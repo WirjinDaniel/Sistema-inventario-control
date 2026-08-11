@@ -21,7 +21,12 @@ interface Producto {
   id: number; nombre: string; codigo_barras: string; precio_venta: string;
   precio_vigente: string; precio_oferta: string | null; en_oferta: boolean;
   tipo: "UNIDAD" | "GRANEL"; unidad_medida: string; stock_actual: string;
-  categoria_nombre?: string; reglas_descuento?: ReglaDesc[];
+  categoria?: number; categoria_nombre?: string; reglas_descuento?: ReglaDesc[]; itbis_exento: boolean;
+}
+interface PromocionSimple {
+  id: number; nombre: string; tipo: string; valor: string;
+  cantidad_minima: number; cantidad_paga: number; precio_especial: string;
+  producto: number | null; categoria: number | null; vigente: boolean;
 }
 interface ItemCarrito { producto: Producto; cantidad: number; precio_unitario: number; descuento: number; }
 interface Cliente { id: number; nombre: string; credito_disponible: string; saldo_deuda: string; }
@@ -29,7 +34,7 @@ interface BancoCuenta { id: number; banco: string; numero_cuenta: string; titula
 interface VentaResponse {
   id: number; fecha: string; cajero_nombre: string; cliente_nombre?: string | null;
   metodo_pago: string; banco_nombre?: string | null; subtotal: string; descuento: string;
-  total: string; monto_pagado: string; cambio: string;
+  itbis?: string; total: string; monto_pagado: string; cambio: string;
   detalles: { producto_nombre: string; cantidad: string; precio_unitario: string; descuento: string; subtotal: string; }[];
 }
 
@@ -69,17 +74,49 @@ export default function POSPage() {
   const [ncfTipo, setNcfTipo] = useState("02");
   const [ncfRnc, setNcfRnc] = useState("");
   const [ncfInstitucion, setNcfInstitucion] = useState("");
+  const [promoAplicada, setPromoAplicada] = useState<PromocionSimple | null>(null);
+  const [codigoCupon, setCodigoCupon] = useState("");
+  const [cargandoCupon, setCargandoCupon] = useState(false);
+  const [promocionesActivas, setPromocionesActivas] = useState<PromocionSimple[]>([]);
   const barrasRef = useRef<HTMLInputElement>(null);
 
   const subtotal = carrito.reduce((a, i) => a + i.precio_unitario * i.cantidad, 0);
-  const descuentoTotal = carrito.reduce((a, i) => a + i.descuento, 0);
-  const total = subtotal - descuentoTotal;
+  const descuentoItems = carrito.reduce((a, i) => a + i.descuento, 0);
+  const descuentoTotal = descuentoItems; // alias para compatibilidad con el payload
+  const baseParaPromo = subtotal - descuentoItems;
+  const descuentoPromo = (() => {
+    if (!promoAplicada) return 0;
+    if (promoAplicada.tipo === "PORCENTAJE" || promoAplicada.tipo === "CUPON")
+      return baseParaPromo * Number(promoAplicada.valor) / 100;
+    if (promoAplicada.tipo === "MONTO_FIJO")
+      return Math.min(Number(promoAplicada.valor), baseParaPromo);
+    return 0;
+  })();
+  const itbisTotal = carrito.reduce((a, i) => {
+    if (i.producto.itbis_exento) return a;
+    return a + (i.precio_unitario * i.cantidad - i.descuento) * 0.18;
+  }, 0);
+  const total = subtotal - descuentoItems - descuentoPromo;
   const cambio = Math.max(Number(montoPagado) - total, 0);
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId) ?? null;
 
   useEffect(() => {
-    cargarSesionActiva(); cargarClientes(); cargarBancos(); cargarColmado();
+    cargarSesionActiva(); cargarClientes(); cargarBancos(); cargarColmado(); cargarPromos();
     barrasRef.current?.focus();
+    // Restaurar borrador de venta no completada si existe
+    const rawBorrador = localStorage.getItem("pos_borrador");
+    if (rawBorrador) {
+      try {
+        const b = JSON.parse(rawBorrador);
+        if (b.carrito?.length) {
+          setCarrito(b.carrito);
+          setMetodoPago(b.metodoPago ?? "EFECTIVO");
+          if (b.clienteId) setClienteId(b.clienteId);
+          if (b.bancoId) setBancoId(b.bancoId);
+          toast("Se restauró una venta pendiente.", { icon: "⚠️", duration: 5000 });
+        }
+      } catch { localStorage.removeItem("pos_borrador"); }
+    }
     const up = () => setOnline(true);
     const down = () => setOnline(false);
     window.addEventListener("online", up); window.addEventListener("offline", down);
@@ -95,6 +132,7 @@ export default function POSPage() {
   }
   async function cargarClientes() { try { const { data } = await api.get("/clientes/"); setClientes(data.results ?? data); } catch {} }
   async function cargarBancos() { try { const { data } = await api.get("/ventas/bancos/"); setBancos(data.results ?? data); } catch {} }
+  async function cargarPromos() { try { const { data } = await api.get("/promociones/?activo=true"); setPromocionesActivas(data.results ?? data); } catch {} }
 
   async function abrirCaja() {
     setAbriendo(true);
@@ -123,11 +161,46 @@ export default function POSPage() {
     catch { toast.error(`Código no encontrado: ${codigo}`); }
   }
 
+  async function aplicarCupon() {
+    if (!codigoCupon.trim()) return;
+    setCargandoCupon(true);
+    try {
+      const { data } = await api.get(`/promociones/por-cupon/?codigo=${codigoCupon.trim().toUpperCase()}`);
+      setPromoAplicada(data);
+      toast.success(`Cupón "${data.nombre}" aplicado`);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      toast.error(err?.response?.data?.detail ?? "Cupón inválido o expirado");
+    }
+    setCargandoCupon(false);
+  }
+
   function calcularDescuentoVolumen(p: Producto, cantidad: number): number {
     const reglas = (p.reglas_descuento ?? []).filter(r => Number(r.cantidad_minima) <= cantidad).sort((a, b) => Number(b.cantidad_minima) - Number(a.cantidad_minima));
     if (!reglas.length) return 0;
     const regla = reglas[0]; const precioUnit = Number(p.precio_vigente ?? p.precio_venta);
     return regla.tipo === "PORCENTAJE" ? (precioUnit * cantidad * Number(regla.valor)) / 100 : Number(regla.valor) * cantidad;
+  }
+
+  function calcularDescuentoPromoItem(p: Producto, cantidad: number): number {
+    const promo = promocionesActivas.find(pr =>
+      pr.tipo !== "CUPON" && pr.vigente &&
+      (pr.producto === p.id || (p.categoria != null && pr.categoria === p.categoria))
+    );
+    if (!promo) return 0;
+    const precioUnit = Number(p.precio_vigente ?? p.precio_venta);
+    if (promo.tipo === "PORCENTAJE") return precioUnit * cantidad * Number(promo.valor) / 100;
+    if (promo.tipo === "MONTO_FIJO") return Math.min(Number(promo.valor), precioUnit * cantidad);
+    if (promo.tipo === "2X1") return Math.floor(cantidad / (promo.cantidad_minima || 2)) * precioUnit;
+    if (promo.tipo === "NXPRECIO" && cantidad >= promo.cantidad_minima) {
+      const sets = Math.floor(cantidad / promo.cantidad_minima);
+      return Math.max(0, precioUnit * cantidad - Number(promo.precio_especial) * sets);
+    }
+    return 0;
+  }
+
+  function calcularDescuento(p: Producto, cantidad: number): number {
+    return calcularDescuentoVolumen(p, cantidad) + calcularDescuentoPromoItem(p, cantidad);
   }
 
   function agregarAlCarrito(p: Producto, qty = 1) {
@@ -137,9 +210,9 @@ export default function POSPage() {
       const idx = prev.findIndex((i) => i.producto.id === p.id);
       if (idx >= 0) {
         const next = [...prev]; const nuevaCantidad = next[idx].cantidad + qty;
-        next[idx] = { ...next[idx], cantidad: nuevaCantidad, descuento: calcularDescuentoVolumen(p, nuevaCantidad) }; return next;
+        next[idx] = { ...next[idx], cantidad: nuevaCantidad, descuento: calcularDescuento(p, nuevaCantidad) }; return next;
       }
-      return [...prev, { producto: p, cantidad: qty, precio_unitario: precioUnit, descuento: calcularDescuentoVolumen(p, qty) }];
+      return [...prev, { producto: p, cantidad: qty, precio_unitario: precioUnit, descuento: calcularDescuento(p, qty) }];
     });
     setBusqueda(""); setResultados([]); barrasRef.current?.focus();
   }
@@ -148,16 +221,16 @@ export default function POSPage() {
     setCarrito((prev) => {
       const next = [...prev]; const nueva = Math.round((next[idx].cantidad + delta) * 1000) / 1000;
       if (nueva <= 0) return prev.filter((_, i) => i !== idx);
-      next[idx] = { ...next[idx], cantidad: nueva, descuento: calcularDescuentoVolumen(next[idx].producto, nueva) }; return next;
+      next[idx] = { ...next[idx], cantidad: nueva, descuento: calcularDescuento(next[idx].producto, nueva) }; return next;
     });
   }
 
   function setCantidad(idx: number, val: string) {
     const n = parseFloat(val); if (isNaN(n) || n <= 0) return;
-    setCarrito((prev) => { const next = [...prev]; next[idx] = { ...next[idx], cantidad: n, descuento: calcularDescuentoVolumen(next[idx].producto, n) }; return next; });
+    setCarrito((prev) => { const next = [...prev]; next[idx] = { ...next[idx], cantidad: n, descuento: calcularDescuento(next[idx].producto, n) }; return next; });
   }
 
-  function limpiarCarrito() { setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO"); setBancoId(""); setEmitirNcf(false); setNcfTipo("02"); setNcfRnc(""); setNcfInstitucion(""); barrasRef.current?.focus(); }
+  function limpiarCarrito() { setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO"); setBancoId(""); setEmitirNcf(false); setNcfTipo("02"); setNcfRnc(""); setNcfInstitucion(""); setPromoAplicada(null); setCodigoCupon(""); barrasRef.current?.focus(); }
 
   async function procesarVenta() {
     if (!sesionId) return toast.error("Abre una sesión de caja primero.");
@@ -165,16 +238,21 @@ export default function POSPage() {
     if (metodoPago === "FIADO" && !clienteId) return toast.error("Selecciona un cliente para fiado.");
     if (metodoPago === "FIADO" && clienteSeleccionado && Number(clienteSeleccionado.credito_disponible) < total)
       return toast.error(`Crédito insuficiente. Disponible: ${formatCurrency(clienteSeleccionado.credito_disponible)}`);
+    if (metodoPago === "EFECTIVO" && montoPagado && Number(montoPagado) < total)
+      return toast.error(`El monto recibido (${formatCurrency(Number(montoPagado))}) es menor al total (${formatCurrency(total)}).`);
     setProcesando(true);
+    // Guardar borrador antes del POST — si falla la conexión el carrito no se pierde
+    const borrador = { carrito, metodoPago, clienteId, bancoId, descuentoTotal, total };
+    localStorage.setItem("pos_borrador", JSON.stringify(borrador));
     try {
       const { data } = await api.post("/ventas/", {
         sesion_caja: sesionId, cliente: clienteId, metodo_pago: metodoPago,
         banco_cuenta: metodoPago === "TRANSFERENCIA" && bancoId ? Number(bancoId) : null,
         monto_pagado: metodoPago === "EFECTIVO" ? Number(montoPagado) : total,
-        descuento: descuentoTotal,
+        descuento: descuentoItems + descuentoPromo,
         detalles: carrito.map((i) => ({ producto: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario, descuento: i.descuento, subtotal: i.precio_unitario * i.cantidad - i.descuento })),
       });
-      setUltimaVenta(data);
+      setUltimaVenta({ ...data, itbis: itbisTotal.toFixed(2) });
       setUltimoNcf(null);
       if (emitirNcf) {
         try {
@@ -185,10 +263,17 @@ export default function POSPage() {
               : ncfTipo === "01" ? (ncfInstitucion || data.cliente_nombre || "Consumidor Final")
               : (data.cliente_nombre ?? "Consumidor Final"),
             cliente_rnc: ncfRnc,
-            subtotal: data.subtotal,
-            itbis: "0",
-            total: data.total,
             datos_especificos: ncfTipo === "15" ? { institucion_nombre: ncfInstitucion || "Institución Gubernamental" } : {},
+            detalles: carrito.map((item) => ({
+              producto: item.producto.id,
+              descripcion: item.producto.nombre,
+              codigo: item.producto.codigo_barras || "",
+              cantidad: item.cantidad,
+              unidad: item.producto.unidad_medida || "UND",
+              precio_unitario: item.precio_unitario.toFixed(2),
+              descuento: item.descuento.toFixed(2),
+              tasa_itbis: item.producto.itbis_exento ? "0" : "18",
+            })),
           });
           setUltimoNcf({
             ncf: ncfRes.data.ncf,
@@ -232,11 +317,17 @@ export default function POSPage() {
           );
         }
       }
+      // Venta exitosa: registrar uso de promoción si aplica
+      if (promoAplicada) {
+        await api.post(`/promociones/${promoAplicada.id}/usar/`).catch(() => {});
+      }
+      localStorage.removeItem("pos_borrador");
       limpiarCarrito();
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
       const d = e.response?.data;
-      toast.error(d ? ((d.detail as string) ?? Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")) : "Error al procesar la venta");
+      // No limpiar carrito en error — el borrador persiste para reintentar
+      toast.error(d ? ((d.detail as string) ?? Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")) : "Error al procesar la venta. El carrito se conservó para reintentar.");
     } finally { setProcesando(false); }
   }
 
@@ -495,14 +586,51 @@ export default function POSPage() {
             <span className="text-lg text-muted-foreground font-medium">RD$</span>
             <span className="text-brand-600">{total.toFixed(2)}</span>
           </p>
-          {descuentoTotal > 0 && (
+          {(descuentoItems > 0 || descuentoPromo > 0) && (
             <p className="text-xs text-muted-foreground mt-1">
-              Subtotal {formatCurrency(subtotal)} · Desc. −{formatCurrency(descuentoTotal)}
+              Subtotal {formatCurrency(subtotal)}
+              {descuentoItems > 0 && ` · Desc. −${formatCurrency(descuentoItems)}`}
+              {descuentoPromo > 0 && ` · Cupón −${formatCurrency(descuentoPromo)}`}
             </p>
           )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+
+          {/* Cupón de descuento */}
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Tag size={11} /> Cupón de descuento
+            </p>
+            {promoAplicada ? (
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl px-3 py-2 border border-emerald-200 dark:border-emerald-900">
+                <Tag size={13} className="text-emerald-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate">{promoAplicada.nombre}</p>
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-500">−{formatCurrency(descuentoPromo)}</p>
+                </div>
+                <button onClick={() => { setPromoAplicada(null); setCodigoCupon(""); }} className="text-emerald-400 hover:text-rose-500 transition-colors">
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Código de cupón"
+                  value={codigoCupon}
+                  onChange={(e) => setCodigoCupon(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && aplicarCupon()}
+                  className="h-8 text-xs font-mono flex-1"
+                />
+                <Button variant="outline" size="sm" className="h-8 text-xs px-3 shrink-0"
+                  onClick={aplicarCupon} disabled={cargandoCupon || !codigoCupon.trim()}>
+                  {cargandoCupon ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" /> : "Aplicar"}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Separator />
 
           {/* Método de pago */}
           <div>

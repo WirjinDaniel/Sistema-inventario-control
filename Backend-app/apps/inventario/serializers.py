@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import serializers
 from .models import Categoria, Marca, Producto, PresentacionProducto, MovimientoInventario, ReglaDescuento
 
@@ -30,6 +31,11 @@ class PresentacionProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = PresentacionProducto
         fields = ['id', 'producto', 'nombre', 'factor_conversion', 'precio_venta', 'codigo_barras', 'activo']
+
+    def validate_factor_conversion(self, value):
+        if value <= Decimal('0'):
+            raise serializers.ValidationError('El factor de conversión debe ser mayor a 0.')
+        return value
 
 
 class ReglaDescuentoSerializer(serializers.ModelSerializer):
@@ -70,6 +76,16 @@ class ProductoSerializer(serializers.ModelSerializer):
         read_only_fields = ['colmado', 'creado_en', 'actualizado_en']
 
 
+    def validate(self, data):
+        inicio = data.get('oferta_inicio')
+        fin = data.get('oferta_fin')
+        if inicio and fin and inicio >= fin:
+            raise serializers.ValidationError(
+                {'oferta_fin': 'La fecha de fin de oferta debe ser posterior a la de inicio.'}
+            )
+        return data
+
+
 class MovimientoInventarioSerializer(serializers.ModelSerializer):
     producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
     usuario_nombre = serializers.CharField(source='usuario.nombre', read_only=True)
@@ -82,3 +98,17 @@ class MovimientoInventarioSerializer(serializers.ModelSerializer):
             'nota', 'fecha',
         ]
         read_only_fields = ['colmado', 'usuario', 'fecha']
+
+    def validate(self, data):
+        cantidad = data.get('cantidad', 0)
+        if cantidad <= 0:
+            raise serializers.ValidationError({'cantidad': 'La cantidad debe ser mayor a 0.'})
+        tipo = data.get('tipo')
+        producto = data.get('producto')
+        if tipo in ('SALIDA', 'MERMA') and producto:
+            if producto.stock_actual < cantidad:
+                raise serializers.ValidationError(
+                    f'Stock insuficiente para "{producto.nombre}". '
+                    f'Disponible: {producto.stock_actual}, solicitado: {cantidad}.'
+                )
+        return data

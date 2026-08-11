@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Producto } from "@/types";
+import { useAuthStore } from "@/store/auth";
+import { AccessDenied } from "@/components/shared/AccessDenied";
 
 interface CambiosPrecio {
   id: number; producto: number; producto_nombre: string;
@@ -33,6 +35,7 @@ const fmtFecha = (s: string) =>
   new Date(s).toLocaleString("es-DO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export default function HistorialPreciosPage() {
+  const { esAdmin, esSuperadmin } = useAuthStore();
   const [historial, setHistorial] = useState<CambiosPrecio[]>([]);
   const [loading, setLoading] = useState(true);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -84,6 +87,8 @@ export default function HistorialPreciosPage() {
   const subidas = historial.filter((h) => Number(h.valor_nuevo) > Number(h.valor_anterior)).length;
   const bajadas = historial.filter((h) => Number(h.valor_nuevo) < Number(h.valor_anterior)).length;
   const productosUnicos = new Set(historial.map((h) => h.producto)).size;
+
+  if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
   return (
     <div className="p-6 space-y-5">

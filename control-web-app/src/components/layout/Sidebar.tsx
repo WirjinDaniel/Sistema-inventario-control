@@ -116,7 +116,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Colmados", href: "/superadmin/colmados", icon: Building2, superadminOnly: true },
       { label: "Usuarios Global", href: "/superadmin/usuarios", icon: UserCog, superadminOnly: true },
       { label: "Suscripciones", href: "/superadmin/suscripciones", icon: BadgeDollarSign, superadminOnly: true },
-      { label: "Planes", href: "/superadmin/planes", icon: Layers, superadminOnly: true },
+      { label: "Plantillas", href: "/superadmin/planes", icon: Layers, superadminOnly: true },
     ],
   },
 ];
