@@ -142,8 +142,9 @@ export default function DevolucionesPage() {
       setModalOpen(false);
       resetModal();
       cargar();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail ?? "Error al registrar devolución");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(msg ?? "Error al registrar devolución");
     }
     setGuardando(false);
   }
@@ -154,7 +155,7 @@ export default function DevolucionesPage() {
     setMotivo(MOTIVOS[0]); setMetodoDevolucion("EFECTIVO"); setNota("");
   }
 
-  const estadoBadge = (e: string) =>
+  const estadoBadge = (e: string): "success" | "warning" | "danger" =>
     e === "APROBADA" ? "success" : e === "PENDIENTE" ? "warning" : "danger";
 
   const STATS = [
@@ -228,7 +229,7 @@ export default function DevolucionesPage() {
                     <p className="text-xs text-muted-foreground">{fmtFecha(d.fecha)} · {d.cajero_nombre}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={estadoBadge(d.estado) as any} className="text-[10px]">{d.estado}</Badge>
+                    <Badge variant={estadoBadge(d.estado)} className="text-[10px]">{d.estado}</Badge>
                     <span className="text-sm font-bold text-foreground tabular-nums">{formatCurrency(Number(d.monto_devuelto))}</span>
                     {expandedId === d.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </div>
