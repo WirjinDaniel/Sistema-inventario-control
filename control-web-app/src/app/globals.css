@@ -56,7 +56,7 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  /* Scrollbar personalizado */
+  /* Scrollbar global */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -69,6 +69,14 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400 dark:bg-slate-500;
+  }
+  /* Scrollbar invisible (sidebar) */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
