@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import {
@@ -189,9 +189,8 @@ const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, 
                 const anulada = v.estado === "ANULADA";
                 const hoy = new Date().toDateString() === new Date(v.fecha).toDateString();
                 return (
-                  <>
+                  <React.Fragment key={v.id}>
                     <tr
-                      key={v.id}
                       className={cn("hover:bg-muted/30 transition-colors cursor-pointer", anulada && "opacity-50")}
                       onClick={() => verDetalle(v.id)}
                     >
@@ -278,7 +277,7 @@ const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, 
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>
