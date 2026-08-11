@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import type { CategoriaGasto, Gasto } from "@/types";
 import toast from "react-hot-toast";
@@ -234,9 +234,8 @@ export default function GastosPage() {
                 const tipo = TIPOS_LABEL[g.categoria_tipo] ?? { label: g.categoria_tipo, variant: "secondary" as const };
                 const isExp = expandedId === g.id;
                 return (
-                  <>
+                  <React.Fragment key={g.id}>
                     <tr
-                      key={g.id}
                       className="hover:bg-muted/30 transition-colors cursor-pointer"
                       onClick={() => setExpandedId(isExp ? null : g.id)}
                     >
@@ -270,7 +269,7 @@ export default function GastosPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>
