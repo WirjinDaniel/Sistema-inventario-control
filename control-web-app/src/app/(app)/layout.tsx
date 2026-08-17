@@ -1,6 +1,7 @@
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import CommandPalette from "@/components/layout/CommandPalette";
+import KeyboardShortcutsModal from "@/components/layout/KeyboardShortcutsModal";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,11 +9,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-auto">
+        <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
           {children}
         </main>
       </div>
       <CommandPalette />
+      <KeyboardShortcutsModal />
     </div>
   );
 }

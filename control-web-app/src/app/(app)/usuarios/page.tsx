@@ -1,8 +1,11 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Plus, X, Check, Search, Shield, User2,
-  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock, AlertCircle, AlertTriangle,
+  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock, AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -12,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/shared/FormField";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 type Rol = "ADMIN" | "CAJERO" | "INVENTARIO";
@@ -24,18 +28,20 @@ interface UsuarioAPI {
   is_active: boolean;
 }
 
-interface FormUsuario {
-  username: string;
-  nombre: string;
-  rol: Rol;
-  password: string;
-  pin_caja: string;
-  is_active: boolean;
-}
+const usuarioSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido."),
+  username: z.string().min(1, "El nombre de usuario es requerido."),
+  rol: z.enum(["CAJERO", "INVENTARIO", "ADMIN"] as const),
+  password: z.string().optional(),
+  pin_caja: z.string().optional(),
+  is_active: z.boolean(),
+}).refine((d) => !d.password || d.password.length >= 6, {
+  message: "Mínimo 6 caracteres.", path: ["password"],
+}).refine((d) => !d.pin_caja || /^\d{4,6}$/.test(d.pin_caja), {
+  message: "El PIN debe tener 4 a 6 dígitos.", path: ["pin_caja"],
+});
 
-const FORM_EMPTY: FormUsuario = {
-  username: "", nombre: "", rol: "CAJERO", password: "", pin_caja: "", is_active: true,
-};
+type FormUsuario = z.infer<typeof usuarioSchema>;
 
 const ROL_CONFIG: Record<Rol, { label: string; color: string; Icon: React.ElementType }> = {
   ADMIN:      { label: "Administrador", color: "bg-violet-50 text-violet-700 border border-violet-100", Icon: Shield },
@@ -51,13 +57,20 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<"crear" | "editar" | null>(null);
   const [editando, setEditando] = useState<UsuarioAPI | null>(null);
-  const [form, setForm] = useState<FormUsuario>(FORM_EMPTY);
   const [showPass, setShowPass] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [confirmToggle, setConfirmToggle] = useState<UsuarioAPI | null>(null);
 
-  const formDirty = !!(modal && (form.nombre || form.username || form.password));
+  const {
+    register, handleSubmit, control, watch, reset, setError,
+    formState: { errors, isDirty },
+  } = useForm<FormUsuario>({
+    resolver: zodResolver(usuarioSchema),
+    defaultValues: { nombre: "", username: "", rol: "CAJERO", password: "", pin_caja: "", is_active: true },
+  });
+
+  const passwordValue = watch("password");
+  const formDirty = !!(modal && isDirty);
   useUnsavedChanges(formDirty);
 
   // Permisos granulares
@@ -144,41 +157,36 @@ export default function UsuariosPage() {
   }
 
   function abrirCrear() {
-    setForm(FORM_EMPTY);
+    reset({ nombre: "", username: "", rol: "CAJERO", password: "", pin_caja: "", is_active: true });
     setEditando(null);
     setShowPass(false);
-    setFormErrors({});
     setModal("crear");
   }
 
   function abrirEditar(u: UsuarioAPI) {
-    setForm({ username: u.username, nombre: u.nombre, rol: u.rol, password: "", pin_caja: "", is_active: u.is_active });
+    reset({ username: u.username, nombre: u.nombre, rol: u.rol, password: "", pin_caja: "", is_active: u.is_active });
     setEditando(u);
     setShowPass(false);
-    setFormErrors({});
     setModal("editar");
   }
 
-  async function guardar() {
-    const errs: Record<string, string> = {};
-    if (!form.nombre.trim()) errs.nombre = "El nombre es requerido.";
-    if (!form.username.trim()) errs.username = "El nombre de usuario es requerido.";
-    if (modal === "crear" && !form.password) errs.password = "La contraseña es requerida.";
-    if (form.password && form.password.length < 6) errs.password = "Mínimo 6 caracteres.";
-    if (form.pin_caja && !/^\d{4,6}$/.test(form.pin_caja)) errs.pin_caja = "El PIN debe tener 4 a 6 dígitos.";
-    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
+  const guardar = handleSubmit(async (data) => {
+    if (modal === "crear" && !data.password) {
+      setError("password", { message: "La contraseña es requerida." });
+      return;
+    }
     setGuardando(true);
     try {
-      const base = { username: form.username, nombre: form.nombre, rol: form.rol, is_active: form.is_active };
-      const conPin = form.pin_caja ? { ...base, pin_caja: form.pin_caja } : base;
-      const payload = modal === "editar" && !form.password ? conPin : { ...conPin, password: form.password };
+      const base = { username: data.username, nombre: data.nombre, rol: data.rol, is_active: data.is_active };
+      const conPin = data.pin_caja ? { ...base, pin_caja: data.pin_caja } : base;
+      const payload = modal === "editar" && !data.password ? conPin : { ...conPin, password: data.password };
       if (modal === "crear") await api.post("/usuarios/", payload);
       else await api.patch(`/usuarios/${editando!.id}/`, payload);
       toast.success(modal === "crear" ? "Usuario creado" : "Usuario actualizado");
       setModal(null); cargar();
     } catch { toast.error("Error al guardar el usuario"); }
     setGuardando(false);
-  }
+  });
 
   async function toggleActivo(u: UsuarioAPI) {
     try {
@@ -206,10 +214,6 @@ export default function UsuariosPage() {
     }
     setReseteando(false);
   }
-
-  const f = (k: keyof FormUsuario) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const activos = usuarios.filter((u) => u.is_active).length;
 
@@ -500,114 +504,126 @@ export default function UsuariosPage() {
                 <X size={18} />
               </button>
             </div>
-            <div className="px-6 py-4 flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre completo *</label>
-                <Input
-                  value={form.nombre}
-                  onChange={(e) => { f("nombre")(e); setFormErrors((p) => ({ ...p, nombre: "" })); }}
-                  placeholder="Ej: Juan Pérez"
+            <form onSubmit={guardar}>
+              <div className="px-6 py-4 flex flex-col gap-4">
+                <FormField
+                  label="Nombre completo"
+                  required
                   autoFocus
-                  className={formErrors.nombre ? "border-red-400 focus-visible:ring-red-300" : ""}
+                  placeholder="Ej: Juan Pérez"
+                  error={errors.nombre?.message}
+                  {...register("nombre")}
                 />
-                {formErrors.nombre && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.nombre}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre de usuario *</label>
-                <Input
-                  value={form.username}
-                  onChange={(e) => { f("username")(e); setFormErrors((p) => ({ ...p, username: "" })); }}
+                <FormField
+                  label="Nombre de usuario"
+                  required
                   placeholder="Ej: jperez"
-                  className={formErrors.username ? "border-red-400 focus-visible:ring-red-300" : ""}
+                  error={errors.username?.message}
+                  {...register("username")}
                 />
-                {formErrors.username && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.username}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Rol</label>
-                <CustomSelect
-                  value={form.rol}
-                  onChange={(v) => setForm((p) => ({ ...p, rol: v as Rol }))}
-                  options={[
-                    { value: "CAJERO",     label: "Cajero",         icon: ShoppingCart, color: "bg-sky-100 text-sky-600" },
-                    { value: "INVENTARIO", label: "Inventario",     icon: Package,      color: "bg-emerald-100 text-emerald-600" },
-                    { value: "ADMIN",      label: "Administrador",  icon: Shield,       color: "bg-violet-100 text-violet-600" },
-                  ]}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  Contraseña {modal === "editar" && <span className="normal-case font-normal text-slate-400">(dejar vacío para no cambiar)</span>}
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showPass ? "text" : "password"}
-                    value={form.password}
-                    onChange={(e) => { f("password")(e); setFormErrors((p) => ({ ...p, password: "" })); }}
-                    placeholder={modal === "crear" ? "Contraseña segura" : "••••••••"}
-                    className={`pr-10 ${formErrors.password ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium">Rol</label>
+                  <Controller
+                    control={control}
+                    name="rol"
+                    render={({ field }) => (
+                      <CustomSelect
+                        value={field.value}
+                        onChange={(v) => field.onChange(v)}
+                        options={[
+                          { value: "CAJERO",     label: "Cajero",         icon: ShoppingCart, color: "bg-sky-100 text-sky-600" },
+                          { value: "INVENTARIO", label: "Inventario",     icon: Package,      color: "bg-emerald-100 text-emerald-600" },
+                          { value: "ADMIN",      label: "Administrador",  icon: Shield,       color: "bg-violet-100 text-violet-600" },
+                        ]}
+                      />
+                    )}
                   />
-                  <button type="button" onClick={() => setShowPass((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
                 </div>
-                {formErrors.password && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.password}</p>}
-                {form.password && (() => {
-                  const s = passwordStrength(form.password);
-                  return (
-                    <div className="space-y-1">
-                      <div className="flex gap-0.5 h-1">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <div key={i} className={`flex-1 rounded-full transition-colors ${i <= s.score ? s.color : "bg-slate-200"}`} />
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-slate-400">Seguridad: <span className="font-medium text-slate-600">{s.label}</span></p>
-                    </div>
-                  );
-                })()}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                  <Hash size={12} /> PIN de Caja <span className="normal-case font-normal text-slate-400">(4–6 dígitos, opcional)</span>
-                </label>
-                <Input
-                  type="number"
-                  value={form.pin_caja}
-                  onChange={(e) => { f("pin_caja")(e); setFormErrors((p) => ({ ...p, pin_caja: "" })); }}
-                  placeholder="Ej: 1234"
-                  maxLength={6}
-                  className={formErrors.pin_caja ? "border-red-400 focus-visible:ring-red-300" : ""}
-                />
-                {formErrors.pin_caja && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.pin_caja}</p>}
-              </div>
-              {modal === "editar" && (
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div
-                    onClick={() => setForm((p) => ({ ...p, is_active: !p.is_active }))}
-                    className={`relative w-10 h-5.5 rounded-full transition-colors duration-200 cursor-pointer ${form.is_active ? "bg-indigo-500" : "bg-slate-200"}`}
-                    style={{ width: 40, height: 22 }}>
-                    <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-transform duration-200 ${form.is_active ? "translate-x-[18px]" : "translate-x-0"}`}
-                      style={{ width: 18, height: 18 }} />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium">
+                    Contraseña{" "}
+                    {modal === "editar" && <span className="font-normal text-muted-foreground">(dejar vacío para no cambiar)</span>}
+                    {modal === "crear" && <span className="text-destructive ml-0.5" aria-hidden="true"> *</span>}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showPass ? "text" : "password"}
+                      placeholder={modal === "crear" ? "Contraseña segura" : "••••••••"}
+                      aria-required={modal === "crear"}
+                      aria-invalid={!!errors.password}
+                      aria-describedby={errors.password ? "password-error" : undefined}
+                      className={`pr-10 ${errors.password ? "border-destructive focus-visible:ring-destructive/30" : ""}`}
+                      {...register("password")}
+                    />
+                    <button type="button" onClick={() => setShowPass((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
                   </div>
-                  <span className="text-sm text-slate-600 font-medium">Usuario activo</span>
-                </label>
-              )}
-            </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button onClick={() => setModal(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold transition-colors duration-150 active:scale-95">
-                Cancelar
-              </button>
-              <button onClick={guardar} disabled={guardando}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
-                {guardando ? (
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                ) : <><Check size={15} /> Guardar</>}
-              </button>
-            </div>
+                  {errors.password && (
+                    <p id="password-error" role="alert" className="text-xs text-destructive flex items-center gap-1">
+                      {errors.password.message}
+                    </p>
+                  )}
+                  {passwordValue && (() => {
+                    const s = passwordStrength(passwordValue);
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex gap-0.5 h-1">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className={`flex-1 rounded-full transition-colors ${i <= s.score ? s.color : "bg-slate-200"}`} />
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-slate-400">Seguridad: <span className="font-medium text-slate-600">{s.label}</span></p>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <FormField
+                  label="PIN de Caja"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Ej: 1234"
+                  hint="4–6 dígitos, opcional"
+                  error={errors.pin_caja?.message}
+                  {...register("pin_caja")}
+                />
+                {modal === "editar" && (
+                  <Controller
+                    control={control}
+                    name="is_active"
+                    render={({ field }) => (
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div
+                          onClick={() => field.onChange(!field.value)}
+                          className={`relative rounded-full transition-colors duration-200 cursor-pointer ${field.value ? "bg-indigo-500" : "bg-slate-200"}`}
+                          style={{ width: 40, height: 22 }}>
+                          <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${field.value ? "translate-x-[18px]" : "translate-x-0"}`}
+                            style={{ width: 18, height: 18 }} />
+                        </div>
+                        <span className="text-sm text-slate-600 font-medium">Usuario activo</span>
+                      </label>
+                    )}
+                  />
+                )}
+              </div>
+              <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+                <button type="button" onClick={() => setModal(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold transition-colors duration-150 active:scale-95">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={guardando}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
+                  {guardando ? (
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : <><Check size={15} /> Guardar</>}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

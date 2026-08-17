@@ -1,11 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Search, Plus, Wallet, History,
   DollarSign, Users, Phone, CreditCard, TrendingDown,
   Check, Edit2, MoreHorizontal, BadgeCheck,
   UserX, RefreshCw, X, AlertTriangle, ChevronRight,
-  LayoutList, LayoutGrid, ArrowUpDown, UserCheck, AlertCircle,
+  LayoutList, LayoutGrid, ArrowUpDown, UserCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -20,13 +23,26 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { FormField } from "@/components/shared/FormField";
 import { Label } from "@/components/ui/label";
 import { Pagination } from "@/components/shared/Pagination";
 import { usePagination } from "@/hooks/use-pagination";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
-interface FormCliente { nombre: string; telefono: string; cedula: string; limite_credito: string; }
-const FORM_EMPTY: FormCliente = { nombre: "", telefono: "", cedula: "", limite_credito: "0" };
+const clienteSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido."),
+  telefono: z.string().optional().refine(
+    (v) => !v || /^[\d\s()\-+]{7,15}$/.test(v),
+    { message: "Formato inválido (ej: 809-000-0000)." }
+  ),
+  cedula: z.string().optional().refine(
+    (v) => !v || /^\d{3}-\d{7}-\d$/.test(v),
+    { message: "Formato inválido (ej: 001-0000000-0)." }
+  ),
+  limite_credito: z.string().optional(),
+});
+
+type FormCliente = z.infer<typeof clienteSchema>;
 
 type Filtro = "todos" | "con_deuda" | "al_dia";
 type Orden = "deuda" | "nombre" | "disponible";
@@ -42,11 +58,17 @@ export default function ClientesPage() {
   const [historial, setHistorial] = useState<AbonoFiado[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [modal, setModal] = useState<"crear" | "editar" | "abono" | null>(null);
-  const [form, setForm] = useState<FormCliente>(FORM_EMPTY);
   const [montoAbono, setMontoAbono] = useState("");
   const [notaAbono, setNotaAbono] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const {
+    register, handleSubmit, reset: resetForm,
+    formState: { errors, isDirty },
+  } = useForm<FormCliente>({
+    resolver: zodResolver(clienteSchema),
+    defaultValues: { nombre: "", telefono: "", cedula: "", limite_credito: "0" },
+  });
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -74,9 +96,12 @@ export default function ClientesPage() {
     setLoadingHistorial(false);
   }
 
-  function abrirCrear() { setForm(FORM_EMPTY); setFormErrors({}); setModal("crear"); }
+  function abrirCrear() {
+    resetForm({ nombre: "", telefono: "", cedula: "", limite_credito: "0" });
+    setModal("crear");
+  }
   function abrirEditar(c: Cliente) {
-    setForm({ nombre: c.nombre, telefono: c.telefono, cedula: c.cedula, limite_credito: c.limite_credito });
+    resetForm({ nombre: c.nombre, telefono: c.telefono, cedula: c.cedula, limite_credito: c.limite_credito });
     setClienteActivo(c);
     setModal("editar");
   }
@@ -87,23 +112,14 @@ export default function ClientesPage() {
     setModal("abono");
   }
 
-  const setField = (k: keyof FormCliente) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((p) => ({ ...p, [k]: e.target.value }));
-
-  async function guardar() {
-    const errs: Record<string, string> = {};
-    if (!form.nombre.trim()) errs.nombre = "El nombre es requerido.";
-    if (form.telefono && !/^[\d\s()\-+]{7,15}$/.test(form.telefono)) errs.telefono = "Formato inválido (ej: 809-000-0000).";
-    if (form.cedula && !/^\d{3}-\d{7}-\d$/.test(form.cedula)) errs.cedula = "Formato inválido (ej: 001-0000000-0).";
-    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
-    setFormErrors({});
+  const guardar = handleSubmit(async (data) => {
     setGuardando(true);
     try {
       if (modal === "crear") {
-        await api.post("/clientes/", form);
+        await api.post("/clientes/", data);
         toast.success("Cliente creado exitosamente");
       } else {
-        await api.patch(`/clientes/${clienteActivo!.id}/`, form);
+        await api.patch(`/clientes/${clienteActivo!.id}/`, data);
         toast.success("Cliente actualizado");
       }
       setModal(null);
@@ -112,7 +128,7 @@ export default function ClientesPage() {
       toast.error("Error al guardar");
     }
     setGuardando(false);
-  }
+  });
 
   async function registrarAbono() {
     const monto = Number(montoAbono);
@@ -133,7 +149,7 @@ export default function ClientesPage() {
     setGuardando(false);
   }
 
-  const formDirty = !!(modal && form.nombre);
+  const formDirty = !!(modal && isDirty);
   useUnsavedChanges(formDirty);
 
   // Stats calculados
@@ -815,35 +831,45 @@ export default function ClientesPage() {
               {modal === "crear" ? "Nuevo cliente" : "Editar cliente"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            {(["nombre", "telefono", "cedula"] as const).map((key) => (
-              <div key={key} className="space-y-1.5">
-                <Label className="text-xs font-medium capitalize">
-                  {key === "nombre" ? "Nombre completo *" : key === "telefono" ? "Teléfono" : "Cédula"}
-                </Label>
-                <Input
-                  value={form[key]}
-                  onChange={(e) => { setField(key)(e); setFormErrors((p) => ({ ...p, [key]: "" })); }}
-                  placeholder={key === "nombre" ? "Ej: Juan Pérez" : key === "telefono" ? "809-000-0000" : "001-0000000-0"}
-                  className={formErrors[key] ? "border-red-400 focus-visible:ring-red-300" : ""}
-                />
-                {formErrors[key] && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors[key]}</p>}
-              </div>
-            ))}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Límite de crédito (RD$)</Label>
-              <Input type="number" value={form.limite_credito} onChange={setField("limite_credito")} placeholder="0.00" />
+          <form onSubmit={guardar}>
+            <div className="grid gap-4 py-2">
+              <FormField
+                label="Nombre completo"
+                required
+                placeholder="Ej: Juan Pérez"
+                autoFocus
+                error={errors.nombre?.message}
+                {...register("nombre")}
+              />
+              <FormField
+                label="Teléfono"
+                placeholder="809-000-0000"
+                error={errors.telefono?.message}
+                {...register("telefono")}
+              />
+              <FormField
+                label="Cédula"
+                placeholder="001-0000000-0"
+                error={errors.cedula?.message}
+                {...register("cedula")}
+              />
+              <FormField
+                label="Límite de crédito (RD$)"
+                type="number"
+                placeholder="0.00"
+                {...register("limite_credito")}
+              />
             </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
-            <Button onClick={guardar} disabled={guardando} className="gap-2">
-              {guardando
-                ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                : <Check size={14} />}
-              Guardar
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
+              <Button type="submit" disabled={guardando} className="gap-2">
+                {guardando
+                  ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                  : <Check size={14} />}
+                Guardar
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

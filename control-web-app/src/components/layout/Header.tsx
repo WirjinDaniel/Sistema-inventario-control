@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { Search, LogOut, Settings, Store, PanelLeft } from "lucide-react";
+import { Search, LogOut, Settings, Store, PanelLeft, Keyboard } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import { useSidebarStore } from "@/store/sidebar";
@@ -67,6 +67,16 @@ export default function Header() {
         </span>
         <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono text-white/40">⌘K</kbd>
       </Button>
+
+      {/* Keyboard shortcuts hint */}
+      <button
+        className="hidden sm:flex p-1.5 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+        title="Atajos de teclado (?)"
+        onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }))}
+        aria-label="Atajos de teclado"
+      >
+        <Keyboard size={15} />
+      </button>
 
       {/* User dropdown */}
       <DropdownMenu>
