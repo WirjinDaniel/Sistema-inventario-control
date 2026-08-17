@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import {
   Search, Plus, Edit2, AlertTriangle, Package,
   Check, Filter, ScanBarcode, Sparkles, Camera,
-  ScrollText, LayoutGrid, List, Tag, AlertCircle,
+  ScrollText, LayoutGrid, List, Tag,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -18,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/shared/Pagination";
 import { usePagination } from "@/hooks/use-pagination";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { FormField } from "@/components/shared/FormField";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,15 +36,41 @@ import { DatePicker } from "@/components/ui/date-picker";
 
 const UNIDADES = ["unidad", "libra", "onza", "galón", "caja", "docena", "litro"];
 
-interface FormData {
-  nombre: string; sku: string; codigo_barras: string; categoria: string;
-  tipo: string; unidad_medida: string; precio_costo: string;
-  precio_venta: string; precio_oferta: string; oferta_inicio: string; oferta_fin: string;
-  stock_actual: string; stock_minimo: string;
-  fecha_vencimiento: string; activo: boolean; proveedor: string;
-  unidades_por_caja: string; itbis_exento: boolean; notas: string;
-  sin_vencimiento: boolean;
-}
+const productoSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido."),
+  sku: z.string().optional(),
+  codigo_barras: z.string().optional(),
+  categoria: z.string().optional(),
+  tipo: z.enum(["UNIDAD", "GRANEL"]),
+  unidad_medida: z.string(),
+  precio_costo: z.string().optional(),
+  precio_venta: z.string().min(1, "El precio de venta es requerido."),
+  precio_oferta: z.string().optional(),
+  oferta_inicio: z.string().optional(),
+  oferta_fin: z.string().optional(),
+  stock_actual: z.string(),
+  stock_minimo: z.string(),
+  fecha_vencimiento: z.string().optional(),
+  activo: z.boolean(),
+  proveedor: z.string().optional(),
+  unidades_por_caja: z.string().optional(),
+  itbis_exento: z.boolean(),
+  notas: z.string().optional(),
+  sin_vencimiento: z.boolean(),
+}).superRefine((d, ctx) => {
+  if (Number(d.precio_venta) <= 0)
+    ctx.addIssue({ code: "custom", message: "Debe ser mayor a 0.", path: ["precio_venta"] });
+  if (d.precio_costo && Number(d.precio_venta) < Number(d.precio_costo))
+    ctx.addIssue({ code: "custom", message: "No puede ser menor al precio de costo.", path: ["precio_venta"] });
+  if (Number(d.stock_actual) < 0)
+    ctx.addIssue({ code: "custom", message: "No puede ser negativo.", path: ["stock_actual"] });
+  if (Number(d.stock_minimo) < 0)
+    ctx.addIssue({ code: "custom", message: "No puede ser negativo.", path: ["stock_minimo"] });
+  if (d.oferta_inicio && d.oferta_fin && d.oferta_inicio >= d.oferta_fin)
+    ctx.addIssue({ code: "custom", message: "La fecha de fin debe ser posterior a la de inicio.", path: ["oferta_fin"] });
+});
+
+type FormData = z.infer<typeof productoSchema>;
 
 const FORM_EMPTY: FormData = {
   nombre: "", sku: "", codigo_barras: "", categoria: "",
@@ -62,16 +92,29 @@ export default function ProductosPage() {
   const [busquedaDebounced, setBusquedaDebounced] = useState("");
   const [filtroStockBajo, setFiltroStockBajo] = useState(false);
   const [filtroCat, setFiltroCat] = useState("");
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
   const [vista, setVista] = useState<"tabla" | "grid">("tabla");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [modal, setModal] = useState<"crear" | "editar" | null>(null);
   const [editando, setEditando] = useState<Producto | null>(null);
-  const [form, setForm] = useState<FormData>(FORM_EMPTY);
   const [guardando, setGuardando] = useState(false);
   const [proveedorOpen, setProveedorOpen] = useState(false);
+
+  const {
+    register, handleSubmit, control, watch, reset, setValue,
+    formState: { errors, isDirty },
+  } = useForm<FormData>({
+    resolver: zodResolver(productoSchema),
+    defaultValues: FORM_EMPTY,
+  });
+
+  const watchedPrecioCosto = watch("precio_costo");
+  const watchedPrecioVenta = watch("precio_venta");
+  const watchedPrecioOferta = watch("precio_oferta");
+  const watchedSinVencimiento = watch("sin_vencimiento");
+  const watchedProveedorValue = watch("proveedor");
+  const watchedActivo = watch("activo");
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -101,12 +144,12 @@ export default function ProductosPage() {
   useEffect(() => { cargar(); }, [cargar]);
 
   function abrirCrear() {
-    setForm(FORM_EMPTY); setEditando(null); setModal("crear"); setSheetOpen(true);
+    reset(FORM_EMPTY); setEditando(null); setModal("crear"); setSheetOpen(true);
   }
   function abrirEditar(p: Producto) {
-    setForm({
+    reset({
       nombre: p.nombre, sku: p.sku, codigo_barras: p.codigo_barras,
-      categoria: String(p.categoria ?? ""), tipo: p.tipo,
+      categoria: String(p.categoria ?? ""), tipo: p.tipo as "UNIDAD" | "GRANEL",
       unidad_medida: p.unidad_medida, precio_costo: p.precio_costo,
       precio_venta: p.precio_venta, stock_actual: p.stock_actual,
       stock_minimo: p.stock_minimo, fecha_vencimiento: p.fecha_vencimiento ?? "",
@@ -119,29 +162,17 @@ export default function ProductosPage() {
     setEditando(p); setModal("editar"); setSheetOpen(true);
   }
 
-  async function guardar() {
-    const errs: Record<string, string> = {};
-    if (!form.nombre) errs.nombre = "El nombre es requerido.";
-    if (!form.precio_venta) errs.precio_venta = "El precio de venta es requerido.";
-    else if (Number(form.precio_venta) <= 0) errs.precio_venta = "Debe ser mayor a 0.";
-    else if (form.precio_costo && Number(form.precio_venta) < Number(form.precio_costo))
-      errs.precio_venta = "No puede ser menor al precio de costo.";
-    if (Number(form.stock_actual) < 0) errs.stock_actual = "No puede ser negativo.";
-    if (Number(form.stock_minimo) < 0) errs.stock_minimo = "No puede ser negativo.";
-    if (form.oferta_inicio && form.oferta_fin && form.oferta_inicio >= form.oferta_fin)
-      errs.oferta_fin = "La fecha de fin debe ser posterior a la de inicio.";
-    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
-    setFormErrors({});
+  const guardar = handleSubmit(async (data) => {
     setGuardando(true);
     try {
       const payload = {
-        ...form,
-        categoria: form.categoria || null,
-        fecha_vencimiento: form.sin_vencimiento ? null : (form.fecha_vencimiento || null),
-        unidades_por_caja: form.unidades_por_caja ? Number(form.unidades_por_caja) : null,
-        precio_oferta: form.precio_oferta || null,
-        oferta_inicio: form.oferta_inicio || null,
-        oferta_fin: form.oferta_fin || null,
+        ...data,
+        categoria: data.categoria || null,
+        fecha_vencimiento: data.sin_vencimiento ? null : (data.fecha_vencimiento || null),
+        unidades_por_caja: data.unidades_por_caja ? Number(data.unidades_por_caja) : null,
+        precio_oferta: data.precio_oferta || null,
+        oferta_inicio: data.oferta_inicio || null,
+        oferta_fin: data.oferta_fin || null,
         sin_vencimiento: undefined,
       };
       if (modal === "crear") await api.post("/inventario/productos/", payload);
@@ -150,13 +181,10 @@ export default function ProductosPage() {
       setSheetOpen(false); cargar();
     } catch { toast.error("Error al guardar el producto"); }
     setGuardando(false);
-  }
+  });
 
-  const f = (k: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm((p) => ({ ...p, [k]: e.target.value }));
-
-  const margen = form.precio_costo && form.precio_venta
-    ? (((Number(form.precio_venta) - Number(form.precio_costo)) / Number(form.precio_costo)) * 100)
+  const margen = watchedPrecioCosto && watchedPrecioVenta
+    ? (((Number(watchedPrecioVenta) - Number(watchedPrecioCosto)) / Number(watchedPrecioCosto)) * 100)
     : null;
 
   const stockBajoCount = productos.filter((p) => p.stock_bajo).length;
@@ -165,8 +193,7 @@ export default function ProductosPage() {
   // reset page on filter change
   useEffect(() => { resetPage(); }, [busquedaDebounced, filtroStockBajo, filtroCat]);
 
-  // warn on unsaved form changes
-  const formDirty = sheetOpen && (form.nombre !== FORM_EMPTY.nombre || form.precio_venta !== FORM_EMPTY.precio_venta);
+  const formDirty = sheetOpen && isDirty;
   useUnsavedChanges(formDirty);
 
   if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
@@ -434,230 +461,292 @@ export default function ProductosPage() {
               <SheetTitle>{modal === "crear" ? "Nuevo Producto" : "Editar Producto"}</SheetTitle>
               <div className="ml-auto flex items-center gap-2">
                 <Label htmlFor="activo-switch" className="text-xs text-muted-foreground">
-                  {form.activo ? "Activo" : "Inactivo"}
+                  {watchedActivo ? "Activo" : "Inactivo"}
                 </Label>
-                <Switch
-                  id="activo-switch"
-                  checked={form.activo}
-                  onCheckedChange={(v) => setForm((p) => ({ ...p, activo: v }))}
+                <Controller
+                  control={control}
+                  name="activo"
+                  render={({ field }) => (
+                    <Switch id="activo-switch" checked={field.value} onCheckedChange={field.onChange} />
+                  )}
                 />
               </div>
             </div>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <Tabs defaultValue="general">
-              <TabsList className="w-full mb-5">
-                <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
-                <TabsTrigger value="precios" className="flex-1">Precios & Stock</TabsTrigger>
-                <TabsTrigger value="detalles" className="flex-1">Detalles</TabsTrigger>
-              </TabsList>
+          <form onSubmit={guardar} className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <Tabs defaultValue="general">
+                <TabsList className="w-full mb-5">
+                  <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
+                  <TabsTrigger value="precios" className="flex-1">Precios & Stock</TabsTrigger>
+                  <TabsTrigger value="detalles" className="flex-1">Detalles</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="general" className="space-y-4 mt-0">
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground cursor-pointer hover:border-brand-400 hover:text-brand-500 transition-colors shrink-0 group">
-                    <Camera size={20} className="group-hover:scale-110 transition-transform" />
-                    <span className="text-[10px] mt-1 font-medium">Foto</span>
-                  </div>
-                  <div className="flex-1">
-                    <Label className="text-xs mb-1.5 block">Nombre *</Label>
-                    <Input
-                      value={form.nombre}
-                      onChange={(e) => { f("nombre")(e); setFormErrors((p) => ({ ...p, nombre: "" })); }}
-                      placeholder="Ej: Arroz Cristal 1lb"
-                      autoFocus
-                      className={formErrors.nombre ? "border-red-400 focus-visible:ring-red-300" : ""}
-                    />
-                    {formErrors.nombre && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{formErrors.nombre}</p>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs mb-1.5 block">SKU</Label>
-                    <div className="relative">
-                      <Input value={form.sku} onChange={f("sku")} placeholder="SKU-001" className="pr-20" />
-                      <button type="button"
-                        onClick={() => setForm((p) => ({ ...p, sku: `SKU-${Date.now().toString().slice(-5)}` }))}
-                        className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 rounded-md bg-brand-50 hover:bg-brand-100 text-brand-600 text-xs font-semibold transition-colors">
-                        <Sparkles size={10} /> Auto
-                      </button>
+                <TabsContent value="general" className="space-y-4 mt-0">
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground cursor-pointer hover:border-brand-400 hover:text-brand-500 transition-colors shrink-0 group">
+                      <Camera size={20} className="group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] mt-1 font-medium">Foto</span>
                     </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Código de barras</Label>
-                    <div className="relative">
-                      <Input value={form.codigo_barras} onChange={f("codigo_barras")} placeholder="7891234567890" className="pr-9" />
-                      <ScanBarcode size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Categoría</Label>
-                    <CustomSelect value={form.categoria} onChange={(v) => setForm((p) => ({ ...p, categoria: v }))}
-                      placeholder="Sin categoría"
-                      options={[{ value: "", label: "Sin categoría" }, ...categorias.map((c) => ({ value: String(c.id), label: c.nombre }))]} />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Tipo</Label>
-                    <CustomSelect value={form.tipo} onChange={(v) => setForm((p) => ({ ...p, tipo: v }))}
-                      options={[{ value: "UNIDAD", label: "Por unidad" }, { value: "GRANEL", label: "A granel" }]} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs mb-1.5 block">Proveedor <span className="text-muted-foreground">(opcional)</span></Label>
-                    <div className="relative">
-                      <Input
-                        value={form.proveedor}
-                        onChange={(e) => { setForm((p) => ({ ...p, proveedor: e.target.value })); setProveedorOpen(true); }}
-                        onFocus={() => setProveedorOpen(true)}
-                        onBlur={() => setTimeout(() => setProveedorOpen(false), 150)}
-                        placeholder="Escribe o selecciona un proveedor..."
+                    <div className="flex-1">
+                      <FormField
+                        label="Nombre"
+                        required
+                        placeholder="Ej: Arroz Cristal 1lb"
+                        autoFocus
+                        error={errors.nombre?.message}
+                        {...register("nombre")}
                       />
-                      {proveedorOpen && suplidores.filter((s) => s.nombre.toLowerCase().includes(form.proveedor.toLowerCase())).length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
-                          {suplidores
-                            .filter((s) => s.nombre.toLowerCase().includes(form.proveedor.toLowerCase()))
-                            .map((s) => (
-                              <button
-                                key={s.id}
-                                type="button"
-                                onMouseDown={() => { setForm((p) => ({ ...p, proveedor: s.nombre })); setProveedorOpen(false); }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors",
-                                  form.proveedor === s.nombre && "bg-accent font-medium"
-                                )}
-                              >
-                                {s.nombre}
-                              </button>
-                            ))}
-                        </div>
-                      )}
                     </div>
                   </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="precios" className="space-y-4 mt-0">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Precio costo (RD$)</Label>
-                    <Input type="number" value={form.precio_costo} onChange={f("precio_costo")} placeholder="0.00" step="0.01" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1.5 block">SKU</Label>
+                      <div className="relative">
+                        <Input {...register("sku")} placeholder="SKU-001" className="pr-20" />
+                        <button type="button"
+                          onClick={() => setValue("sku", `SKU-${Date.now().toString().slice(-5)}`, { shouldDirty: true })}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 rounded-md bg-brand-50 hover:bg-brand-100 text-brand-600 text-xs font-semibold transition-colors">
+                          <Sparkles size={10} /> Auto
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1.5 block">Código de barras</Label>
+                      <div className="relative">
+                        <Input {...register("codigo_barras")} placeholder="7891234567890" className="pr-9" />
+                        <ScanBarcode size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1.5 block">Categoría</Label>
+                      <Controller
+                        control={control}
+                        name="categoria"
+                        render={({ field }) => (
+                          <CustomSelect value={field.value ?? ""} onChange={field.onChange}
+                            placeholder="Sin categoría"
+                            options={[{ value: "", label: "Sin categoría" }, ...categorias.map((c) => ({ value: String(c.id), label: c.nombre }))]} />
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1.5 block">Tipo</Label>
+                      <Controller
+                        control={control}
+                        name="tipo"
+                        render={({ field }) => (
+                          <CustomSelect value={field.value} onChange={field.onChange}
+                            options={[{ value: "UNIDAD", label: "Por unidad" }, { value: "GRANEL", label: "A granel" }]} />
+                        )}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs mb-1.5 block">Proveedor <span className="text-muted-foreground">(opcional)</span></Label>
+                      <div className="relative">
+                        <Input
+                          {...register("proveedor")}
+                          onChange={(e) => { setValue("proveedor", e.target.value, { shouldDirty: true }); setProveedorOpen(true); }}
+                          onFocus={() => setProveedorOpen(true)}
+                          onBlur={() => setTimeout(() => setProveedorOpen(false), 150)}
+                          placeholder="Escribe o selecciona un proveedor..."
+                        />
+                        {proveedorOpen && suplidores.filter((s) => s.nombre.toLowerCase().includes((watchedProveedorValue ?? "").toLowerCase())).length > 0 && (
+                          <div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+                            {suplidores
+                              .filter((s) => s.nombre.toLowerCase().includes((watchedProveedorValue ?? "").toLowerCase()))
+                              .map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  onMouseDown={() => { setValue("proveedor", s.nombre, { shouldDirty: true }); setProveedorOpen(false); }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors",
+                                    watchedProveedorValue === s.nombre && "bg-accent font-medium"
+                                  )}
+                                >
+                                  {s.nombre}
+                                </button>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Precio venta (RD$) *</Label>
-                    <Input
+                </TabsContent>
+
+                <TabsContent value="precios" className="space-y-4 mt-0">
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      label="Precio costo (RD$)"
                       type="number"
-                      value={form.precio_venta}
-                      onChange={(e) => { f("precio_venta")(e); setFormErrors((p) => ({ ...p, precio_venta: "" })); }}
                       placeholder="0.00"
                       step="0.01"
-                      className={formErrors.precio_venta ? "border-red-400 focus-visible:ring-red-300" : ""}
+                      {...register("precio_costo")}
                     />
-                    {formErrors.precio_venta && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{formErrors.precio_venta}</p>}
+                    <FormField
+                      label="Precio venta (RD$)"
+                      required
+                      type="number"
+                      placeholder="0.00"
+                      step="0.01"
+                      error={errors.precio_venta?.message}
+                      {...register("precio_venta")}
+                    />
                   </div>
-                </div>
 
-                {margen !== null && (
-                  <div className={cn(
-                    "rounded-xl px-4 py-3 flex items-center justify-between text-sm font-medium border",
-                    margen >= 15
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900"
-                      : "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900"
-                  )}>
-                    <span>Margen: <strong>{margen.toFixed(1)}%</strong></span>
-                    <span>Ganancia: <strong>{formatCurrency(Number(form.precio_venta) - Number(form.precio_costo))}</strong></span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Unidad de medida</Label>
-                    <CustomSelect value={form.unidad_medida} onChange={(v) => setForm((p) => ({ ...p, unidad_medida: v }))}
-                      options={UNIDADES.map((u) => ({ value: u, label: u }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Unidades por caja</Label>
-                    <Input type="number" min="1" value={form.unidades_por_caja} onChange={f("unidades_por_caja")} placeholder="Ej: 12" />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Stock actual</Label>
-                    <Input type="number" value={form.stock_actual} onChange={f("stock_actual")} step="0.001" />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Stock mínimo</Label>
-                    <Input type="number" value={form.stock_minimo} onChange={f("stock_minimo")} step="0.001" />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">ITBIS (18%)</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Activar si el producto está gravado</p>
-                  </div>
-                  <Switch
-                    checked={!form.itbis_exento}
-                    onCheckedChange={(v) => setForm((p) => ({ ...p, itbis_exento: !v }))}
-                  />
-                </div>
-
-                <div className="rounded-xl border border-dashed border-rose-200 dark:border-rose-800 p-4 space-y-3 bg-rose-50/30 dark:bg-rose-950/10">
-                  <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Precio de oferta (opcional)</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <Label className="text-[10px] mb-1 block">Precio (RD$)</Label>
-                      <Input type="number" value={form.precio_oferta} onChange={f("precio_oferta")} placeholder="0.00" step="0.01" className="border-rose-200" />
+                  {margen !== null && (
+                    <div className={cn(
+                      "rounded-xl px-4 py-3 flex items-center justify-between text-sm font-medium border",
+                      margen >= 15
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900"
+                        : "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900"
+                    )}>
+                      <span>Margen: <strong>{margen.toFixed(1)}%</strong></span>
+                      <span>Ganancia: <strong>{formatCurrency(Number(watchedPrecioVenta) - Number(watchedPrecioCosto))}</strong></span>
                     </div>
-                    <div>
-                      <Label className="text-[10px] mb-1 block">Desde</Label>
-                      <DatePicker value={form.oferta_inicio} onChange={(v) => setForm((p) => ({ ...p, oferta_inicio: v }))} placeholder="Inicio oferta" className="w-full border-rose-200" />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] mb-1 block">Hasta</Label>
-                      <DatePicker value={form.oferta_fin} onChange={(v) => setForm((p) => ({ ...p, oferta_fin: v }))} placeholder="Fin oferta" className="w-full border-rose-200" />
-                    </div>
-                  </div>
-                  {form.precio_oferta && form.precio_venta && (
-                    <p className="text-xs text-rose-600 font-semibold">
-                      Descuento: {(((Number(form.precio_venta) - Number(form.precio_oferta)) / Number(form.precio_venta)) * 100).toFixed(1)}% off
-                    </p>
                   )}
-                </div>
-              </TabsContent>
 
-              <TabsContent value="detalles" className="space-y-4 mt-0">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Label className="text-xs">Fecha de vencimiento</Label>
-                    <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
-                      <input type="checkbox" checked={form.sin_vencimiento}
-                        onChange={(e) => setForm((p) => ({ ...p, sin_vencimiento: e.target.checked, fecha_vencimiento: e.target.checked ? "" : p.fecha_vencimiento }))}
-                        className="w-3.5 h-3.5 accent-brand-600" />
-                      No aplica
-                    </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1.5 block">Unidad de medida</Label>
+                      <Controller
+                        control={control}
+                        name="unidad_medida"
+                        render={({ field }) => (
+                          <CustomSelect value={field.value} onChange={field.onChange}
+                            options={UNIDADES.map((u) => ({ value: u, label: u }))} />
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      label="Unidades por caja"
+                      type="number"
+                      min="1"
+                      placeholder="Ej: 12"
+                      {...register("unidades_por_caja")}
+                    />
+                    <FormField
+                      label="Stock actual"
+                      type="number"
+                      step="0.001"
+                      error={errors.stock_actual?.message}
+                      {...register("stock_actual")}
+                    />
+                    <FormField
+                      label="Stock mínimo"
+                      type="number"
+                      step="0.001"
+                      error={errors.stock_minimo?.message}
+                      {...register("stock_minimo")}
+                    />
                   </div>
-                  <DatePicker value={form.fecha_vencimiento} onChange={(v) => setForm((p) => ({ ...p, fecha_vencimiento: v }))} placeholder="Seleccionar fecha" disabled={form.sin_vencimiento} className="w-full" />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Notas internas</Label>
-                  <textarea
-                    value={form.notas}
-                    onChange={f("notas")}
-                    rows={4}
-                    placeholder="Observaciones internas (opcional)..."
-                    className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
 
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setSheetOpen(false)} className="flex-1">Cancelar</Button>
-            <Button onClick={guardar} disabled={guardando} className="flex-1 gap-2">
-              {guardando
-                ? <><span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Guardando...</>
-                : <><Check size={14} /> Guardar</>
-              }
-            </Button>
-          </SheetFooter>
+                  <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">ITBIS (18%)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Activar si el producto está gravado</p>
+                    </div>
+                    <Controller
+                      control={control}
+                      name="itbis_exento"
+                      render={({ field }) => (
+                        <Switch checked={!field.value} onCheckedChange={(v) => field.onChange(!v)} />
+                      )}
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-dashed border-rose-200 dark:border-rose-800 p-4 space-y-3 bg-rose-50/30 dark:bg-rose-950/10">
+                    <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Precio de oferta (opcional)</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-[10px] mb-1 block">Precio (RD$)</Label>
+                        <Input type="number" {...register("precio_oferta")} placeholder="0.00" step="0.01" className="border-rose-200" />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] mb-1 block">Desde</Label>
+                        <Controller
+                          control={control}
+                          name="oferta_inicio"
+                          render={({ field }) => (
+                            <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="Inicio oferta" className="w-full border-rose-200" />
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] mb-1 block">Hasta</Label>
+                        <Controller
+                          control={control}
+                          name="oferta_fin"
+                          render={({ field }) => (
+                            <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="Fin oferta" className="w-full border-rose-200" />
+                          )}
+                        />
+                        {errors.oferta_fin && (
+                          <p className="text-xs text-destructive mt-1">{errors.oferta_fin.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    {watchedPrecioOferta && watchedPrecioVenta && (
+                      <p className="text-xs text-rose-600 font-semibold">
+                        Descuento: {(((Number(watchedPrecioVenta) - Number(watchedPrecioOferta)) / Number(watchedPrecioVenta)) * 100).toFixed(1)}% off
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="detalles" className="space-y-4 mt-0">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs">Fecha de vencimiento</Label>
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+                        <Controller
+                          control={control}
+                          name="sin_vencimiento"
+                          render={({ field }) => (
+                            <input type="checkbox" checked={field.value}
+                              onChange={(e) => {
+                                field.onChange(e.target.checked);
+                                if (e.target.checked) setValue("fecha_vencimiento", "");
+                              }}
+                              className="w-3.5 h-3.5 accent-brand-600" />
+                          )}
+                        />
+                        No aplica
+                      </label>
+                    </div>
+                    <Controller
+                      control={control}
+                      name="fecha_vencimiento"
+                      render={({ field }) => (
+                        <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="Seleccionar fecha" disabled={watchedSinVencimiento} className="w-full" />
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Notas internas</Label>
+                    <textarea
+                      {...register("notas")}
+                      rows={4}
+                      placeholder="Observaciones internas (opcional)..."
+                      className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            <SheetFooter>
+              <Button type="button" variant="outline" onClick={() => setSheetOpen(false)} className="flex-1">Cancelar</Button>
+              <Button type="submit" disabled={guardando} className="flex-1 gap-2">
+                {guardando
+                  ? <><span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Guardando...</>
+                  : <><Check size={14} /> Guardar</>
+                }
+              </Button>
+            </SheetFooter>
+          </form>
         </SheetContent>
       </Sheet>
     </div>
