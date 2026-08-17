@@ -47,14 +47,22 @@ interface Stats {
   ticket_promedio: number;
 }
 
+const CHART_COLORS = {
+  1: "var(--color-chart-1, #6366f1)",
+  2: "var(--color-chart-2, #10b981)",
+  3: "var(--color-chart-3, #f59e0b)",
+  4: "var(--color-chart-4, #ef4444)",
+  5: "var(--color-chart-5, #8b5cf6)",
+} as const;
+
 const METODO_COLORS: Record<string, string> = {
-  EFECTIVO: "#6366f1",
-  TARJETA: "#10b981",
-  TRANSFERENCIA: "#f59e0b",
-  FIADO: "#ef4444",
+  EFECTIVO: CHART_COLORS[1],
+  TARJETA: CHART_COLORS[2],
+  TRANSFERENCIA: CHART_COLORS[3],
+  FIADO: CHART_COLORS[4],
 };
 
-const PIE_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+const PIE_COLORS = [CHART_COLORS[1], CHART_COLORS[2], CHART_COLORS[3], CHART_COLORS[4], CHART_COLORS[5]];
 
 interface KpiConfig {
   icon: React.ElementType;

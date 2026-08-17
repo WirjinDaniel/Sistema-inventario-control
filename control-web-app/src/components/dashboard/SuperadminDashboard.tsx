@@ -44,7 +44,15 @@ interface VentasPorColmado {
   tickets: number;
 }
 
-const BAR_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
+const BAR_COLORS = [
+  'var(--color-chart-1, #6366f1)',
+  'var(--color-chart-2, #10b981)',
+  'var(--color-chart-3, #f59e0b)',
+  'var(--color-chart-4, #ef4444)',
+  'var(--color-chart-5, #8b5cf6)',
+  'var(--color-chart-6, #06b6d4)',
+  'var(--color-chart-7, #f97316)',
+];
 
 function fmt(n: number) {
   if (n >= 1000000) return `RD$${(n / 1000000).toFixed(1)}M`;

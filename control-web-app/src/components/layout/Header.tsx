@@ -23,7 +23,7 @@ export default function Header() {
   }
 
   return (
-    <header className="h-14 bg-[#1a2d72] flex items-center px-4 gap-3 shrink-0 z-30 shadow-lg">
+    <header className="h-14 bg-navy flex items-center px-4 gap-3 shrink-0 z-30 shadow-lg">
       {/* Logo + branding */}
       <div className="flex items-center gap-2.5 shrink-0">
         <div className="w-8 h-8 rounded-lg bg-white/20 border border-white/10 flex items-center justify-center shrink-0">
