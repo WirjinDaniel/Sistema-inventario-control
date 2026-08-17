@@ -59,7 +59,7 @@ export default function LoginPage() {
 
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-indigo-500/40 mb-4 transition-transform duration-300 hover:scale-105">
+            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-indigo-500/40 mb-4 transition-transform duration-300 hover:scale-105">
               <ShoppingCart size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Colmado POS</h1>
@@ -136,7 +136,7 @@ export default function LoginPage() {
             {/* Botón */}
             <button type="submit" disabled={loading}
               className="relative mt-2 w-full py-3.5 rounded-xl font-bold text-sm text-white overflow-hidden
-                bg-gradient-to-r from-indigo-600 to-violet-600
+                bg-linear-to-r from-indigo-600 to-violet-600
                 hover:from-indigo-500 hover:to-violet-500
                 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed
                 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50
