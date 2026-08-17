@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import { TrendingDown, AlertTriangle, Clock, Check, Banknote, Building2, CreditCard } from "lucide-react";
@@ -18,6 +21,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
 
+const pagoSchema = z.object({
+  monto: z.string().min(1, "Requerido").refine((v) => Number(v) > 0, "Monto inválido"),
+  metodo: z.enum(["EFECTIVO", "TRANSFERENCIA", "CHEQUE"]),
+  referencia: z.string().optional(),
+  nota: z.string().optional(),
+});
+type PagoFormData = z.infer<typeof pagoSchema>;
+
 const METODO_CONFIG: Record<PagoSuplidor["metodo"], { label: string; icon: React.ElementType }> = {
   EFECTIVO:      { label: "Efectivo",      icon: Banknote },
   TRANSFERENCIA: { label: "Transferencia", icon: Building2 },
@@ -30,8 +41,6 @@ const ESTADO_CONFIG = {
   CANCELADA: { label: "Cancelada", variant: "success" as const },
 };
 
-interface PagoForm { monto: string; metodo: PagoSuplidor["metodo"]; referencia: string; nota: string; }
-const PAGO_EMPTY: PagoForm = { monto: "", metodo: "EFECTIVO", referencia: "", nota: "" };
 
 export default function CuentasPorPagarPage() {
   const { esAdmin, esSuperadmin } = useAuthStore();
@@ -39,8 +48,11 @@ export default function CuentasPorPagarPage() {
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState("PENDIENTE");
   const [pagoModal, setPagoModal] = useState<OrdenCompra | null>(null);
-  const [pago, setPago] = useState<PagoForm>(PAGO_EMPTY);
-  const [guardando, setGuardando] = useState(false);
+  const {
+    register: regPago, handleSubmit: handlePago, watch: watchPago,
+    setValue: setPagoVal, reset: resetPago, formState: { isSubmitting: guardando },
+  } = useForm<PagoFormData>({ resolver: zodResolver(pagoSchema), defaultValues: { monto: "", metodo: "EFECTIVO", referencia: "", nota: "" } });
+  const metodoPago = watchPago("metodo");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -55,17 +67,14 @@ export default function CuentasPorPagarPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  async function registrarPago() {
+  const registrarPago = handlePago(async (data) => {
     if (!pagoModal) return;
-    if (!pago.monto || Number(pago.monto) <= 0) return toast.error("Monto inválido");
-    setGuardando(true);
     try {
-      await api.post("/compras/pagos/", { orden: pagoModal.id, ...pago });
-      toast.success(`Pago de ${formatCurrency(Number(pago.monto))} registrado`);
-      setPagoModal(null); setPago(PAGO_EMPTY); cargar();
+      await api.post("/compras/pagos/", { orden: pagoModal.id, ...data });
+      toast.success(`Pago de ${formatCurrency(Number(data.monto))} registrado`);
+      setPagoModal(null); resetPago(); cargar();
     } catch { toast.error("Error al registrar el pago"); }
-    setGuardando(false);
-  }
+  });
 
   const totalPendiente = ordenes
     .filter((o) => o.estado !== "CANCELADA")
@@ -181,7 +190,7 @@ export default function CuentasPorPagarPage() {
                         <Button
                           size="sm" variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => { setPagoModal(o); setPago(PAGO_EMPTY); }}
+                          onClick={() => { setPagoModal(o); resetPago({ monto: "", metodo: "EFECTIVO", referencia: "", nota: "" }); }}
                         >
                           Pagar
                         </Button>
@@ -202,19 +211,19 @@ export default function CuentasPorPagarPage() {
             <DialogTitle>Registrar pago</DialogTitle>
           </DialogHeader>
           {pagoModal && (
-            <div className="space-y-4 py-2">
+            <form onSubmit={registrarPago} className="space-y-4 py-2">
               <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm">
                 <p className="font-semibold text-foreground">{pagoModal.suplidor_nombre}</p>
                 <p className="text-muted-foreground mt-0.5">Balance: <span className="font-bold tabular-nums text-foreground">{formatCurrency(Number(pagoModal.balance_pendiente))}</span></p>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Monto (RD$)</Label>
+                <Label className="text-xs font-medium" htmlFor="monto-pago">Monto (RD$)</Label>
                 <Input
-                  type="number" step="0.01" autoFocus
-                  value={pago.monto}
-                  onChange={(e) => setPago((p) => ({ ...p, monto: e.target.value }))}
+                  id="monto-pago" type="number" step="0.01" autoFocus
                   className="text-center text-xl font-bold h-12 tabular-nums"
                   placeholder="0.00"
+                  aria-required="true"
+                  {...regPago("monto")}
                 />
               </div>
               <div className="space-y-1.5">
@@ -223,10 +232,10 @@ export default function CuentasPorPagarPage() {
                   {(Object.entries(METODO_CONFIG) as [PagoSuplidor["metodo"], (typeof METODO_CONFIG)[PagoSuplidor["metodo"]]][]).map(([k, v]) => (
                     <button
                       key={k} type="button"
-                      onClick={() => setPago((p) => ({ ...p, metodo: k }))}
+                      onClick={() => setPagoVal("metodo", k)}
                       className={cn(
                         "flex flex-col items-center gap-1 py-2.5 rounded-lg border text-xs font-medium transition-all",
-                        pago.metodo === k
+                        metodoPago === k
                           ? "border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300"
                           : "border-border text-muted-foreground hover:text-foreground"
                       )}
@@ -237,32 +246,24 @@ export default function CuentasPorPagarPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Referencia</Label>
-                <Input
-                  value={pago.referencia}
-                  onChange={(e) => setPago((p) => ({ ...p, referencia: e.target.value }))}
-                  placeholder="N° cheque, transferencia..."
-                />
+                <Label className="text-xs font-medium" htmlFor="referencia-pago">Referencia</Label>
+                <Input id="referencia-pago" placeholder="N° cheque, transferencia..." {...regPago("referencia")} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Nota (opcional)</Label>
-                <Input
-                  value={pago.nota}
-                  onChange={(e) => setPago((p) => ({ ...p, nota: e.target.value }))}
-                  placeholder="Observaciones..."
-                />
+                <Label className="text-xs font-medium" htmlFor="nota-pago">Nota (opcional)</Label>
+                <Input id="nota-pago" placeholder="Observaciones..." {...regPago("nota")} />
               </div>
-            </div>
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={() => setPagoModal(null)}>Cancelar</Button>
+                <Button type="submit" disabled={guardando} className="gap-2">
+                  {guardando
+                    ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                    : <Check size={14} />}
+                  Confirmar pago
+                </Button>
+              </DialogFooter>
+            </form>
           )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPagoModal(null)}>Cancelar</Button>
-            <Button onClick={registrarPago} disabled={guardando} className="gap-2">
-              {guardando
-                ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                : <Check size={14} />}
-              Confirmar pago
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

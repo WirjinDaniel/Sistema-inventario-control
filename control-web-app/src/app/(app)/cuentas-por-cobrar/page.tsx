@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import { Wallet, AlertTriangle, Clock, Check } from "lucide-react";
@@ -15,6 +18,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
+
+const abonoSchema = z.object({
+  monto: z.string().min(1, "Requerido").refine((v) => Number(v) > 0, "Monto inválido"),
+  nota: z.string().optional(),
+});
+type AbonoForm = z.infer<typeof abonoSchema>;
 
 interface AgingCliente {
   id: number; nombre: string; telefono: string;
@@ -35,9 +44,11 @@ export default function CuentasPorCobrarPage() {
   const [aging, setAging] = useState<AgingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [abonoModal, setAbonoModal] = useState<AgingCliente | null>(null);
-  const [montoAbono, setMontoAbono] = useState("");
-  const [notaAbono, setNotaAbono] = useState("");
-  const [guardando, setGuardando] = useState(false);
+  const {
+    register: regAbono, handleSubmit: handleAbono, watch: watchAbono,
+    reset: resetAbono, formState: { isSubmitting: guardando },
+  } = useForm<AbonoForm>({ resolver: zodResolver(abonoSchema), defaultValues: { monto: "", nota: "" } });
+  const montoAbono = watchAbono("monto") ?? "";
 
   async function cargar() {
     setLoading(true);
@@ -50,18 +61,15 @@ export default function CuentasPorCobrarPage() {
 
   useEffect(() => { cargar(); }, []);
 
-  async function registrarAbono() {
+  const registrarAbono = handleAbono(async (data) => {
     if (!abonoModal) return;
-    if (!montoAbono || Number(montoAbono) <= 0) return toast.error("Monto inválido");
-    setGuardando(true);
     try {
-      await api.post("/clientes/abonos/", { cliente: abonoModal.id, monto: montoAbono, nota: notaAbono });
-      toast.success(`Abono de ${formatCurrency(Number(montoAbono))} registrado`);
-      setAbonoModal(null); setMontoAbono(""); setNotaAbono("");
+      await api.post("/clientes/abonos/", { cliente: abonoModal.id, monto: data.monto, nota: data.nota });
+      toast.success(`Abono de ${formatCurrency(Number(data.monto))} registrado`);
+      setAbonoModal(null); resetAbono({ monto: "", nota: "" });
       cargar();
     } catch { toast.error("Error al registrar el abono"); }
-    setGuardando(false);
-  }
+  });
 
   const buckets = aging?.buckets ?? {};
   const totalClientes = Object.values(buckets).reduce((s, b) => s + b.clientes.length, 0);
@@ -144,7 +152,7 @@ export default function CuentasPorCobrarPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs"
-                            onClick={() => { setAbonoModal(c); setMontoAbono(""); setNotaAbono(""); }}
+                            onClick={() => { setAbonoModal(c); resetAbono({ monto: "", nota: "" }); }}
                           >
                             Abonar
                           </Button>
@@ -166,40 +174,41 @@ export default function CuentasPorCobrarPage() {
             <DialogTitle>Registrar abono</DialogTitle>
           </DialogHeader>
           {abonoModal && (
-            <div className="space-y-4 py-2">
+            <form onSubmit={registrarAbono} className="space-y-4 py-2">
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
                 <p className="font-semibold text-amber-800 dark:text-amber-300">{abonoModal.nombre}</p>
                 <p className="text-amber-600 dark:text-amber-400 mt-0.5">Saldo: <span className="font-bold tabular-nums">{formatCurrency(abonoModal.saldo_deuda)}</span></p>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Monto (RD$)</Label>
+                <Label className="text-xs font-medium" htmlFor="monto-abono">Monto (RD$)</Label>
                 <Input
-                  type="number" step="0.01" autoFocus
-                  value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)}
+                  id="monto-abono" type="number" step="0.01" autoFocus
                   className="text-center text-xl font-bold h-12 tabular-nums"
                   placeholder="0.00"
+                  aria-required="true"
+                  {...regAbono("monto")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Nota (opcional)</Label>
-                <Input value={notaAbono} onChange={(e) => setNotaAbono(e.target.value)} placeholder="Ej: Pago parcial" />
+                <Label className="text-xs font-medium" htmlFor="nota-abono">Nota (opcional)</Label>
+                <Input id="nota-abono" placeholder="Ej: Pago parcial" {...regAbono("nota")} />
               </div>
               {montoAbono && Number(montoAbono) >= abonoModal.saldo_deuda && (
                 <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
                   <Check size={13} /> Este abono cancela la deuda completa
                 </div>
               )}
-            </div>
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={() => setAbonoModal(null)}>Cancelar</Button>
+                <Button type="submit" disabled={guardando} className="gap-2">
+                  {guardando
+                    ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                    : <Check size={14} />}
+                  Confirmar
+                </Button>
+              </DialogFooter>
+            </form>
           )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setAbonoModal(null)}>Cancelar</Button>
-            <Button onClick={registrarAbono} disabled={guardando} className="gap-2">
-              {guardando
-                ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                : <Check size={14} />}
-              Confirmar
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

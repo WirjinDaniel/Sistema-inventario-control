@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -14,6 +17,13 @@ import type { OrdenCompra, Suplidor, Producto } from '@/types';
 
 const fmt = (v: string | number) =>
   `RD$${Number(v).toLocaleString('es-DO', { minimumFractionDigits: 2 })}`;
+
+const recepcionSchema = z.object({
+  suplidor_id: z.string().optional(),
+  numero_factura: z.string().optional(),
+  notas: z.string().optional(),
+});
+type RecepcionForm = z.infer<typeof recepcionSchema>;
 
 const inputCls = 'border border-slate-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white';
 
@@ -33,11 +43,12 @@ function RecepcionContent() {
   const [orden, setOrden] = useState<OrdenCompra | null>(null);
   const [suplidores, setSuplidores] = useState<Suplidor[]>([]);
   const [lineas, setLineas] = useState<LineaRecepcion[]>([]);
-  const [suplidorId, setSuplidorId] = useState('');
-  const [numeroFactura, setNumeroFactura] = useState('');
-  const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const {
+    register: regRec, handleSubmit: handleRec, watch: watchRec,
+    setValue: setRecVal, formState: { isSubmitting: guardando },
+  } = useForm<RecepcionForm>({ resolver: zodResolver(recepcionSchema), defaultValues: { suplidor_id: '', numero_factura: '', notas: '' } });
+  const suplidorId = watchRec('suplidor_id') ?? '';
 
   // Para recepción directa (sin orden previa)
   const [modoDirecto, setModoDirecto] = useState(!ordenId);
@@ -49,8 +60,8 @@ function RecepcionContent() {
     try {
       const { data } = await api.get(`/compras/ordenes/${id}/`);
       setOrden(data);
-      setSuplidorId(String(data.suplidor));
-      setNumeroFactura(data.numero_factura ?? '');
+      setRecVal('suplidor_id', String(data.suplidor));
+      setRecVal('numero_factura', data.numero_factura ?? '');
       setLineas((data.items ?? []).map((item: OrdenCompra['items'][0]) => ({
         producto_id: String(item.producto),
         producto_nombre: item.producto_nombre,
@@ -85,20 +96,17 @@ function RecepcionContent() {
     setResultsProd(p => ({ ...p, [idx]: [] }));
   }
 
-  async function confirmarRecepcion() {
+  const confirmarRecepcion = handleRec(async (data) => {
     const lineasValidas = lineas.filter(l => l.producto_id && Number(l.cantidad_recibida) > 0);
     if (!lineasValidas.length) return toast.error('Ingresa al menos un producto con cantidad > 0');
-    if (!suplidorId && modoDirecto) return toast.error('Selecciona un proveedor');
-    setGuardando(true);
+    if (!data.suplidor_id && modoDirecto) return toast.error('Selecciona un proveedor');
     try {
       if (ordenId && orden) {
-        // Recepción de orden existente → marcar como recibida + crear movimientos
         await api.patch(`/compras/ordenes/${orden.id}/`, {
           estado: 'RECIBIDA',
           fecha_recepcion: new Date().toISOString().split('T')[0],
-          notas,
+          notas: data.notas,
         });
-        // Crear movimientos de inventario (ENTRADA) por cada línea
         for (const linea of lineasValidas) {
           await api.post('/inventario/movimientos/', {
             producto: linea.producto_id,
@@ -110,11 +118,10 @@ function RecepcionContent() {
         }
         toast.success(`Recepción confirmada — stock actualizado para ${lineasValidas.length} producto(s)`);
       } else {
-        // Recepción directa → crear orden + movimientos
         const { data: nuevaOrden } = await api.post('/compras/ordenes/', {
-          suplidor: suplidorId,
-          numero_factura: numeroFactura,
-          notas,
+          suplidor: data.suplidor_id,
+          numero_factura: data.numero_factura,
+          notas: data.notas,
           items: lineasValidas.map(l => ({ producto: l.producto_id, cantidad: l.cantidad_recibida, precio_costo: l.precio_costo })),
         });
         await api.patch(`/compras/ordenes/${nuevaOrden.id}/`, { estado: 'RECIBIDA', fecha_recepcion: new Date().toISOString().split('T')[0] });
@@ -124,15 +131,14 @@ function RecepcionContent() {
             tipo: 'ENTRADA',
             cantidad: linea.cantidad_recibida,
             referencia: `Compra #${nuevaOrden.id}`,
-            nota: `Recepción directa — ${suplidores.find(s => String(s.id) === suplidorId)?.nombre ?? ''}`,
+            nota: `Recepción directa — ${suplidores.find(s => String(s.id) === data.suplidor_id)?.nombre ?? ''}`,
           });
         }
         toast.success('Mercancía recibida y stock actualizado');
       }
       router.push('/compras');
     } catch { toast.error('Error al confirmar la recepción'); }
-    setGuardando(false);
-  }
+  });
 
   const totalRecibido = lineas.reduce((s, l) => s + Number(l.cantidad_recibida || 0) * Number(l.precio_costo || 0), 0);
 
@@ -180,7 +186,7 @@ function RecepcionContent() {
                 {orden.suplidor_nombre}
               </div>
             ) : (
-              <select value={suplidorId} onChange={e => setSuplidorId(e.target.value)} className={`${inputCls} w-full`}>
+              <select className={`${inputCls} w-full`} {...regRec('suplidor_id')}>
                 <option value="">Seleccionar proveedor...</option>
                 {suplidores.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
@@ -188,9 +194,8 @@ function RecepcionContent() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">N° Factura</label>
-            <input value={numeroFactura} onChange={e => setNumeroFactura(e.target.value)}
-              placeholder="Ej: B15001234" className={`${inputCls} w-full`}
-              disabled={!!orden} />
+            <input placeholder="Ej: B15001234" className={`${inputCls} w-full`}
+              disabled={!!orden} {...regRec('numero_factura')} />
           </div>
         </div>
 
@@ -286,7 +291,7 @@ function RecepcionContent() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Notas</label>
-          <input value={notas} onChange={e => setNotas(e.target.value)} placeholder="Observaciones de la recepción" className={`${inputCls} w-full`} />
+          <input placeholder="Observaciones de la recepción" className={`${inputCls} w-full`} {...regRec('notas')} />
         </div>
 
         {/* Total */}

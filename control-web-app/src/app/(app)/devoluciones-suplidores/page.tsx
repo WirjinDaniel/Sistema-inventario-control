@@ -1,5 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Truck, Plus, Search, RefreshCw, Check, ChevronDown, ChevronUp,
   Package, DollarSign, AlertTriangle, FileText,
@@ -29,6 +32,12 @@ interface DevolucionSuplidor {
   items: { producto_nombre: string; cantidad: number; precio_unitario: string; motivo_item: string }[];
 }
 
+const devSchema = z.object({
+  motivo: z.string().min(1),
+  nota: z.string().optional(),
+});
+type DevForm = z.infer<typeof devSchema>;
+
 const MOTIVOS = [
   "Producto dañado al recibir", "Producto vencido", "Cantidad incorrecta",
   "Producto incorrecto", "Calidad no aceptable", "Otro",
@@ -57,9 +66,10 @@ export default function DevolucionesSuplidoresPage() {
   const [ordenId, setOrdenId] = useState<number | null>(null);
   const [ordenDetalle, setOrdenDetalle] = useState<OrdenCompra | null>(null);
   const [items, setItems] = useState<{ producto: number; producto_nombre: string; cantidad_max: number; cantidad: number; precio_unitario: string; motivo_item: string }[]>([]);
-  const [motivo, setMotivo] = useState(MOTIVOS[0]);
-  const [nota, setNota] = useState("");
-  const [guardando, setGuardando] = useState(false);
+  const {
+    register: regDev, handleSubmit: handleDev, reset: resetDev,
+    formState: { isSubmitting: guardando },
+  } = useForm<DevForm>({ resolver: zodResolver(devSchema), defaultValues: { motivo: MOTIVOS[0], nota: "" } });
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -106,17 +116,16 @@ export default function DevolucionesSuplidoresPage() {
 
   function resetModal() {
     setSuplidorId(null); setOrdenId(null); setOrdenDetalle(null);
-    setItems([]); setMotivo(MOTIVOS[0]); setNota(""); setOrdenes([]);
+    setItems([]); resetDev({ motivo: MOTIVOS[0], nota: "" }); setOrdenes([]);
   }
 
-  async function guardar() {
+  const guardar = handleDev(async (data) => {
     const itemsValidos = items.filter((it) => it.cantidad > 0);
     if (itemsValidos.length === 0) { toast.error("Selecciona al menos un producto a devolver"); return; }
-    setGuardando(true);
     try {
       await api.post("/devoluciones-suplidores/", {
         suplidor: suplidorId, orden_compra: ordenId,
-        motivo, nota,
+        motivo: data.motivo, nota: data.nota,
         items: itemsValidos.map((it) => ({
           producto: it.producto, cantidad: it.cantidad,
           precio_unitario: it.precio_unitario, motivo_item: it.motivo_item,
@@ -124,11 +133,11 @@ export default function DevolucionesSuplidoresPage() {
       });
       toast.success("Devolución a suplidor registrada");
       setModalOpen(false); resetModal(); cargar();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail ?? "Error al guardar");
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      toast.error(err?.response?.data?.detail ?? "Error al guardar");
     }
-    setGuardando(false);
-  }
+  });
 
   const stats = {
     total: devoluciones.length,
@@ -255,7 +264,7 @@ export default function DevolucionesSuplidoresPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <form onSubmit={guardar} className="space-y-4">
             {/* Suplidor */}
             <div>
               <Label className="text-xs mb-1.5 block">Suplidor</Label>
@@ -321,15 +330,17 @@ export default function DevolucionesSuplidoresPage() {
             {/* Motivo general */}
             <div>
               <Label className="text-xs mb-1.5 block">Motivo general</Label>
-              <select value={motivo} onChange={(e) => setMotivo(e.target.value)}
-                className="w-full h-8 text-sm border border-border rounded-md bg-background px-2">
+              <select
+                className="w-full h-8 text-sm border border-border rounded-md bg-background px-2"
+                {...regDev("motivo")}
+              >
                 {MOTIVOS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
 
             <div>
               <Label className="text-xs mb-1.5 block">Nota (opcional)</Label>
-              <Input value={nota} onChange={(e) => setNota(e.target.value)} className="h-8 text-sm" placeholder="Observaciones adicionales…" />
+              <Input className="h-8 text-sm" placeholder="Observaciones adicionales…" {...regDev("nota")} />
             </div>
 
             {totalCredito > 0 && (
@@ -338,15 +349,15 @@ export default function DevolucionesSuplidoresPage() {
                 <span className="text-lg font-bold text-amber-600 dark:text-amber-400 tabular-nums">{formatCurrency(totalCredito)}</span>
               </div>
             )}
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setModalOpen(false); resetModal(); }}>Cancelar</Button>
-            <Button size="sm" onClick={guardar} disabled={guardando || !suplidorId} className="gap-2">
-              {guardando ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
-              Registrar devolución
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" size="sm" onClick={() => { setModalOpen(false); resetModal(); }}>Cancelar</Button>
+              <Button type="submit" size="sm" disabled={guardando || !suplidorId} className="gap-2">
+                {guardando ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
+                Registrar devolución
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

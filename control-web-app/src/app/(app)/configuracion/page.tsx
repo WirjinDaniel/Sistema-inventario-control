@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Store, Bell, Shield, Save, MapPin, Phone, FileText,
   Percent, Package, Building2, Plus, X, Loader2, Lock,
@@ -18,13 +21,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { AccessDenied } from "@/components/shared/AccessDenied";
 
-interface Config {
-  nombre: string; ruc: string; telefono: string; direccion: string;
-  moneda: string; itbis: string; stock_minimo_default: string;
-  dias_vencimiento_alerta: string; limite_credito_default: string;
-}
+const configSchema = z.object({
+  nombre: z.string().optional(),
+  ruc: z.string().optional(),
+  telefono: z.string().optional(),
+  direccion: z.string().optional(),
+  moneda: z.string().optional(),
+  itbis: z.string().optional(),
+  stock_minimo_default: z.string().optional(),
+  dias_vencimiento_alerta: z.string().optional(),
+  limite_credito_default: z.string().optional(),
+});
+type ConfigForm = z.infer<typeof configSchema>;
 
-const CONFIG_EMPTY: Config = {
+const bancoSchema = z.object({
+  banco: z.string().min(1, "El nombre del banco es requerido"),
+  numero_cuenta: z.string().optional(),
+  titular: z.string().optional(),
+});
+type BancoFormData = z.infer<typeof bancoSchema>;
+
+const CONFIG_DEFAULTS: ConfigForm = {
   nombre: "", ruc: "", telefono: "", direccion: "",
   moneda: "RD$", itbis: "0", stock_minimo_default: "5",
   dias_vencimiento_alerta: "7", limite_credito_default: "500",
@@ -71,13 +88,18 @@ export default function ConfiguracionPage() {
   const isSuperadmin = esSuperadmin();
   const isAdmin = esAdmin();
 
-  const [config, setConfig] = useState<Config>(CONFIG_EMPTY);
-  const [guardando, setGuardando] = useState(false);
   const [seccion, setSeccion] = useState<Seccion>("negocio");
   const [bancos, setBancos] = useState<BancoCuenta[]>([]);
   const [loadingBancos, setLoadingBancos] = useState(false);
-  const [bancoForm, setBancoForm] = useState({ banco: "", numero_cuenta: "", titular: "" });
-  const [savingBanco, setSavingBanco] = useState(false);
+  const {
+    register: regConfig, handleSubmit: handleConfig, reset: resetConfig, watch: watchConfig,
+    formState: { isSubmitting: guardando },
+  } = useForm<ConfigForm>({ resolver: zodResolver(configSchema), defaultValues: CONFIG_DEFAULTS });
+  const cfg = watchConfig();
+  const {
+    register: regBanco, handleSubmit: handleBanco, reset: resetBanco,
+    formState: { errors: errBanco, isSubmitting: savingBanco },
+  } = useForm<BancoFormData>({ resolver: zodResolver(bancoSchema), defaultValues: { banco: "", numero_cuenta: "", titular: "" } });
 
   // Tabs disponibles según rol
   const SECCIONES: { key: Seccion; label: string; icon: React.ElementType; iconBg: string; iconColor: string }[] = [
@@ -99,60 +121,55 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     api.get("/usuarios/colmado/").then(({ data }) => {
-      setConfig((prev) => ({
-        ...prev,
+      resetConfig({
         nombre: data.nombre ?? "",
         ruc: data.ruc ?? "",
         telefono: data.telefono ?? "",
         direccion: data.direccion ?? "",
-        ...data.config_json,
-      }));
+        moneda: data.config_json?.moneda ?? "RD$",
+        itbis: data.config_json?.itbis ?? "0",
+        stock_minimo_default: data.config_json?.stock_minimo_default ?? "5",
+        dias_vencimiento_alerta: data.config_json?.dias_vencimiento_alerta ?? "7",
+        limite_credito_default: data.config_json?.limite_credito_default ?? "500",
+      });
     }).catch(() => {});
   }, []);
 
-  async function guardar() {
-    setGuardando(true);
+  const guardar = handleConfig(async (data) => {
     try {
       if (isSuperadmin) {
-        // SUPERADMIN puede guardar todo
-        if (!config.nombre) { toast.error("El nombre del negocio es requerido."); setGuardando(false); return; }
+        if (!data.nombre) { toast.error("El nombre del negocio es requerido."); return; }
         await api.patch("/usuarios/colmado/", {
-          nombre: config.nombre, ruc: config.ruc,
-          telefono: config.telefono, direccion: config.direccion,
+          nombre: data.nombre, ruc: data.ruc,
+          telefono: data.telefono, direccion: data.direccion,
           config_json: {
-            moneda: config.moneda, itbis: config.itbis,
-            stock_minimo_default: config.stock_minimo_default,
-            dias_vencimiento_alerta: config.dias_vencimiento_alerta,
-            limite_credito_default: config.limite_credito_default,
+            moneda: data.moneda, itbis: data.itbis,
+            stock_minimo_default: data.stock_minimo_default,
+            dias_vencimiento_alerta: data.dias_vencimiento_alerta,
+            limite_credito_default: data.limite_credito_default,
           },
         });
       } else {
-        // ADMIN puede guardar alertas y límite de crédito
         await api.patch("/usuarios/colmado/", {
           config_json: {
-            stock_minimo_default: config.stock_minimo_default,
-            dias_vencimiento_alerta: config.dias_vencimiento_alerta,
-            limite_credito_default: config.limite_credito_default,
+            stock_minimo_default: data.stock_minimo_default,
+            dias_vencimiento_alerta: data.dias_vencimiento_alerta,
+            limite_credito_default: data.limite_credito_default,
           },
         });
       }
       toast.success("Configuración guardada");
     } catch { toast.error("Error al guardar la configuración"); }
-    setGuardando(false);
-  }
+  });
 
-  async function agregarBanco(e: React.FormEvent) {
-    e.preventDefault();
-    if (!bancoForm.banco) { toast.error("El nombre del banco es requerido"); return; }
-    setSavingBanco(true);
+  const agregarBanco = handleBanco(async (data) => {
     try {
-      const r = await api.post("/ventas/bancos/", bancoForm);
+      const r = await api.post("/ventas/bancos/", data);
       setBancos((prev) => [...prev, r.data]);
-      setBancoForm({ banco: "", numero_cuenta: "", titular: "" });
+      resetBanco({ banco: "", numero_cuenta: "", titular: "" });
       toast.success("Banco agregado");
     } catch { toast.error("Error al agregar banco"); }
-    finally { setSavingBanco(false); }
-  }
+  });
 
   async function eliminarBanco(id: number) {
     try {
@@ -161,10 +178,6 @@ export default function ConfiguracionPage() {
       toast.success("Banco eliminado");
     } catch { toast.error("Error al eliminar banco"); }
   }
-
-  const setField = (k: keyof Config) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setConfig((p) => ({ ...p, [k]: e.target.value }));
 
   if (!isAdmin && !isSuperadmin) {
     return <AccessDenied mensaje="Solo los administradores pueden acceder a la configuración." />;
@@ -178,7 +191,7 @@ export default function ConfiguracionPage() {
         title="Configuración"
         description={isSuperadmin ? "Ajustes completos del sistema y del negocio" : "Ajustes de alertas del negocio"}
         actions={
-          <Button onClick={guardar} disabled={guardando} className="gap-2">
+          <Button onClick={() => guardar()} disabled={guardando} className="gap-2">
             {guardando
               ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
               : <Save size={14} />}
@@ -240,31 +253,30 @@ export default function ConfiguracionPage() {
                 <>
                   <div className="col-span-2 space-y-1.5">
                     <Label className="text-xs font-medium flex items-center gap-1.5"><Store size={11} /> Nombre del negocio *</Label>
-                    <Input value={config.nombre} onChange={setField("nombre")} placeholder="Mi Colmado El Éxito" />
+                    <Input placeholder="Mi Colmado El Éxito" {...regConfig("nombre")} />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium flex items-center gap-1.5"><FileText size={11} /> RNC / RUC</Label>
-                    <Input value={config.ruc} onChange={setField("ruc")} placeholder="1-23-45678-9" />
+                    <Input placeholder="1-23-45678-9" {...regConfig("ruc")} />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium flex items-center gap-1.5"><Phone size={11} /> Teléfono</Label>
-                    <Input value={config.telefono} onChange={setField("telefono")} placeholder="809-000-0000" />
+                    <Input placeholder="809-000-0000" {...regConfig("telefono")} />
                   </div>
                   <div className="col-span-2 space-y-1.5">
                     <Label className="text-xs font-medium flex items-center gap-1.5"><MapPin size={11} /> Dirección</Label>
-                    <Input value={config.direccion} onChange={setField("direccion")} placeholder="Calle Principal #1, Santo Domingo" />
+                    <Input placeholder="Calle Principal #1, Santo Domingo" {...regConfig("direccion")} />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium flex items-center gap-1.5"><Percent size={11} /> ITBIS (%)</Label>
-                    <Input type="number" value={config.itbis} onChange={setField("itbis")} placeholder="18" step="0.01" min="0" max="100" />
+                    <Input type="number" placeholder="18" step="0.01" min="0" max="100" {...regConfig("itbis")} />
                     <p className="text-xs text-muted-foreground">Usa 0 si no aplica ITBIS</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Moneda</Label>
                     <select
-                      value={config.moneda}
-                      onChange={setField("moneda")}
                       className="w-full h-9 px-3 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      {...regConfig("moneda")}
                     >
                       <option value="RD$">RD$ — Peso Dominicano</option>
                       <option value="US$">US$ — Dólar Americano</option>
@@ -273,12 +285,12 @@ export default function ConfiguracionPage() {
                 </>
               ) : (
                 <>
-                  <ReadonlyField label="Nombre del negocio" value={config.nombre} icon={Store} />
-                  <ReadonlyField label="RNC / RUC" value={config.ruc} icon={FileText} />
-                  <ReadonlyField label="Teléfono" value={config.telefono} icon={Phone} />
-                  <ReadonlyField label="Dirección" value={config.direccion} icon={MapPin} />
-                  <ReadonlyField label="ITBIS (%)" value={config.itbis ? `${config.itbis}%` : "0%"} icon={Percent} />
-                  <ReadonlyField label="Moneda" value={config.moneda} />
+                  <ReadonlyField label="Nombre del negocio" value={cfg.nombre ?? ""} icon={Store} />
+                  <ReadonlyField label="RNC / RUC" value={cfg.ruc ?? ""} icon={FileText} />
+                  <ReadonlyField label="Teléfono" value={cfg.telefono ?? ""} icon={Phone} />
+                  <ReadonlyField label="Dirección" value={cfg.direccion ?? ""} icon={MapPin} />
+                  <ReadonlyField label="ITBIS (%)" value={cfg.itbis ? `${cfg.itbis}%` : "0%"} icon={Percent} />
+                  <ReadonlyField label="Moneda" value={cfg.moneda ?? ""} />
                 </>
               )}
             </div>
@@ -306,8 +318,8 @@ export default function ConfiguracionPage() {
               desc="Cantidad mínima de unidades antes de generar alerta de reposición"
             >
               <Input
-                type="number" value={config.stock_minimo_default} onChange={setField("stock_minimo_default")}
-                min="0" placeholder="5" className="w-24 text-center font-bold"
+                type="number" min="0" placeholder="5" className="w-24 text-center font-bold"
+                {...regConfig("stock_minimo_default")}
               />
             </ConfigRow>
             <ConfigRow
@@ -318,8 +330,8 @@ export default function ConfiguracionPage() {
               desc="Alertar cuando un producto vence en menos de N días"
             >
               <Input
-                type="number" value={config.dias_vencimiento_alerta} onChange={setField("dias_vencimiento_alerta")}
-                min="1" placeholder="7" className="w-24 text-center font-bold"
+                type="number" min="1" placeholder="7" className="w-24 text-center font-bold"
+                {...regConfig("dias_vencimiento_alerta")}
               />
             </ConfigRow>
           </div>
@@ -338,8 +350,8 @@ export default function ConfiguracionPage() {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground font-medium">RD$</span>
                 <Input
-                  type="number" value={config.limite_credito_default} onChange={setField("limite_credito_default")}
-                  min="0" placeholder="500" className="w-28 text-center font-bold"
+                  type="number" min="0" placeholder="500" className="w-28 text-center font-bold"
+                  {...regConfig("limite_credito_default")}
                 />
               </div>
             </ConfigRow>
@@ -360,19 +372,17 @@ export default function ConfiguracionPage() {
             <form onSubmit={agregarBanco} className="grid grid-cols-3 gap-3 items-end">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Banco *</Label>
-                <Input placeholder="Banreservas" value={bancoForm.banco}
-                  onChange={(e) => setBancoForm((p) => ({ ...p, banco: e.target.value }))} />
+                <Input placeholder="Banreservas" aria-required="true" {...regBanco("banco")} />
+                {errBanco.banco && <p className="text-xs text-destructive mt-1">{errBanco.banco.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Últimos 4 dígitos</Label>
-                <Input placeholder="1234" maxLength={20} value={bancoForm.numero_cuenta}
-                  onChange={(e) => setBancoForm((p) => ({ ...p, numero_cuenta: e.target.value }))} />
+                <Input placeholder="1234" maxLength={20} {...regBanco("numero_cuenta")} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Titular</Label>
                 <div className="flex gap-2">
-                  <Input placeholder="Nombre titular" value={bancoForm.titular}
-                    onChange={(e) => setBancoForm((p) => ({ ...p, titular: e.target.value }))} />
+                  <Input placeholder="Nombre titular" {...regBanco("titular")} />
                   <Button type="submit" disabled={savingBanco} size="icon" className="shrink-0 h-9 w-9">
                     {savingBanco ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
                   </Button>

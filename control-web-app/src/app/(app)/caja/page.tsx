@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import type { SesionCaja } from "@/types";
@@ -19,6 +22,16 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
+
+const aperturaSchema = z.object({
+  efectivo_inicial: z.string().min(1, "Requerido").refine((v) => Number(v) >= 0, "Debe ser >= 0"),
+});
+const cierreSchema = z.object({
+  efectivo_declarado: z.string().min(1, "Ingresa el efectivo contado").refine((v) => !isNaN(Number(v)), "Valor inválido"),
+  nota_cierre: z.string().optional(),
+});
+type AperturaForm = z.infer<typeof aperturaSchema>;
+type CierreForm = z.infer<typeof cierreSchema>;
 
 interface ResumenVentas {
   efectivo: number; tarjeta: number;
@@ -39,10 +52,16 @@ export default function CajaPage() {
   const [resumen, setResumen] = useState<ResumenVentas | null>(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<"apertura" | "cierre" | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [efectivoInicial, setEfectivoInicial] = useState("");
-  const [efectivoDeclarado, setEfectivoDeclarado] = useState("");
-  const [notaCierre, setNotaCierre] = useState("");
+  const {
+    register: regAp, handleSubmit: handleAp, watch: watchAp,
+    setValue: setApVal, reset: resetAp, formState: { isSubmitting: submittingAp },
+  } = useForm<AperturaForm>({ resolver: zodResolver(aperturaSchema), defaultValues: { efectivo_inicial: "" } });
+  const {
+    register: regCi, handleSubmit: handleCi, watch: watchCi,
+    reset: resetCi, formState: { isSubmitting: submittingCi },
+  } = useForm<CierreForm>({ resolver: zodResolver(cierreSchema), defaultValues: { efectivo_declarado: "", nota_cierre: "" } });
+  const efectivoInicial = watchAp("efectivo_inicial") ?? "";
+  const efectivoDeclarado = watchCi("efectivo_declarado") ?? "";
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -79,31 +98,25 @@ export default function CajaPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  async function abrir() {
-    if (!efectivoInicial || Number(efectivoInicial) < 0) return toast.error("Ingresa el efectivo inicial");
-    setSubmitting(true);
+  const onAbrir = handleAp(async (data) => {
     try {
-      await api.post("/ventas/sesiones/", { efectivo_inicial: efectivoInicial });
+      await api.post("/ventas/sesiones/", { efectivo_inicial: data.efectivo_inicial });
       toast.success("Caja abierta");
-      setModal(null); setEfectivoInicial(""); cargar();
+      setModal(null); resetAp(); cargar();
     } catch { toast.error("Error al abrir la caja"); }
-    finally { setSubmitting(false); }
-  }
+  });
 
-  async function cerrar() {
+  const onCerrar = handleCi(async (data) => {
     if (!sesionActiva) return;
-    if (!efectivoDeclarado && efectivoDeclarado !== "0") return toast.error("Ingresa el efectivo contado");
-    setSubmitting(true);
     try {
       await api.post(`/ventas/sesiones/${sesionActiva.id}/cerrar/`, {
-        efectivo_final_declarado: efectivoDeclarado,
-        nota_cierre: notaCierre,
+        efectivo_final_declarado: data.efectivo_declarado,
+        nota_cierre: data.nota_cierre,
       });
       toast.success("Caja cerrada");
-      setModal(null); setEfectivoDeclarado(""); setNotaCierre(""); cargar();
+      setModal(null); resetCi(); cargar();
     } catch { toast.error("Error al cerrar la caja"); }
-    finally { setSubmitting(false); }
-  }
+  });
 
   const esperadoEnCaja = sesionActiva && resumen
     ? Number(sesionActiva.efectivo_inicial) + resumen.efectivo
@@ -266,37 +279,38 @@ export default function CajaPage() {
               Apertura de caja
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <form onSubmit={onAbrir} className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Efectivo en caja al abrir (RD$)</Label>
               <Input
                 type="number" min="0" step="0.01" autoFocus
-                value={efectivoInicial}
-                onChange={(e) => setEfectivoInicial(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && abrir()}
                 className="text-center text-2xl font-bold h-14 tabular-nums"
                 placeholder="0.00"
+                aria-required="true"
+                {...regAp("efectivo_inicial")}
               />
               <p className="text-xs text-muted-foreground text-center">Monto de cambio disponible al inicio</p>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[500, 1000, 2000, 3000, 5000, 10000].map((v) => (
                 <Button
-                  key={v} variant={Number(efectivoInicial) === v ? "default" : "outline"}
-                  size="sm" className="text-xs" onClick={() => setEfectivoInicial(String(v))}
+                  key={v} type="button"
+                  variant={Number(efectivoInicial) === v ? "default" : "outline"}
+                  size="sm" className="text-xs"
+                  onClick={() => setApVal("efectivo_inicial", String(v))}
                 >
                   RD${v.toLocaleString()}
                 </Button>
               ))}
             </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setModal(null); setEfectivoInicial(""); }}>Cancelar</Button>
-            <Button onClick={abrir} disabled={submitting} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-              {submitting ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg> : <LockKeyholeOpen size={14} />}
-              Abrir caja
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => { setModal(null); resetAp(); }}>Cancelar</Button>
+              <Button type="submit" disabled={submittingAp} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                {submittingAp ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg> : <LockKeyholeOpen size={14} />}
+                Abrir caja
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -312,7 +326,7 @@ export default function CajaPage() {
             </DialogTitle>
           </DialogHeader>
           {sesionActiva && (
-            <div className="space-y-4 py-2">
+            <form onSubmit={onCerrar} className="space-y-4 py-2">
               {/* Resumen del sistema */}
               <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm border border-border">
                 <div className="flex justify-between">
@@ -334,10 +348,10 @@ export default function CajaPage() {
                 <Label className="text-xs font-medium">Efectivo contado físicamente (RD$)</Label>
                 <Input
                   type="number" min="0" step="0.01" autoFocus
-                  value={efectivoDeclarado}
-                  onChange={(e) => setEfectivoDeclarado(e.target.value)}
                   className="text-center text-2xl font-bold h-14 tabular-nums"
                   placeholder="0.00"
+                  aria-required="true"
+                  {...regCi("efectivo_declarado")}
                 />
               </div>
 
@@ -366,19 +380,18 @@ export default function CajaPage() {
                   rows={2}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                   placeholder="Observaciones del turno..."
-                  value={notaCierre}
-                  onChange={(e) => setNotaCierre(e.target.value)}
+                  {...regCi("nota_cierre")}
                 />
               </div>
-            </div>
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
+                <Button type="submit" variant="destructive" disabled={submittingCi} className="gap-2">
+                  {submittingCi ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg> : <LockKeyhole size={14} />}
+                  Cerrar caja
+                </Button>
+              </DialogFooter>
+            </form>
           )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={cerrar} disabled={submitting} className="gap-2">
-              {submitting ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg> : <LockKeyhole size={14} />}
-              Cerrar caja
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
