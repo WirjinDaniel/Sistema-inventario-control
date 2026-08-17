@@ -1,5 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   RotateCcw, Search, Plus, Check, X, ChevronDown, ChevronUp,
   Package, AlertTriangle, RefreshCw, DollarSign,
@@ -37,6 +40,13 @@ interface Devolucion {
 }
 
 const MOTIVOS = ["Producto dañado", "Producto vencido", "Error en pedido", "Cliente insatisfecho", "Producto incorrecto", "Otro"];
+
+const devolucionSchema = z.object({
+  motivo: z.string().min(1),
+  metodo_devolucion: z.enum(["EFECTIVO", "CREDITO_CUENTA", "CAMBIO_PRODUCTO"]),
+  nota: z.string().optional(),
+});
+type DevolucionForm = z.infer<typeof devolucionSchema>;
 const METODOS = ["EFECTIVO", "CREDITO_CUENTA", "CAMBIO_PRODUCTO"];
 const METODO_LABELS: Record<string, string> = {
   EFECTIVO: "Efectivo", CREDITO_CUENTA: "Crédito en cuenta", CAMBIO_PRODUCTO: "Cambio de producto",
@@ -61,10 +71,10 @@ export default function DevolucionesPage() {
   const [buscandoVentas, setBuscandoVentas] = useState(false);
   const [ventaSeleccionada, setVentaSeleccionada] = useState<Venta | null>(null);
   const [itemsSeleccionados, setItemsSeleccionados] = useState<Record<number, number>>({});
-  const [motivo, setMotivo] = useState(MOTIVOS[0]);
-  const [metodoDevolucion, setMetodoDevolucion] = useState("EFECTIVO");
-  const [nota, setNota] = useState("");
   const [guardando, setGuardando] = useState(false);
+
+  const { register: regDev, handleSubmit: handleDev, reset: resetDev, formState: { errors: errDev } } =
+    useForm<DevolucionForm>({ resolver: zodResolver(devolucionSchema), defaultValues: { motivo: MOTIVOS[0], metodo_devolucion: "EFECTIVO", nota: "" } });
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -126,7 +136,7 @@ export default function DevolucionesPage() {
       }, 0)
     : 0;
 
-  async function guardarDevolucion() {
+  const onGuardarDevolucion = handleDev(async (data) => {
     if (!ventaSeleccionada) return;
     const items = ventaSeleccionada.items
       .filter((it) => (itemsSeleccionados[it.id] ?? 0) > 0)
@@ -135,8 +145,8 @@ export default function DevolucionesPage() {
     setGuardando(true);
     try {
       await api.post("/devoluciones/", {
-        venta: ventaSeleccionada.id, motivo, metodo_devolucion: metodoDevolucion,
-        nota, items,
+        venta: ventaSeleccionada.id, motivo: data.motivo,
+        metodo_devolucion: data.metodo_devolucion, nota: data.nota, items,
       });
       toast.success("Devolución registrada");
       setModalOpen(false);
@@ -147,12 +157,12 @@ export default function DevolucionesPage() {
       toast.error(msg ?? "Error al registrar devolución");
     }
     setGuardando(false);
-  }
+  });
 
   function resetModal() {
     setStep("buscar"); setBusqVenta(""); setVentas([]);
     setVentaSeleccionada(null); setItemsSeleccionados({});
-    setMotivo(MOTIVOS[0]); setMetodoDevolucion("EFECTIVO"); setNota("");
+    resetDev({ motivo: MOTIVOS[0], metodo_devolucion: "EFECTIVO", nota: "" });
   }
 
   const estadoBadge = (e: string): "success" | "warning" | "danger" =>
@@ -360,14 +370,14 @@ export default function DevolucionesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs mb-1.5 block">Motivo</Label>
-                  <select value={motivo} onChange={(e) => setMotivo(e.target.value)}
+                  <select {...regDev("motivo")}
                     className="w-full h-8 text-sm border border-border rounded-md bg-background px-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
                     {MOTIVOS.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Método devolución</Label>
-                  <select value={metodoDevolucion} onChange={(e) => setMetodoDevolucion(e.target.value)}
+                  <select {...regDev("metodo_devolucion")}
                     className="w-full h-8 text-sm border border-border rounded-md bg-background px-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
                     {METODOS.map((m) => <option key={m} value={m}>{METODO_LABELS[m]}</option>)}
                   </select>
@@ -375,7 +385,7 @@ export default function DevolucionesPage() {
               </div>
               <div>
                 <Label className="text-xs mb-1.5 block">Nota (opcional)</Label>
-                <Input value={nota} onChange={(e) => setNota(e.target.value)} className="h-8 text-sm" placeholder="Observaciones adicionales…" />
+                <Input className="h-8 text-sm" placeholder="Observaciones adicionales…" {...regDev("nota")} />
               </div>
 
               {totalDevolver > 0 && (
@@ -388,9 +398,9 @@ export default function DevolucionesPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setModalOpen(false); resetModal(); }}>Cancelar</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => { setModalOpen(false); resetModal(); }}>Cancelar</Button>
             {step === "form" && (
-              <Button size="sm" onClick={guardarDevolucion} disabled={guardando || totalDevolver === 0} className="gap-2">
+              <Button size="sm" onClick={onGuardarDevolucion} disabled={guardando || totalDevolver === 0} className="gap-2">
                 {guardando ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
                 Registrar devolución
               </Button>

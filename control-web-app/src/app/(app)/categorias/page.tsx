@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
@@ -34,6 +37,19 @@ const ICONOS_PRESET = [
 
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition';
 
+const catSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es requerido.'),
+  color: z.string(),
+  icono: z.string(),
+});
+type CatForm = z.infer<typeof catSchema>;
+
+const marcaSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es requerido.'),
+  pais_origen: z.string().optional(),
+});
+type MarcaForm = z.infer<typeof marcaSchema>;
+
 export default function CategoriasPage() {
   const { esAdmin, esSuperadmin, usuario } = useAuthStore();
   const [tab, setTab] = useState<'categorias' | 'marcas'>('categorias');
@@ -43,8 +59,11 @@ export default function CategoriasPage() {
   const [loadingCat, setLoadingCat] = useState(true);
   const [modalCat, setModalCat] = useState<'crear' | 'editar' | null>(null);
   const [editandoCat, setEditandoCat] = useState<Categoria | null>(null);
-  const [formCat, setFormCat] = useState({ nombre: '', color: '#6366f1', icono: 'package' });
   const [guardandoCat, setGuardandoCat] = useState(false);
+
+  const { register: regCat, handleSubmit: handleCat, watch: watchCat, setValue: setCatVal, reset: resetCat, formState: { errors: errCat } } =
+    useForm<CatForm>({ resolver: zodResolver(catSchema), defaultValues: { nombre: '', color: '#6366f1', icono: 'package' } });
+  const formCat = { color: watchCat('color'), icono: watchCat('icono'), nombre: watchCat('nombre') };
 
   const cargarCategorias = useCallback(async () => {
     setLoadingCat(true);
@@ -58,27 +77,26 @@ export default function CategoriasPage() {
   useEffect(() => { cargarCategorias(); }, [cargarCategorias]);
 
   function abrirCrearCat() {
-    setFormCat({ nombre: '', color: '#6366f1', icono: 'package' });
+    resetCat({ nombre: '', color: '#6366f1', icono: 'package' });
     setEditandoCat(null);
     setModalCat('crear');
   }
   function abrirEditarCat(c: Categoria) {
-    setFormCat({ nombre: c.nombre, color: c.color, icono: c.icono });
+    resetCat({ nombre: c.nombre, color: c.color, icono: c.icono });
     setEditandoCat(c);
     setModalCat('editar');
   }
-  async function guardarCat() {
-    if (!formCat.nombre.trim()) return toast.error('El nombre es requerido');
+  const onGuardarCat = handleCat(async (data) => {
     setGuardandoCat(true);
     try {
-      if (modalCat === 'crear') await api.post('/inventario/categorias/', formCat);
-      else await api.patch(`/inventario/categorias/${editandoCat!.id}/`, formCat);
+      if (modalCat === 'crear') await api.post('/inventario/categorias/', data);
+      else await api.patch(`/inventario/categorias/${editandoCat!.id}/`, data);
       toast.success(modalCat === 'crear' ? 'Categoría creada' : 'Categoría actualizada');
       setModalCat(null);
       cargarCategorias();
     } catch { toast.error('Error al guardar'); }
     setGuardandoCat(false);
-  }
+  });
   async function eliminarCat(c: Categoria) {
     if (!confirm(`¿Eliminar la categoría "${c.nombre}"?`)) return;
     try {
@@ -93,8 +111,10 @@ export default function CategoriasPage() {
   const [loadingMarca, setLoadingMarca] = useState(true);
   const [modalMarca, setModalMarca] = useState<'crear' | 'editar' | null>(null);
   const [editandoMarca, setEditandoMarca] = useState<Marca | null>(null);
-  const [formMarca, setFormMarca] = useState({ nombre: '', pais_origen: '' });
   const [guardandoMarca, setGuardandoMarca] = useState(false);
+
+  const { register: regMarca, handleSubmit: handleMarca, reset: resetMarca, formState: { errors: errMarca } } =
+    useForm<MarcaForm>({ resolver: zodResolver(marcaSchema), defaultValues: { nombre: '', pais_origen: '' } });
 
   const cargarMarcas = useCallback(async () => {
     setLoadingMarca(true);
@@ -108,27 +128,26 @@ export default function CategoriasPage() {
   useEffect(() => { if (tab === 'marcas') cargarMarcas(); }, [tab, cargarMarcas]);
 
   function abrirCrearMarca() {
-    setFormMarca({ nombre: '', pais_origen: '' });
+    resetMarca({ nombre: '', pais_origen: '' });
     setEditandoMarca(null);
     setModalMarca('crear');
   }
   function abrirEditarMarca(m: Marca) {
-    setFormMarca({ nombre: m.nombre, pais_origen: m.pais_origen });
+    resetMarca({ nombre: m.nombre, pais_origen: m.pais_origen });
     setEditandoMarca(m);
     setModalMarca('editar');
   }
-  async function guardarMarca() {
-    if (!formMarca.nombre.trim()) return toast.error('El nombre es requerido');
+  const onGuardarMarca = handleMarca(async (data) => {
     setGuardandoMarca(true);
     try {
-      if (modalMarca === 'crear') await api.post('/inventario/marcas/', formMarca);
-      else await api.patch(`/inventario/marcas/${editandoMarca!.id}/`, formMarca);
+      if (modalMarca === 'crear') await api.post('/inventario/marcas/', data);
+      else await api.patch(`/inventario/marcas/${editandoMarca!.id}/`, data);
       toast.success(modalMarca === 'crear' ? 'Marca creada' : 'Marca actualizada');
       setModalMarca(null);
       cargarMarcas();
     } catch { toast.error('Error al guardar'); }
     setGuardandoMarca(false);
-  }
+  });
   async function eliminarMarca(m: Marca) {
     if (!confirm(`¿Eliminar la marca "${m.nombre}"?`)) return;
     try {
@@ -286,22 +305,23 @@ export default function CategoriasPage() {
               <h2 className="font-bold text-slate-800">{modalCat === 'crear' ? 'Nueva categoría' : 'Editar categoría'}</h2>
               <button onClick={() => setModalCat(null)} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
             </div>
-            <div className="p-6 space-y-4">
+            <form onSubmit={onGuardarCat} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Nombre *</label>
                 <input className={inputCls} placeholder="Ej: Bebidas, Lácteos, Abarrotes..."
-                  value={formCat.nombre} onChange={e => setFormCat(f => ({ ...f, nombre: e.target.value }))} />
+                  aria-required="true" aria-invalid={!!errCat.nombre} {...regCat('nombre')} />
+                {errCat.nombre && <p role="alert" className="text-xs text-red-500 mt-1">{errCat.nombre.message}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Color</label>
                 <div className="flex flex-wrap gap-2">
                   {COLORES_PRESET.map(color => (
-                    <button key={color} onClick={() => setFormCat(f => ({ ...f, color }))}
+                    <button type="button" key={color} onClick={() => setCatVal('color', color, { shouldDirty: true })}
                       className={`w-8 h-8 rounded-lg transition-all ${formCat.color === color ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'hover:scale-105'}`}
                       style={{ backgroundColor: color }} />
                   ))}
                   <input type="color" value={formCat.color}
-                    onChange={e => setFormCat(f => ({ ...f, color: e.target.value }))}
+                    onChange={e => setCatVal('color', e.target.value, { shouldDirty: true })}
                     className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200" />
                 </div>
               </div>
@@ -309,14 +329,14 @@ export default function CategoriasPage() {
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Ícono (nombre Lucide)</label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {ICONOS_PRESET.map(ic => (
-                    <button key={ic} onClick={() => setFormCat(f => ({ ...f, icono: ic }))}
+                    <button type="button" key={ic} onClick={() => setCatVal('icono', ic, { shouldDirty: true })}
                       className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all ${formCat.icono === ic ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                       {ic}
                     </button>
                   ))}
                 </div>
                 <input className={inputCls} placeholder="O escribe un ícono lucide personalizado"
-                  value={formCat.icono} onChange={e => setFormCat(f => ({ ...f, icono: e.target.value }))} />
+                  {...regCat('icono')} />
               </div>
               {/* Preview */}
               <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
@@ -329,18 +349,18 @@ export default function CategoriasPage() {
                   <p className="text-xs text-slate-400">Icono: {formCat.icono}</p>
                 </div>
               </div>
-            </div>
-            <div className="flex gap-3 p-6 border-t border-slate-100">
-              <button onClick={() => setModalCat(null)}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition">
-                Cancelar
-              </button>
-              <button onClick={guardarCat} disabled={guardandoCat}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
-                {guardandoCat ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                Guardar
-              </button>
-            </div>
+              <div className="flex gap-3 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setModalCat(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={guardandoCat}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  {guardandoCat ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                  Guardar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -353,32 +373,32 @@ export default function CategoriasPage() {
               <h2 className="font-bold text-slate-800">{modalMarca === 'crear' ? 'Nueva marca' : 'Editar marca'}</h2>
               <button onClick={() => setModalMarca(null)} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
             </div>
-            <div className="p-6 space-y-4">
+            <form onSubmit={onGuardarMarca} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Nombre *</label>
                 <input className={inputCls} placeholder="Ej: Presidente, Selecto, Rica..."
-                  value={formMarca.nombre} onChange={e => setFormMarca(f => ({ ...f, nombre: e.target.value }))} />
+                  aria-required="true" aria-invalid={!!errMarca.nombre} {...regMarca('nombre')} />
+                {errMarca.nombre && <p role="alert" className="text-xs text-red-500 mt-1">{errMarca.nombre.message}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">País de origen</label>
                 <div className="flex items-center gap-2">
                   <Globe size={14} className="text-slate-400 shrink-0" />
-                  <input className={inputCls} placeholder="Ej: República Dominicana, EE.UU...."
-                    value={formMarca.pais_origen} onChange={e => setFormMarca(f => ({ ...f, pais_origen: e.target.value }))} />
+                  <input className={inputCls} placeholder="Ej: República Dominicana, EE.UU...." {...regMarca('pais_origen')} />
                 </div>
               </div>
-            </div>
-            <div className="flex gap-3 p-6 border-t border-slate-100">
-              <button onClick={() => setModalMarca(null)}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition">
-                Cancelar
-              </button>
-              <button onClick={guardarMarca} disabled={guardandoMarca}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
-                {guardandoMarca ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                Guardar
-              </button>
-            </div>
+              <div className="flex gap-3 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setModalMarca(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={guardandoMarca}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  {guardandoMarca ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                  Guardar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
