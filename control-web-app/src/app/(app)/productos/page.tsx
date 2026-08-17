@@ -98,12 +98,11 @@ export default function ProductosPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [modal, setModal] = useState<"crear" | "editar" | null>(null);
   const [editando, setEditando] = useState<Producto | null>(null);
-  const [guardando, setGuardando] = useState(false);
   const [proveedorOpen, setProveedorOpen] = useState(false);
 
   const {
     register, handleSubmit, control, watch, reset, setValue,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty, isSubmitting: guardando },
   } = useForm<FormData>({
     resolver: zodResolver(productoSchema),
     defaultValues: FORM_EMPTY,
@@ -163,7 +162,6 @@ export default function ProductosPage() {
   }
 
   const guardar = handleSubmit(async (data) => {
-    setGuardando(true);
     try {
       const payload = {
         ...data,
@@ -180,7 +178,6 @@ export default function ProductosPage() {
       toast.success(modal === "crear" ? "Producto creado" : "Producto actualizado");
       setSheetOpen(false); cargar();
     } catch { toast.error("Error al guardar el producto"); }
-    setGuardando(false);
   });
 
   const margen = watchedPrecioCosto && watchedPrecioVenta
@@ -200,23 +197,24 @@ export default function ProductosPage() {
 
   return (
     <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Productos</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+      <PageHeader
+        title="Productos"
+        description={
+          <span>
             {productos.length} productos
             {stockBajoCount > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 text-rose-500 font-semibold">
                 <AlertTriangle size={12} /> {stockBajoCount} con stock bajo
               </span>
             )}
-          </p>
-        </div>
-        <Button onClick={abrirCrear} className="gap-2">
-          <Plus size={15} /> Nuevo producto
-        </Button>
-      </div>
+          </span>
+        }
+        actions={
+          <Button onClick={abrirCrear} className="gap-2">
+            <Plus size={15} /> Nuevo producto
+          </Button>
+        }
+      />
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
