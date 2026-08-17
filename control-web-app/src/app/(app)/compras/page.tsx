@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
@@ -21,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { FormField } from "@/components/shared/FormField";
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
 
@@ -30,12 +34,26 @@ const ESTADO_CONFIG = {
   CANCELADA: { label: "Cancelada", variant: "danger"  as const },
 };
 
-interface LineaOrden {
-  producto_id: string;
-  producto_nombre: string;
-  cantidad: string;
-  precio_costo: string;
-}
+const lineaSchema = z.object({
+  producto_id: z.string().optional(),
+  producto_nombre: z.string().optional(),
+  cantidad: z.string(),
+  precio_costo: z.string().optional(),
+});
+
+const compraSchema = z.object({
+  suplidor_id: z.string().min(1, "Selecciona un proveedor."),
+  numero_factura: z.string().optional(),
+  notas: z.string().optional(),
+  lineas: z.array(lineaSchema),
+}).refine(
+  (d) => d.lineas.some((l) => l.producto_id && Number(l.cantidad) > 0),
+  { message: "Agrega al menos un producto válido.", path: ["lineas"] }
+);
+
+type CompraForm = z.infer<typeof compraSchema>;
+
+const LINEA_EMPTY = { producto_id: "", producto_nombre: "", cantidad: "1", precio_costo: "" };
 
 export default function ComprasPage() {
   const { esAdmin, esSuperadmin } = useAuthStore();
@@ -47,15 +65,23 @@ export default function ComprasPage() {
   const [modal, setModal] = useState(false);
 
   const [suplidores, setSuplidores] = useState<Suplidor[]>([]);
-  const [suplidorId, setSuplidorId] = useState("");
-  const [numeroFactura, setNumeroFactura] = useState("");
-  const [notas, setNotas] = useState("");
-  const [lineas, setLineas] = useState<LineaOrden[]>([
-    { producto_id: "", producto_nombre: "", cantidad: "1", precio_costo: "" },
-  ]);
   const [guardando, setGuardando] = useState(false);
   const [busqProd, setBusqProd] = useState<Record<number, string>>({});
   const [resultsProd, setResultsProd] = useState<Record<number, Producto[]>>({});
+
+  const {
+    register, handleSubmit, control, watch, setValue, reset,
+    formState: { errors },
+  } = useForm<CompraForm>({
+    resolver: zodResolver(compraSchema),
+    defaultValues: { suplidor_id: "", numero_factura: "", notas: "", lineas: [LINEA_EMPTY] },
+  });
+
+  const { fields, append, remove } = useFieldArray({ control, name: "lineas" });
+  const watchedLineas = watch("lineas");
+  const totalOrden = (watchedLineas ?? []).reduce(
+    (s, l) => s + Number(l.cantidad || 0) * Number(l.precio_costo || 0), 0
+  );
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -74,11 +100,14 @@ export default function ComprasPage() {
 
   useEffect(() => {
     if (modal) {
+      reset({ suplidor_id: "", numero_factura: "", notas: "", lineas: [LINEA_EMPTY] });
+      setBusqProd({});
+      setResultsProd({});
       api.get("/compras/suplidores/")
         .then(({ data }) => setSuplidores(data.results ?? data))
         .catch(() => {});
     }
-  }, [modal]);
+  }, [modal, reset]);
 
   async function buscarProducto(idx: number, q: string) {
     setBusqProd((p) => ({ ...p, [idx]: q }));
@@ -90,27 +119,21 @@ export default function ComprasPage() {
   }
 
   function seleccionarProducto(idx: number, prod: Producto) {
-    setLineas((ls) =>
-      ls.map((l, i) => i === idx
-        ? { ...l, producto_id: String(prod.id), producto_nombre: prod.nombre, precio_costo: prod.precio_costo }
-        : l)
-    );
+    setValue(`lineas.${idx}.producto_id`, String(prod.id), { shouldDirty: true });
+    setValue(`lineas.${idx}.producto_nombre`, prod.nombre, { shouldDirty: true });
+    setValue(`lineas.${idx}.precio_costo`, prod.precio_costo, { shouldDirty: true });
     setBusqProd((p) => ({ ...p, [idx]: "" }));
     setResultsProd((p) => ({ ...p, [idx]: [] }));
   }
 
-  const totalOrden = lineas.reduce((s, l) => s + Number(l.cantidad || 0) * Number(l.precio_costo || 0), 0);
-
-  async function crearOrden() {
-    if (!suplidorId) return toast.error("Selecciona un proveedor");
-    const lineasValidas = lineas.filter((l) => l.producto_id && Number(l.cantidad) > 0);
-    if (!lineasValidas.length) return toast.error("Agrega al menos un producto");
+  const crearOrden = handleSubmit(async (data) => {
     setGuardando(true);
     try {
+      const lineasValidas = data.lineas.filter((l) => l.producto_id && Number(l.cantidad) > 0);
       await api.post("/compras/ordenes/", {
-        suplidor: suplidorId,
-        numero_factura: numeroFactura,
-        notas,
+        suplidor: data.suplidor_id,
+        numero_factura: data.numero_factura,
+        notas: data.notas,
         items: lineasValidas.map((l) => ({
           producto: l.producto_id,
           cantidad: l.cantidad,
@@ -119,14 +142,12 @@ export default function ComprasPage() {
       });
       toast.success("Orden de compra creada");
       setModal(false);
-      setSuplidorId(""); setNumeroFactura(""); setNotas("");
-      setLineas([{ producto_id: "", producto_nombre: "", cantidad: "1", precio_costo: "" }]);
       cargar();
     } catch {
       toast.error("Error al crear la orden");
     }
     setGuardando(false);
-  }
+  });
 
   const pendientes = ordenes.filter((o) => o.estado === "PENDIENTE").length;
 
@@ -295,165 +316,184 @@ export default function ComprasPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-            {/* Proveedor + Factura */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Proveedor *</Label>
-                <select
-                  value={suplidorId}
-                  onChange={(e) => setSuplidorId(e.target.value)}
-                  className="w-full h-9 px-3 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">Seleccionar...</option>
-                  {suplidores.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">N° Factura</Label>
-                <Input
-                  value={numeroFactura}
-                  onChange={(e) => setNumeroFactura(e.target.value)}
-                  placeholder="Ej: B15001234"
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Líneas */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Productos *
-              </Label>
-              {lineas.map((linea, idx) => (
-                <div key={idx} className="flex gap-2 items-start">
-                  {/* Búsqueda producto */}
-                  <div className="flex-1 relative">
-                    {linea.producto_nombre ? (
-                      <div className="flex items-center gap-2 border border-brand-200 dark:border-brand-800 rounded-md px-3 py-2 bg-brand-50 dark:bg-brand-950/30 h-9">
-                        <Package size={13} className="text-brand-500 dark:text-brand-400 shrink-0" />
-                        <span className="text-sm text-brand-700 dark:text-brand-300 font-medium flex-1 truncate">{linea.producto_nombre}</span>
-                        <button
-                          type="button"
-                          onClick={() => setLineas((ls) => ls.map((l, i) => i === idx ? { ...l, producto_id: "", producto_nombre: "" } : l))}
-                          className="text-brand-400 hover:text-brand-600"
-                        >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={busqProd[idx] ?? ""}
-                          onChange={(e) => buscarProducto(idx, e.target.value)}
-                          placeholder="Buscar producto..."
-                          className="pl-8"
-                        />
-                        {(resultsProd[idx] ?? []).length > 0 && (
-                          <div className="absolute z-20 w-full mt-1 border border-border rounded-lg shadow-lg bg-popover overflow-hidden">
-                            {(resultsProd[idx] ?? []).map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => seleccionarProducto(idx, p)}
-                                className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted text-left text-sm border-b border-border last:border-0"
-                              >
-                                <Package size={12} className="text-muted-foreground" />
-                                <span className="flex-1 text-foreground">{p.nombre}</span>
-                                <span className="text-xs text-muted-foreground tabular-nums">{formatCurrency(Number(p.precio_costo))}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </>
+          <form onSubmit={crearOrden} className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+              {/* Proveedor + Factura */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">
+                    Proveedor <span className="text-destructive" aria-hidden="true">*</span>
+                  </Label>
+                  <select
+                    {...register("suplidor_id")}
+                    aria-required
+                    aria-invalid={!!errors.suplidor_id}
+                    className={cn(
+                      "w-full h-9 px-3 text-sm rounded-md border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+                      errors.suplidor_id ? "border-destructive" : "border-input"
                     )}
-                  </div>
-                  {/* Cantidad */}
-                  <Input
-                    type="number"
-                    value={linea.cantidad}
-                    min="0.01"
-                    step="0.01"
-                    onChange={(e) => setLineas((ls) => ls.map((l, i) => i === idx ? { ...l, cantidad: e.target.value } : l))}
-                    className="w-20 text-center"
-                    placeholder="Cant."
-                  />
-                  {/* Costo */}
-                  <div className="relative w-32">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">RD$</span>
-                    <Input
-                      type="number"
-                      value={linea.precio_costo}
-                      step="0.01"
-                      onChange={(e) => setLineas((ls) => ls.map((l, i) => i === idx ? { ...l, precio_costo: e.target.value } : l))}
-                      className="pl-9"
-                      placeholder="Costo"
-                    />
-                  </div>
-                  {/* Subtotal */}
-                  <span className="text-sm font-semibold text-foreground min-w-[80px] pt-2 text-right tabular-nums shrink-0">
-                    {formatCurrency(Number(linea.cantidad || 0) * Number(linea.precio_costo || 0))}
-                  </span>
-                  {lineas.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-rose-500"
-                      onClick={() => setLineas((ls) => ls.filter((_, i) => i !== idx))}
-                    >
-                      <X size={14} />
-                    </Button>
+                  >
+                    <option value="">Seleccionar...</option>
+                    {suplidores.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
+                  {errors.suplidor_id && (
+                    <p role="alert" className="text-xs text-destructive">{errors.suplidor_id.message}</p>
                   )}
                 </div>
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-brand-600 dark:text-brand-400 hover:text-brand-700"
-                onClick={() => setLineas((ls) => [...ls, { producto_id: "", producto_nombre: "", cantidad: "1", precio_costo: "" }])}
-              >
-                <Plus size={14} /> Agregar producto
-              </Button>
-            </div>
+                <FormField
+                  label="N° Factura"
+                  placeholder="Ej: B15001234"
+                  {...register("numero_factura")}
+                />
+              </div>
 
-            {/* Notas */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Notas (opcional)</Label>
-              <Input
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
+              <Separator />
+
+              {/* Líneas */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Productos <span className="text-destructive" aria-hidden="true">*</span>
+                  </Label>
+                  {errors.lineas?.root && (
+                    <p role="alert" className="text-xs text-destructive">{errors.lineas.root.message}</p>
+                  )}
+                </div>
+                {fields.map((field, idx) => {
+                  const lineaNombre = watchedLineas?.[idx]?.producto_nombre ?? "";
+                  const lineaCantidad = watchedLineas?.[idx]?.cantidad ?? "1";
+                  const lineaCosto = watchedLineas?.[idx]?.precio_costo ?? "";
+                  return (
+                    <div key={field.id} className="flex gap-2 items-start">
+                      {/* Búsqueda producto */}
+                      <div className="flex-1 relative">
+                        {lineaNombre ? (
+                          <div className="flex items-center gap-2 border border-brand-200 dark:border-brand-800 rounded-md px-3 py-2 bg-brand-50 dark:bg-brand-950/30 h-9">
+                            <Package size={13} className="text-brand-500 dark:text-brand-400 shrink-0" />
+                            <span className="text-sm text-brand-700 dark:text-brand-300 font-medium flex-1 truncate">{lineaNombre}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setValue(`lineas.${idx}.producto_id`, "", { shouldDirty: true });
+                                setValue(`lineas.${idx}.producto_nombre`, "", { shouldDirty: true });
+                              }}
+                              className="text-brand-400 hover:text-brand-600"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              value={busqProd[idx] ?? ""}
+                              onChange={(e) => buscarProducto(idx, e.target.value)}
+                              placeholder="Buscar producto..."
+                              className="pl-8"
+                            />
+                            {(resultsProd[idx] ?? []).length > 0 && (
+                              <div className="absolute z-20 w-full mt-1 border border-border rounded-lg shadow-lg bg-popover overflow-hidden">
+                                {(resultsProd[idx] ?? []).map((p) => (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => seleccionarProducto(idx, p)}
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted text-left text-sm border-b border-border last:border-0"
+                                  >
+                                    <Package size={12} className="text-muted-foreground" />
+                                    <span className="flex-1 text-foreground">{p.nombre}</span>
+                                    <span className="text-xs text-muted-foreground tabular-nums">{formatCurrency(Number(p.precio_costo))}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      {/* Cantidad */}
+                      <Input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="Cant."
+                        className="w-20 text-center"
+                        {...register(`lineas.${idx}.cantidad`)}
+                      />
+                      {/* Costo */}
+                      <div className="relative w-32">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">RD$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Costo"
+                          className="pl-9"
+                          {...register(`lineas.${idx}.precio_costo`)}
+                        />
+                      </div>
+                      {/* Subtotal */}
+                      <span className="text-sm font-semibold text-foreground min-w-[80px] pt-2 text-right tabular-nums shrink-0">
+                        {formatCurrency(Number(lineaCantidad || 0) * Number(lineaCosto || 0))}
+                      </span>
+                      {fields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-rose-500"
+                          onClick={() => remove(idx)}
+                        >
+                          <X size={14} />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-brand-600 dark:text-brand-400 hover:text-brand-700"
+                  onClick={() => append(LINEA_EMPTY)}
+                >
+                  <Plus size={14} /> Agregar producto
+                </Button>
+              </div>
+
+              {/* Notas */}
+              <FormField
+                label="Notas"
+                hint="Opcional"
                 placeholder="Observaciones..."
+                {...register("notas")}
               />
+
+              {/* Total */}
+              <div className={cn(
+                "rounded-xl px-4 py-3 flex items-center justify-between border",
+                totalOrden > 0
+                  ? "bg-brand-50 dark:bg-brand-950/30 border-brand-200 dark:border-brand-800"
+                  : "bg-muted border-border"
+              )}>
+                <span className="text-sm font-medium text-muted-foreground">Total orden</span>
+                <span className={cn("text-xl font-bold tabular-nums", totalOrden > 0 ? "text-brand-700 dark:text-brand-300" : "text-muted-foreground")}>
+                  {formatCurrency(totalOrden)}
+                </span>
+              </div>
             </div>
 
-            {/* Total */}
-            <div className={cn(
-              "rounded-xl px-4 py-3 flex items-center justify-between border",
-              totalOrden > 0
-                ? "bg-brand-50 dark:bg-brand-950/30 border-brand-200 dark:border-brand-800"
-                : "bg-muted border-border"
-            )}>
-              <span className="text-sm font-medium text-muted-foreground">Total orden</span>
-              <span className={cn("text-xl font-bold tabular-nums", totalOrden > 0 ? "text-brand-700 dark:text-brand-300" : "text-muted-foreground")}>
-                {formatCurrency(totalOrden)}
-              </span>
-            </div>
-          </div>
-
-          <DialogFooter className="px-6 py-4 border-t border-border shrink-0 gap-2">
-            <Button variant="outline" onClick={() => setModal(false)}>Cancelar</Button>
-            <Button onClick={crearOrden} disabled={guardando} className="gap-2">
-              {guardando ? (
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              ) : <Check size={14} />}
-              Crear orden
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t border-border shrink-0 gap-2">
+              <Button type="button" variant="outline" onClick={() => setModal(false)}>Cancelar</Button>
+              <Button type="submit" disabled={guardando} className="gap-2">
+                {guardando ? (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                ) : <Check size={14} />}
+                Crear orden
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
