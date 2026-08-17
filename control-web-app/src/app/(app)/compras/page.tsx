@@ -7,9 +7,10 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
+import React from "react";
 import {
   ClipboardList, Plus, X, Check, Search,
-  Truck, Package, AlertTriangle, ChevronDown, ChevronUp,
+  Truck, Package, AlertTriangle, ChevronDown, ChevronUp, Ban, CalendarDays,
 } from "lucide-react";
 import type { OrdenCompra, Suplidor, Producto } from "@/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
@@ -25,6 +26,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/shared/FormField";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
 
@@ -61,17 +63,18 @@ export default function ComprasPage() {
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [modal, setModal] = useState(false);
 
   const [suplidores, setSuplidores] = useState<Suplidor[]>([]);
-  const [guardando, setGuardando] = useState(false);
   const [busqProd, setBusqProd] = useState<Record<number, string>>({});
   const [resultsProd, setResultsProd] = useState<Record<number, Producto[]>>({});
 
   const {
     register, handleSubmit, control, watch, setValue, reset,
-    formState: { errors },
+    formState: { errors, isSubmitting: guardando },
   } = useForm<CompraForm>({
     resolver: zodResolver(compraSchema),
     defaultValues: { suplidor_id: "", numero_factura: "", notas: "", lineas: [LINEA_EMPTY] },
@@ -88,13 +91,15 @@ export default function ComprasPage() {
     try {
       const params = new URLSearchParams();
       if (filtroEstado) params.set("estado", filtroEstado);
+      if (fechaDesde) params.set("fecha_desde", fechaDesde);
+      if (fechaHasta) params.set("fecha_hasta", fechaHasta);
       const { data } = await api.get(`/compras/ordenes/?${params}`);
       setOrdenes(data.results ?? data);
     } catch {
       toast.error("Error cargando compras");
     }
     setLoading(false);
-  }, [filtroEstado]);
+  }, [filtroEstado, fechaDesde, fechaHasta]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -127,7 +132,6 @@ export default function ComprasPage() {
   }
 
   const crearOrden = handleSubmit(async (data) => {
-    setGuardando(true);
     try {
       const lineasValidas = data.lineas.filter((l) => l.producto_id && Number(l.cantidad) > 0);
       await api.post("/compras/ordenes/", {
@@ -146,8 +150,17 @@ export default function ComprasPage() {
     } catch {
       toast.error("Error al crear la orden");
     }
-    setGuardando(false);
   });
+
+  async function cancelarOrden(id: number) {
+    try {
+      await api.patch(`/compras/ordenes/${id}/`, { estado: "CANCELADA" });
+      toast.success("Orden cancelada");
+      cargar();
+    } catch {
+      toast.error("Error al cancelar la orden");
+    }
+  }
 
   const pendientes = ordenes.filter((o) => o.estado === "PENDIENTE").length;
 
@@ -165,8 +178,8 @@ export default function ComprasPage() {
         }
       />
 
-      {/* Filtro estado */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap items-center">
         {(["", "PENDIENTE", "RECIBIDA", "CANCELADA"] as const).map((e) => (
           <button
             key={e}
@@ -181,6 +194,19 @@ export default function ComprasPage() {
             {e === "" ? "Todas" : ESTADO_CONFIG[e].label}
           </button>
         ))}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <CalendarDays size={13} className="text-muted-foreground shrink-0" />
+          <DatePicker value={fechaDesde} onChange={setFechaDesde} placeholder="Desde" className="h-8 text-sm w-36" />
+          <DatePicker value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" className="h-8 text-sm w-36" />
+          {(fechaDesde || fechaHasta) && (
+            <button
+              onClick={() => { setFechaDesde(""); setFechaHasta(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border bg-card transition-colors"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabla */}
@@ -220,9 +246,8 @@ export default function ComprasPage() {
                 const estado = ESTADO_CONFIG[o.estado as keyof typeof ESTADO_CONFIG] ?? { label: o.estado, variant: "secondary" as const };
                 const isExp = expandedId === o.id;
                 return (
-                  <>
+                  <React.Fragment key={o.id}>
                     <tr
-                      key={o.id}
                       className="hover:bg-muted/30 transition-colors cursor-pointer"
                       onClick={() => setExpandedId(isExp ? null : o.id)}
                     >
@@ -260,14 +285,24 @@ export default function ComprasPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
                           {o.estado === "PENDIENTE" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800"
-                              onClick={(e) => { e.stopPropagation(); router.push(`/recepcion?orden=${o.id}`); }}
-                            >
-                              Recibir
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/recepcion?orden=${o.id}`); }}
+                              >
+                                Recibir
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs gap-1 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                                onClick={(e) => { e.stopPropagation(); cancelarOrden(o.id); }}
+                              >
+                                <Ban size={11} /> Cancelar
+                              </Button>
+                            </>
                           )}
                           {isExp
                             ? <ChevronUp size={14} className="text-muted-foreground" />
@@ -277,7 +312,7 @@ export default function ComprasPage() {
                       </td>
                     </tr>
                     {isExp && o.items && (
-                      <tr key={`${o.id}-items`} className="bg-muted/20">
+                      <tr className="bg-muted/20">
                         <td colSpan={7} className="px-5 py-3">
                           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                             {o.items.map((item) => (
@@ -296,7 +331,7 @@ export default function ComprasPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>
