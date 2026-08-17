@@ -111,7 +111,7 @@ export default function VentasPage() {
     cargar();
   }
 
-const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, v) => s + Number(v.total), 0);
+  const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, v) => s + Number(v.total), 0);
   const hayFiltros = !!(busqueda || filtroMetodo || filtroEstado || fechaDesde || fechaHasta);
   const { paged: ventasPaged, page, setPage, totalPages, reset: resetPage } = usePagination(ventas, 20);
 
@@ -125,6 +125,11 @@ const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, 
             <BookOpen size={14} className="text-brand-500 dark:text-brand-400" />
             <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
               {ventas.filter((v) => v.estado === "COMPLETADA").length} completadas
+              {ventas.filter((v) => v.estado === "ANULADA").length > 0 && (
+                <span className="font-normal text-rose-500 dark:text-rose-400 ml-1">
+                  · {ventas.filter((v) => v.estado === "ANULADA").length} anulada{ventas.filter((v) => v.estado === "ANULADA").length !== 1 ? "s" : ""}
+                </span>
+              )}
             </span>
           </div>
         }
@@ -252,7 +257,7 @@ const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, 
                                     ) : (
                                       <Button
                                         variant="ghost" size="sm"
-                                        className="h-7 text-xs gap-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/20"
+                                        className="h-7 text-xs gap-1.5 text-brand-600 hover:bg-brand-50/80 dark:text-brand-400 dark:hover:bg-brand-950/30"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setNcfModal(detalle);
