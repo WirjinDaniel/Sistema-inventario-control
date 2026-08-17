@@ -305,7 +305,7 @@ export default function ReportesPage() {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead>
+                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                         <tr className="border-b border-border bg-muted/50">
                           {["Clase", "Producto", "Qty vendida", "Total", "% del total"].map((h) => (
                             <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
@@ -357,7 +357,7 @@ export default function ReportesPage() {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead>
+                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                         <tr className="border-b border-border bg-muted/50">
                           {["Fecha / Hora", "Cajero", "Cliente", "Método", "Total", "Estado"].map((h) => (
                             <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>

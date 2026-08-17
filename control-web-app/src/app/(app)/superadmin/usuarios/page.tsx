@@ -269,10 +269,10 @@ export default function UsuariosGlobalPage() {
       {/* Tabla */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-border overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-700/50">
+          <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
             <tr>
               {["Usuario", "Nombre", "Rol", "Colmado", "Estado", "Creado", "Acciones"].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>

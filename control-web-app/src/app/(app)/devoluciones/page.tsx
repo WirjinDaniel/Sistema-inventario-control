@@ -253,7 +253,7 @@ export default function DevolucionesPage() {
                     </div>
                     {d.items?.length > 0 && (
                       <table className="w-full text-xs">
-                        <thead>
+                        <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                           <tr className="text-muted-foreground border-b border-border">
                             <th className="text-left py-1.5">Producto</th>
                             <th className="text-right py-1.5">Cant.</th>

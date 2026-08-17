@@ -234,10 +234,10 @@ export default function ColmadosPage() {
       {/* Tabla */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-border overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-700/50">
+          <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
             <tr>
               {["ID", "Nombre", "RUC", "Teléfono", "Dirección", "Plan", "Estado", "Creado", "Acciones"].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
@@ -361,7 +361,7 @@ export default function ColmadosPage() {
             <div className="p-5 space-y-5">
               {/* Fiscal */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide flex items-center gap-1.5 mb-3">
                   <Percent size={11} /> Datos fiscales
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -392,7 +392,7 @@ export default function ColmadosPage() {
 
               {/* Alertas */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide flex items-center gap-1.5 mb-3">
                   <Bell size={11} /> Alertas de inventario
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -421,7 +421,7 @@ export default function ColmadosPage() {
 
               {/* Crédito */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide flex items-center gap-1.5 mb-3">
                   <CreditCard size={11} /> Crédito y fiado
                 </p>
                 <div>

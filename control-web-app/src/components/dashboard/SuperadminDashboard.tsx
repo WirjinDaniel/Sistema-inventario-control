@@ -88,7 +88,7 @@ function KpiCard({ icon: Icon, label, value, sub, accent, iconBg, iconColor, loa
       <p className="text-3xl font-black text-foreground tabular-nums tracking-tight leading-none mb-1">
         {value}
       </p>
-      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}</p>
       {sub && <p className="text-xs text-muted-foreground/70 mt-1">{sub}</p>}
     </div>
   );
@@ -123,7 +123,7 @@ export default function SuperadminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-6 space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -138,7 +138,7 @@ export default function SuperadminDashboard() {
           <button
             onClick={() => fetchData(true)}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-xl text-xs font-semibold text-muted-foreground shadow-sm hover:shadow-md transition-all disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md transition-all disabled:opacity-60"
           >
             <RefreshCw size={13} className={cn('text-muted-foreground', refreshing && 'animate-spin')} />
             Actualizar
@@ -153,7 +153,7 @@ export default function SuperadminDashboard() {
         )}
 
         {/* KPIs fila 1 */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             icon={DollarSign} label="Ventas hoy" loading={loading}
             value={data ? fmt(Number(data.ventas_hoy)) : '—'}
@@ -186,7 +186,7 @@ export default function SuperadminDashboard() {
         </div>
 
         {/* KPIs fila 2 */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             icon={Users} label="Clientes activos" loading={loading}
             value={data?.clientes_activos ?? '—'}
@@ -260,7 +260,7 @@ export default function SuperadminDashboard() {
         )}
 
         {/* Ranking + Tabla */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Ranking de ventas */}
           <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
             <div className="flex items-center gap-3 p-5 pb-4 border-b border-border">
@@ -339,7 +339,7 @@ export default function SuperadminDashboard() {
                 </div>
               ) : data?.colmados_stats.length ? (
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                     <tr className="border-b border-border">
                       <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Colmado</th>
                       <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wide">Ventas</th>

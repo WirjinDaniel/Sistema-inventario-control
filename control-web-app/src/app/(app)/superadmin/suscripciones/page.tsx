@@ -415,10 +415,10 @@ export default function SuscripcionesPage() {
       {/* Tabla */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-border overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-700/50">
+          <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
             <tr>
               {["Colmado", "Productos", "Usuarios", "Mensualidad", "Vencimiento", "Días", "Estado", "Acciones"].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -548,7 +548,7 @@ export default function SuscripcionesPage() {
               <hr className="border-border" />
 
               {/* Límites personalizados */}
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Límites del colmado</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Límites del colmado</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Máx. productos *">
                   <input
@@ -569,7 +569,7 @@ export default function SuscripcionesPage() {
               <hr className="border-border" />
 
               {/* Fechas */}
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Período</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Período</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Fecha inicio">
                   <input
@@ -595,7 +595,7 @@ export default function SuscripcionesPage() {
               <hr className="border-border" />
 
               {/* Pago */}
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cobro</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Cobro</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Mensualidad acordada (RD$)">
                   <input
@@ -676,7 +676,7 @@ export default function SuscripcionesPage() {
                 </p>
               </div>
 
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nuevos límites</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Nuevos límites</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Máx. productos">
                   <input
@@ -704,7 +704,7 @@ export default function SuscripcionesPage() {
 
               <hr className="border-border" />
 
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pago por esta compra (opcional)</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Pago por esta compra (opcional)</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Monto (RD$)">
                   <input

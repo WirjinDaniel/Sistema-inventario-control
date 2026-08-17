@@ -272,7 +272,7 @@ export default function ProductosPage() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                 <tr className="bg-muted/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
                   <th className="px-5 py-3 text-left font-semibold">Producto</th>
                   <th className="px-4 py-3 text-left font-semibold">Categoría</th>

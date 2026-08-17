@@ -593,13 +593,13 @@ export default function SuplidoresPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
+            <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
               <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Suplidor</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Teléfono</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo pago</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Última compra</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</th>
+                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Suplidor</th>
+                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Teléfono</th>
+                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Tipo pago</th>
+                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Última compra</th>
+                <th className="text-right px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Balance</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -725,12 +725,12 @@ export default function SuplidoresPage() {
 
                   <div className="rounded-xl border border-slate-200 overflow-hidden">
                     <table className="w-full text-sm">
-                      <thead className="bg-slate-50 border-b border-slate-200">
+                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50 border-b border-slate-200">
                         <tr>
-                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-1/2">Producto</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-24">Cantidad</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">Precio costo</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-28">Subtotal</th>
+                          <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-1/2">Producto</th>
+                          <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-24">Cantidad</th>
+                          <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-32">Precio costo</th>
+                          <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-28">Subtotal</th>
                           <th className="w-10" />
                         </tr>
                       </thead>

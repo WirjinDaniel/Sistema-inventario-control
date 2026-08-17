@@ -116,7 +116,7 @@ function KardexContent() {
 
       {/* Selector de producto */}
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Seleccionar producto</p>
+        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Seleccionar producto</p>
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -189,7 +189,7 @@ function KardexContent() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                   <tr className="border-b border-border bg-muted/50">
                     {["Fecha", "Tipo", "Referencia", "Entrada", "Salida", "Saldo", "Usuario", "Nota"].map((h) => (
                       <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
@@ -240,7 +240,7 @@ function KardexContent() {
                 {/* Footer totals */}
                 <tfoot>
                   <tr className="border-t-2 border-border bg-muted/30">
-                    <td colSpan={3} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
                       Totales del período
                     </td>
                     <td className="px-4 py-2.5 font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">

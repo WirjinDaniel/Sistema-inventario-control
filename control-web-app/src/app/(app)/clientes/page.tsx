@@ -205,7 +205,7 @@ export default function ClientesPage() {
             <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2">
               <Users size={13} className="text-slate-500" />
               <div>
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide leading-none">Con deuda</p>
+                <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wide leading-none">Con deuda</p>
                 <p className="text-sm font-black text-slate-700 dark:text-slate-200 tabular-nums">{conDeuda} / {clientes.length}</p>
               </div>
             </div>
@@ -350,7 +350,7 @@ export default function ClientesPage() {
             /* ── Vista tabla ── */
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
               <table className="w-full text-sm">
-                <thead>
+                <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                   <tr className="border-b border-slate-50 dark:border-slate-800">
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wide">Cliente</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wide hidden md:table-cell">Teléfono</th>

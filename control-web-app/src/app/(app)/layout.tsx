@@ -9,7 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
+        <main id="main-content" className="flex-1 overflow-auto p-6" tabIndex={-1}>
           {children}
         </main>
       </div>

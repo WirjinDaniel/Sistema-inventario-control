@@ -150,7 +150,7 @@ export default function CuentasPorPagarPage() {
           <EmptyState icon={TrendingDown} title="Sin facturas" description={filtroEstado ? `No hay facturas con estado "${ESTADO_CONFIG[filtroEstado as keyof typeof ESTADO_CONFIG]?.label}"` : "Sin cuentas por pagar"} />
         ) : (
           <table className="w-full text-sm">
-            <thead>
+            <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
               <tr className="border-b border-border bg-muted/50">
                 {["Proveedor", "N° Factura", "Fecha", "Total", "Pagado", "Balance", "Estado", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>

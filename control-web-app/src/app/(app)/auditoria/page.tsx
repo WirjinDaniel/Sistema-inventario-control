@@ -105,7 +105,7 @@ export default function AuditoriaPage() {
 
       {/* Filtros */}
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wide">
           <Filter size={12} /> Filtros
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -161,14 +161,14 @@ export default function AuditoriaPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha / Hora</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Usuario</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Acción</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Módulo</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Descripción</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">IP</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Fecha / Hora</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Usuario</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Acción</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Módulo</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Descripción</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">IP</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>

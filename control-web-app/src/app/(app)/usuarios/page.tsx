@@ -272,7 +272,7 @@ export default function UsuariosPage() {
       {/* Lista */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <table className="w-full text-sm">
-          <thead>
+          <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
             <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-400 tracking-wide">
               <th className="px-5 py-3.5 text-left">Usuario</th>
               <th className="px-4 py-3.5 text-left">Nombre</th>
@@ -366,7 +366,7 @@ export default function UsuariosPage() {
             </div>
             <div className="px-6 py-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nueva contraseña</label>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Nueva contraseña</label>
                 <div className="relative">
                   <Input
                     type={showNuevaPass ? "text" : "password"}
@@ -427,7 +427,7 @@ export default function UsuariosPage() {
               </p>
               {Array.from(new Set(MODULOS_PERMS.map((m) => m.grupo))).map((grupo) => (
                 <div key={grupo}>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{grupo}</p>
+                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">{grupo}</p>
                   <div className="space-y-2">
                     {MODULOS_PERMS.filter((m) => m.grupo === grupo).map((m) => (
                       <label key={m.key} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-slate-50 cursor-pointer group">

@@ -469,7 +469,7 @@ export default function FacturacionPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                     <tr className="border-b border-border bg-muted/50">
                       {["", "NCF", "Tipo", "Fecha", "Cliente / RNC", "Total", "Saldo", "Estado", ...((esAdmin() || esSuperadmin()) ? [""] : [])].map((h, i) => (
                         <th key={i} className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
@@ -541,7 +541,7 @@ export default function FacturacionPage() {
                                   <p className="font-semibold mb-2 text-muted-foreground">Ítems</p>
                                   {f.detalles.length > 0 ? (
                                     <table className="w-full text-xs">
-                                      <thead>
+                                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                                         <tr className="text-muted-foreground">
                                           <th className="text-left pb-1">Descripción</th>
                                           <th className="text-right pb-1">Cant</th>
@@ -963,7 +963,7 @@ export default function FacturacionPage() {
 
             {/* Datos del cliente */}
             <div className="border border-border rounded-xl p-4 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Datos del cliente</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Datos del cliente</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 md:col-span-1">
                   <Label className="text-xs mb-1.5 block">Nombre / Razón social</Label>
@@ -1035,7 +1035,7 @@ export default function FacturacionPage() {
             {/* Ítems */}
             <div className="border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ítems / Servicios</p>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Ítems / Servicios</p>
                 <Button size="sm" variant="outline" className="h-6 text-xs gap-1"
                   onClick={() => setDetalles((d) => [...d, { ...DETALLE_EMPTY }])}>
                   <Plus size={11} /> Agregar línea
@@ -1044,7 +1044,7 @@ export default function FacturacionPage() {
 
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead>
+                  <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                     <tr className="text-muted-foreground">
                       <th className="text-left pb-2 pr-2 min-w-40">Descripción</th>
                       <th className="text-right pb-2 pr-2 w-16">Cant</th>

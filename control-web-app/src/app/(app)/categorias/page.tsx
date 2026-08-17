@@ -243,11 +243,11 @@ export default function CategoriasPage() {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead>
+              <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Marca</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">País de origen</th>
-                  <th className="text-center px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Productos</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Marca</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">País de origen</th>
+                  <th className="text-center px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Productos</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -307,13 +307,13 @@ export default function CategoriasPage() {
             </div>
             <form onSubmit={onGuardarCat} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Nombre *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Nombre *</label>
                 <input className={inputCls} placeholder="Ej: Bebidas, Lácteos, Abarrotes..."
                   aria-required="true" aria-invalid={!!errCat.nombre} {...regCat('nombre')} />
                 {errCat.nombre && <p role="alert" className="text-xs text-red-500 mt-1">{errCat.nombre.message}</p>}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Color</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Color</label>
                 <div className="flex flex-wrap gap-2">
                   {COLORES_PRESET.map(color => (
                     <button type="button" key={color} onClick={() => setCatVal('color', color, { shouldDirty: true })}
@@ -326,7 +326,7 @@ export default function CategoriasPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Ícono (nombre Lucide)</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Ícono (nombre Lucide)</label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {ICONOS_PRESET.map(ic => (
                     <button type="button" key={ic} onClick={() => setCatVal('icono', ic, { shouldDirty: true })}
@@ -375,13 +375,13 @@ export default function CategoriasPage() {
             </div>
             <form onSubmit={onGuardarMarca} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Nombre *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Nombre *</label>
                 <input className={inputCls} placeholder="Ej: Presidente, Selecto, Rica..."
                   aria-required="true" aria-invalid={!!errMarca.nombre} {...regMarca('nombre')} />
                 {errMarca.nombre && <p role="alert" className="text-xs text-red-500 mt-1">{errMarca.nombre.message}</p>}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">País de origen</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">País de origen</label>
                 <div className="flex items-center gap-2">
                   <Globe size={14} className="text-slate-400 shrink-0" />
                   <input className={inputCls} placeholder="Ej: República Dominicana, EE.UU...." {...regMarca('pais_origen')} />

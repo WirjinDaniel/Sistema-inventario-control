@@ -212,7 +212,7 @@ export default function MovimientosPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
                 <tr className="border-b border-border bg-muted/50">
                   {["Fecha", "Producto", "Tipo", "Cantidad", "Antes → Después", "Referencia", "Usuario"].map((h) => (
                     <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
