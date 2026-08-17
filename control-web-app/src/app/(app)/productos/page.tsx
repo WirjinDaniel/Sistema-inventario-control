@@ -14,6 +14,7 @@ import api from "@/lib/api";
 import type { Producto, Categoria } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
+import { PageHeader } from "@/components/shared/PageHeader";
 import CustomSelect from "@/components/CustomSelect";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

@@ -67,6 +67,7 @@ export default function ComprasPage() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [modal, setModal] = useState(false);
+  const [confirmCancelarId, setConfirmCancelarId] = useState<number | null>(null);
 
   const [suplidores, setSuplidores] = useState<Suplidor[]>([]);
   const [busqProd, setBusqProd] = useState<Record<number, string>>({});
@@ -163,6 +164,7 @@ export default function ComprasPage() {
   }
 
   const pendientes = ordenes.filter((o) => o.estado === "PENDIENTE").length;
+  const totalOrdenes = ordenes.reduce((s, o) => s + Number(o.total), 0);
 
   if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
@@ -170,7 +172,7 @@ export default function ComprasPage() {
     <div className="p-6 space-y-5">
       <PageHeader
         title="Órdenes de compra"
-        description={`${ordenes.length} órdenes${pendientes > 0 ? ` · ${pendientes} pendientes` : ""}`}
+        description={`${ordenes.length} órdenes${pendientes > 0 ? ` · ${pendientes} pendientes` : ""} · Total: ${formatCurrency(totalOrdenes)}`}
         actions={
           <Button onClick={() => setModal(true)} className="gap-2">
             <Plus size={15} /> Nueva orden
@@ -298,7 +300,7 @@ export default function ComprasPage() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 text-xs gap-1 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                                onClick={(e) => { e.stopPropagation(); cancelarOrden(o.id); }}
+                                onClick={(e) => { e.stopPropagation(); setConfirmCancelarId(o.id); }}
                               >
                                 <Ban size={11} /> Cancelar
                               </Button>
@@ -338,6 +340,29 @@ export default function ComprasPage() {
           </table>
         )}
       </div>
+
+      {/* Confirm cancelar orden */}
+      <Dialog open={!!confirmCancelarId} onOpenChange={(o) => { if (!o) setConfirmCancelarId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <Ban size={16} /> Cancelar orden
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Estás seguro que deseas cancelar esta orden de compra? Esta acción es irreversible.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmCancelarId(null)}>Volver</Button>
+            <Button
+              variant="destructive" size="sm"
+              onClick={() => { if (confirmCancelarId) { cancelarOrden(confirmCancelarId); setConfirmCancelarId(null); } }}
+            >
+              Sí, cancelar orden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal nueva orden */}
       <Dialog open={modal} onOpenChange={(o) => !o && setModal(false)}>
