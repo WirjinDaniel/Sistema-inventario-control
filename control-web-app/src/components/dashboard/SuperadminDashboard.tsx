@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   Store, DollarSign, ShoppingBag, Users, Package, AlertTriangle,
-  TrendingDown, RefreshCw, Trophy, ArrowUpRight,
+  TrendingUp, TrendingDown, RefreshCw, Trophy, ArrowUpRight, BarChart2,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -61,19 +61,13 @@ function fmt(n: number) {
 }
 
 interface KpiProps {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent: string;
-  iconBg: string;
-  iconColor: string;
-  loading?: boolean;
+  icon: React.ElementType; label: string; value: string | number; sub?: string;
+  accent: string; iconBg: string; iconColor: string; loading?: boolean;
 }
 
 function KpiCard({ icon: Icon, label, value, sub, accent, iconBg, iconColor, loading }: KpiProps) {
   if (loading) return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+    <div className="bg-card rounded-2xl border border-border p-5 shadow-sm">
       <Skeleton className="w-11 h-11 rounded-xl mb-4" />
       <Skeleton className="h-8 w-32 mb-2" />
       <Skeleton className="h-4 w-40" />
@@ -81,9 +75,9 @@ function KpiCard({ icon: Icon, label, value, sub, accent, iconBg, iconColor, loa
   );
   return (
     <div className={cn(
-      'bg-white dark:bg-slate-900 rounded-2xl border-l-4 border-t border-r border-b p-5 shadow-sm',
+      'bg-card rounded-2xl border-l-4 border-t border-r border-b p-5 shadow-sm',
       'hover:shadow-md transition-all duration-200',
-      'border-t-slate-100 border-r-slate-100 border-b-slate-100 dark:border-t-slate-800 dark:border-r-slate-800 dark:border-b-slate-800',
+      'border-t-border border-r-border border-b-border',
       accent
     )}>
       <div className="mb-4">
@@ -91,11 +85,11 @@ function KpiCard({ icon: Icon, label, value, sub, accent, iconBg, iconColor, loa
           <Icon size={19} className={iconColor} />
         </div>
       </div>
-      <p className="text-3xl font-black text-slate-800 dark:text-slate-100 tabular-nums tracking-tight leading-none mb-1">
+      <p className="text-3xl font-black text-foreground tabular-nums tracking-tight leading-none mb-1">
         {value}
       </p>
-      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
+      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+      {sub && <p className="text-xs text-muted-foreground/70 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -128,25 +122,25 @@ export default function SuperadminDashboard() {
   useEffect(() => { fetchData(); }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="p-6 max-w-7xl mx-auto space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+            <h1 className="text-2xl font-black text-foreground tracking-tight">
               Dashboard Global
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               Consolidado de todos los colmados
             </p>
           </div>
           <button
             onClick={() => fetchData(true)}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-sm hover:shadow-md transition-all disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-xl text-xs font-semibold text-muted-foreground shadow-sm hover:shadow-md transition-all disabled:opacity-60"
           >
-            <RefreshCw size={13} className={cn('text-slate-500', refreshing && 'animate-spin')} />
+            <RefreshCw size={13} className={cn('text-muted-foreground', refreshing && 'animate-spin')} />
             Actualizar
           </button>
         </div>
@@ -182,7 +176,7 @@ export default function SuperadminDashboard() {
             iconColor="text-violet-600 dark:text-violet-400"
           />
           <KpiCard
-            icon={TrendingDown} label="Ventas totales" loading={loading}
+            icon={TrendingUp} label="Ventas totales" loading={loading}
             value={data ? fmt(Number(data.ventas_totales)) : '—'}
             sub="acumulado histórico"
             accent="border-l-emerald-500"
@@ -215,7 +209,7 @@ export default function SuperadminDashboard() {
             iconColor="text-rose-600 dark:text-rose-400"
           />
           <KpiCard
-            icon={DollarSign} label="Gastos hoy" loading={loading}
+            icon={TrendingDown} label="Gastos hoy" loading={loading}
             value={data ? fmt(Number(data.gastos_hoy)) : '—'}
             accent="border-l-orange-500"
             iconBg="bg-orange-50 dark:bg-orange-950"
@@ -225,15 +219,15 @@ export default function SuperadminDashboard() {
 
         {/* Gráfica ventas por colmado */}
         {(loading || ventasColmado.length > 0) && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <div className="bg-card rounded-2xl border border-border shadow-sm">
             <div className="flex items-center justify-between p-5 pb-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center">
-                  <TrendingDown size={15} className="text-indigo-600 dark:text-indigo-400" />
+                  <BarChart2 size={15} className="text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Ventas por Colmado</p>
-                  <p className="text-xs text-slate-400">Últimos 30 días</p>
+                  <p className="text-sm font-bold text-foreground">Ventas por Colmado</p>
+                  <p className="text-xs text-muted-foreground">Últimos 30 días</p>
                 </div>
               </div>
               <span className="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold px-3 py-1 rounded-full">
@@ -246,11 +240,11 @@ export default function SuperadminDashboard() {
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={ventasColmado} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="colmado_nombre" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="colmado_nombre" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
                     <Tooltip
-                      contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                      contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: 12 }}
                       formatter={(v) => [`RD$${Number(v).toFixed(2)}`, 'Ventas']}
                     />
                     <Bar dataKey="total" radius={[6, 6, 0, 0]} name="Ventas (RD$)">
@@ -268,14 +262,14 @@ export default function SuperadminDashboard() {
         {/* Ranking + Tabla */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {/* Ranking de ventas */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 p-5 pb-4 border-b border-slate-50 dark:border-slate-800">
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 p-5 pb-4 border-b border-border">
               <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center">
                 <Trophy size={15} className="text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Ranking de ventas</p>
-                <p className="text-xs text-slate-400">Últimos 30 días</p>
+                <p className="text-sm font-bold text-foreground">Ranking de ventas</p>
+                <p className="text-xs text-muted-foreground">Últimos 30 días</p>
               </div>
             </div>
             {loading ? (
@@ -283,35 +277,35 @@ export default function SuperadminDashboard() {
                 {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
               </div>
             ) : ventasColmado.length ? (
-              <div className="divide-y divide-slate-50 dark:divide-slate-800">
+              <div className="divide-y divide-border">
                 {ventasColmado.map((col, idx) => (
-                  <div key={idx} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <div key={idx} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className={cn(
                         'w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0',
                         idx === 0 ? 'bg-amber-50 dark:bg-amber-950 text-amber-600' :
-                        idx === 1 ? 'bg-slate-100 dark:bg-slate-800 text-slate-500' :
+                        idx === 1 ? 'bg-muted text-muted-foreground' :
                         idx === 2 ? 'bg-orange-50 dark:bg-orange-950 text-orange-500' :
-                        'bg-slate-50 dark:bg-slate-800 text-slate-400'
+                        'bg-muted text-muted-foreground'
                       )}>
                         {idx + 1}
                       </span>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                      <p className="text-sm font-semibold text-foreground truncate">
                         {col.colmado_nombre}
                       </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 ml-3">
-                      <div className="w-20 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
+                      <div className="w-20 bg-muted rounded-full h-1.5">
                         <div
                           className="h-1.5 rounded-full transition-all duration-500"
                           style={{ width: `${Math.min(Number(col.porcentaje), 100)}%`, background: BAR_COLORS[idx % BAR_COLORS.length] }}
                         />
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-black tabular-nums text-slate-800 dark:text-slate-100">
+                        <p className="text-sm font-black tabular-nums text-foreground">
                           {fmt(Number(col.total))}
                         </p>
-                        <p className="text-[10px] text-slate-400 font-medium flex items-center justify-end gap-0.5">
+                        <p className="text-[10px] text-muted-foreground font-medium flex items-center justify-end gap-0.5">
                           <ArrowUpRight size={9} />
                           {Number(col.porcentaje).toFixed(1)}%
                         </p>
@@ -321,21 +315,21 @@ export default function SuperadminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-32 text-sm text-slate-400 font-medium">
+              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground font-medium">
                 Sin datos de ventas
               </div>
             )}
           </div>
 
           {/* Stats por colmado */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 p-5 pb-4 border-b border-slate-50 dark:border-slate-800">
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 p-5 pb-4 border-b border-border">
               <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950 flex items-center justify-center">
                 <Store size={15} className="text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Stats por colmado</p>
-                <p className="text-xs text-slate-400">Actividad de hoy</p>
+                <p className="text-sm font-bold text-foreground">Stats por colmado</p>
+                <p className="text-xs text-muted-foreground">Actividad de hoy</p>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -346,35 +340,35 @@ export default function SuperadminDashboard() {
               ) : data?.colmados_stats.length ? (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-50 dark:border-slate-800">
-                      <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wide">Colmado</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wide">Ventas</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wide">Tickets</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wide">Usuarios</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wide">Prods</th>
+                    <tr className="border-b border-border">
+                      <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Colmado</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wide">Ventas</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wide">Tickets</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wide">Usuarios</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wide">Prods</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                  <tbody className="divide-y divide-border">
                     {data.colmados_stats.map((col, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full shrink-0" style={{ background: BAR_COLORS[idx % BAR_COLORS.length] }} />
-                            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-35">{col.nombre}</span>
+                            <span className="font-semibold text-foreground truncate max-w-35">{col.nombre}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-right font-bold tabular-nums text-slate-800 dark:text-slate-100">
+                        <td className="px-4 py-3.5 text-right font-bold tabular-nums text-foreground">
                           {fmt(Number(col.ventas_hoy))}
                         </td>
-                        <td className="px-4 py-3.5 text-right text-slate-600 dark:text-slate-300 font-semibold">{col.tickets_hoy}</td>
-                        <td className="px-4 py-3.5 text-right text-slate-600 dark:text-slate-300 font-semibold">{col.usuarios}</td>
-                        <td className="px-4 py-3.5 text-right text-slate-600 dark:text-slate-300 font-semibold">{col.productos}</td>
+                        <td className="px-4 py-3.5 text-right text-muted-foreground font-semibold">{col.tickets_hoy}</td>
+                        <td className="px-4 py-3.5 text-right text-muted-foreground font-semibold">{col.usuarios}</td>
+                        <td className="px-4 py-3.5 text-right text-muted-foreground font-semibold">{col.productos}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
-                <div className="flex items-center justify-center h-32 text-sm text-slate-400 font-medium">
+                <div className="flex items-center justify-center h-32 text-sm text-muted-foreground font-medium">
                   Sin colmados registrados
                 </div>
               )}
