@@ -307,7 +307,7 @@ function RecepcionContent() {
           Cancelar
         </button>
         <button onClick={confirmarRecepcion} disabled={guardando}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-sm font-semibold shadow-sm shadow-emerald-500/30 transition-all duration-200 disabled:opacity-60 active:scale-95">
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-sm font-semibold shadow-sm shadow-emerald-500/30 transition-all duration-200 disabled:opacity-60 active:scale-95">
           {guardando
             ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <><Warehouse size={16} /> Confirmar recepción</>}

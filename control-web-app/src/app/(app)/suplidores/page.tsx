@@ -535,7 +535,7 @@ export default function SuplidoresPage() {
                   <button type="button" onClick={() => setShowPagoModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold text-sm transition">
                     Cancelar
                   </button>
-                  <button type="submit" disabled={submittingPago} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  <button type="submit" disabled={submittingPago} className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
                     {submittingPago && <Loader2 className="w-4 h-4 animate-spin" />}
                     Registrar
                   </button>
@@ -568,7 +568,7 @@ export default function SuplidoresPage() {
           </button>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold shadow hover:shadow-md hover:-translate-y-0.5 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold shadow hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
             <Plus className="w-4 h-4" />
             Nuevo suplidor
@@ -824,7 +824,7 @@ export default function SuplidoresPage() {
                   <button
                     type="submit"
                     disabled={submittingOrden}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:shadow-md transition disabled:opacity-60"
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:shadow-md transition disabled:opacity-60"
                   >
                     {submittingOrden ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                     Crear orden
@@ -898,7 +898,7 @@ export default function SuplidoresPage() {
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold text-sm transition">
                   Cancelar
                 </button>
-                <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
                   {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editando ? 'Actualizar' : 'Crear suplidor'}
                 </button>

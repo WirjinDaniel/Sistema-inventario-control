@@ -179,7 +179,7 @@ export default function CategoriasPage() {
           </div>
           <button
             onClick={tab === 'categorias' ? abrirCrearCat : abrirCrearMarca}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold shadow hover:shadow-md hover:-translate-y-0.5 transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold shadow hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
             <Plus size={15} />
             {tab === 'categorias' ? 'Nueva categoría' : 'Nueva marca'}
@@ -355,7 +355,7 @@ export default function CategoriasPage() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={guardandoCat}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
                   {guardandoCat ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                   Guardar
                 </button>
@@ -393,7 +393,7 @@ export default function CategoriasPage() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={guardandoMarca}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm hover:shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60">
                   {guardandoMarca ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                   Guardar
                 </button>

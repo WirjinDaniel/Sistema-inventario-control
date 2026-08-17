@@ -46,37 +46,39 @@ export default function Header() {
       </button>
 
       {/* Breadcrumb */}
-      <Breadcrumb className="hidden sm:flex flex-1" />
+      <Breadcrumb className="hidden sm:flex" />
 
-      {/* Spacer mobile */}
-      <div className="flex-1 sm:hidden" />
+      {/* Spacer */}
+      <div className="flex-1" />
 
-      {/* Search */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="hidden sm:flex items-center gap-2 text-white/50 hover:text-white hover:bg-white/10 w-44 justify-between border border-white/15 rounded-lg h-8"
-        onClick={() => {
-          const e = new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true });
-          window.dispatchEvent(e);
-        }}
-      >
-        <span className="flex items-center gap-1.5 text-xs">
-          <Search size={12} />
-          Buscar...
-        </span>
-        <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono text-white/40">⌘K</kbd>
-      </Button>
+      {/* Right group: search + shortcuts + user */}
+      <div className="flex items-center gap-1.5">
+        {/* Search */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="hidden sm:flex items-center gap-2 text-white/50 hover:text-white hover:bg-white/10 w-44 justify-between border border-white/15 rounded-lg h-8"
+          onClick={() => {
+            const e = new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true });
+            window.dispatchEvent(e);
+          }}
+        >
+          <span className="flex items-center gap-1.5 text-xs">
+            <Search size={12} />
+            Buscar...
+          </span>
+          <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono text-white/40">⌘K</kbd>
+        </Button>
 
-      {/* Keyboard shortcuts hint */}
-      <button
-        className="hidden sm:flex p-1.5 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
-        title="Atajos de teclado (?)"
-        onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }))}
-        aria-label="Atajos de teclado"
-      >
-        <Keyboard size={15} />
-      </button>
+        {/* Keyboard shortcuts hint */}
+        <button
+          className="hidden sm:flex p-1.5 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+          title="Atajos de teclado (?)"
+          onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }))}
+          aria-label="Atajos de teclado"
+        >
+          <Keyboard size={15} />
+        </button>
 
       {/* User dropdown */}
       <DropdownMenu>
@@ -110,6 +112,7 @@ export default function Header() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }

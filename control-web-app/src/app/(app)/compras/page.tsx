@@ -491,7 +491,7 @@ export default function ComprasPage() {
                         />
                       </div>
                       {/* Subtotal */}
-                      <span className="text-sm font-semibold text-foreground min-w-[80px] pt-2 text-right tabular-nums shrink-0">
+                      <span className="text-sm font-semibold text-foreground min-w-20 pt-2 text-right tabular-nums shrink-0">
                         {formatCurrency(Number(lineaCantidad || 0) * Number(lineaCosto || 0))}
                       </span>
                       {fields.length > 1 && (

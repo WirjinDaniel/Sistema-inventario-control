@@ -408,7 +408,7 @@ export default function ProductosPage() {
               : 100;
             return (
               <Card key={p.id} className="group hover:shadow-md transition-all overflow-hidden cursor-pointer" onClick={() => abrirEditar(p)}>
-                <div className="h-28 bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-950 dark:to-brand-900 flex items-center justify-center relative">
+                <div className="h-28 bg-linear-to-br from-brand-50 to-brand-100 dark:from-brand-950 dark:to-brand-900 flex items-center justify-center relative">
                   <span className="text-4xl font-black text-brand-200 dark:text-brand-800 select-none">
                     {p.nombre.charAt(0).toUpperCase()}
                   </span>

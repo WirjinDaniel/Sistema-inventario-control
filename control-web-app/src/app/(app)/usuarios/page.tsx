@@ -238,7 +238,7 @@ export default function UsuariosPage() {
           <p className="text-slate-400 text-sm mt-0.5">{activos} activos de {usuarios.length} registrados</p>
         </div>
         <button onClick={abrirCrear}
-          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-200 active:scale-95">
+          className="flex items-center gap-2 bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-200 active:scale-95">
           <Plus size={16} /> Nuevo usuario
         </button>
       </div>
@@ -389,7 +389,7 @@ export default function UsuariosPage() {
                 Cancelar
               </button>
               <button onClick={resetearPassword} disabled={reseteando}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
+                className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
                 {reseteando ? (
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -436,7 +436,7 @@ export default function UsuariosPage() {
                           onClick={() => setPerms((p) => ({ ...p, [m.key]: !p[m.key] }))}
                           className={`relative rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${perms[m.key] ? "bg-indigo-500" : "bg-slate-200"}`}
                           style={{ width: 40, height: 22 }}>
-                          <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${perms[m.key] ? "translate-x-[18px]" : "translate-x-0"}`}
+                          <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${perms[m.key] ? "translate-x-4.5" : "translate-x-0"}`}
                             style={{ width: 18, height: 18 }} />
                         </div>
                       </label>
@@ -451,7 +451,7 @@ export default function UsuariosPage() {
                 Cancelar
               </button>
               <button onClick={guardarPermisos} disabled={guardandoPerms}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
+                className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
                 {guardandoPerms ? (
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -599,7 +599,7 @@ export default function UsuariosPage() {
                           onClick={() => field.onChange(!field.value)}
                           className={`relative rounded-full transition-colors duration-200 cursor-pointer ${field.value ? "bg-indigo-500" : "bg-slate-200"}`}
                           style={{ width: 40, height: 22 }}>
-                          <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${field.value ? "translate-x-[18px]" : "translate-x-0"}`}
+                          <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${field.value ? "translate-x-4.5" : "translate-x-0"}`}
                             style={{ width: 18, height: 18 }} />
                         </div>
                         <span className="text-sm text-slate-600 font-medium">Usuario activo</span>
@@ -614,7 +614,7 @@ export default function UsuariosPage() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={guardando}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
+                  className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
                   {guardando ? (
                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
