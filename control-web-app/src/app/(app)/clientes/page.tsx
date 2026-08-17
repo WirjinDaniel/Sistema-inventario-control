@@ -21,6 +21,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Pagination } from "@/components/shared/Pagination";
+import { usePagination } from "@/hooks/use-pagination";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 interface FormCliente { nombre: string; telefono: string; cedula: string; limite_credito: string; }
 const FORM_EMPTY: FormCliente = { nombre: "", telefono: "", cedula: "", limite_credito: "0" };
@@ -130,6 +133,9 @@ export default function ClientesPage() {
     setGuardando(false);
   }
 
+  const formDirty = !!(modal && form.nombre);
+  useUnsavedChanges(formDirty);
+
   // Stats calculados
   const totalDeudas = clientes.reduce((a, c) => a + Number(c.saldo_deuda), 0);
   const conDeuda = clientes.filter((c) => Number(c.saldo_deuda) > 0).length;
@@ -137,8 +143,7 @@ export default function ClientesPage() {
   const pctAlDia = clientes.length > 0 ? ((clientes.length - conDeuda) / clientes.length) * 100 : 0;
 
   // Filtro + orden
-  const clientesFiltrados = clientes
-    .filter((c) => {
+  const clientesFiltrados = clientes.filter((c) => {
       if (filtro === "con_deuda") return Number(c.saldo_deuda) > 0;
       if (filtro === "al_dia") return Number(c.saldo_deuda) === 0;
       return true;
@@ -148,6 +153,11 @@ export default function ClientesPage() {
       if (orden === "disponible") return Number(a.credito_disponible) - Number(b.credito_disponible);
       return Number(b.saldo_deuda) - Number(a.saldo_deuda); // mayor deuda primero
     });
+
+  const { paged: clientesPaged, page, setPage, totalPages, reset: resetPage } = usePagination(clientesFiltrados, 20);
+
+  // reset page when filters change
+  useEffect(() => { resetPage(); }, [filtro, orden, busqueda]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -337,7 +347,7 @@ export default function ClientesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                  {clientesFiltrados.map((c) => {
+                  {clientesPaged.map((c) => {
                     const deuda = Number(c.saldo_deuda);
                     const limite = Number(c.limite_credito);
                     const pct = limite > 0 ? Math.min((deuda / limite) * 100, 100) : 0;
@@ -451,7 +461,7 @@ export default function ClientesPage() {
           ) : (
             /* ── Vista grid ── */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {clientesFiltrados.map((c) => {
+              {clientesPaged.map((c) => {
                 const deuda = Number(c.saldo_deuda);
                 const limite = Number(c.limite_credito);
                 const disponible = Number(c.credito_disponible ?? Math.max(limite - deuda, 0));
@@ -542,6 +552,12 @@ export default function ClientesPage() {
                   </button>
                 );
               })}
+            </div>
+          )}
+          {/* Paginación */}
+          {!loading && clientesFiltrados.length > 0 && (
+            <div className="px-4 pb-2 border-t border-slate-100 dark:border-slate-800">
+              <Pagination page={page} totalPages={totalPages} total={clientesFiltrados.length} pageSize={20} onPage={setPage} />
             </div>
           )}
         </div>

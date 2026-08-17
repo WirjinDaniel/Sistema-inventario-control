@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Plus, X, Check, Search, Shield, User2,
-  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock, AlertCircle,
+  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock, AlertCircle, AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -10,6 +10,9 @@ import { useAuthStore } from "@/store/auth";
 import CustomSelect from "@/components/CustomSelect";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 type Rol = "ADMIN" | "CAJERO" | "INVENTARIO";
 
@@ -52,6 +55,10 @@ export default function UsuariosPage() {
   const [showPass, setShowPass] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [confirmToggle, setConfirmToggle] = useState<UsuarioAPI | null>(null);
+
+  const formDirty = !!(modal && (form.nombre || form.username || form.password));
+  useUnsavedChanges(formDirty);
 
   // Permisos granulares
   const [permsTarget, setPermsTarget] = useState<UsuarioAPI | null>(null);
@@ -303,7 +310,7 @@ export default function UsuariosPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <button onClick={() => toggleActivo(u)}
+                    <button onClick={() => u.is_active ? setConfirmToggle(u) : toggleActivo(u)}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
                         u.is_active ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
                       }`}>
@@ -452,6 +459,30 @@ export default function UsuariosPage() {
           </div>
         </div>
       )}
+
+      {/* Confirmación desactivar usuario */}
+      <Dialog open={!!confirmToggle} onOpenChange={(o) => { if (!o) setConfirmToggle(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle size={16} /> Desactivar usuario
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Desactivar a <strong>{confirmToggle?.nombre}</strong>? El usuario no podrá iniciar sesión hasta que lo reactives.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmToggle(null)}>Cancelar</Button>
+            <Button
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+              onClick={() => { if (confirmToggle) { toggleActivo(confirmToggle); setConfirmToggle(null); } }}
+            >
+              Sí, desactivar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal crear/editar */}
       {modal && (

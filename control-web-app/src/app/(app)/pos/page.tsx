@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
+import { enqueueSale, getPendingSales, removeSale, countPending } from "@/lib/offline-queue";
 import CustomSelect from "@/components/CustomSelect";
 import TicketPrint from "@/components/TicketPrint";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -78,6 +79,7 @@ export default function POSPage() {
   const [codigoCupon, setCodigoCupon] = useState("");
   const [cargandoCupon, setCargandoCupon] = useState(false);
   const [promocionesActivas, setPromocionesActivas] = useState<PromocionSimple[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const barrasRef = useRef<HTMLInputElement>(null);
 
   const subtotal = carrito.reduce((a, i) => a + i.precio_unitario * i.cantidad, 0);
@@ -117,7 +119,12 @@ export default function POSPage() {
         }
       } catch { localStorage.removeItem("pos_borrador"); }
     }
-    const up = () => setOnline(true);
+    countPending().then(setPendingCount).catch(() => {});
+
+    const up = async () => {
+      setOnline(true);
+      await sincronizarCola();
+    };
     const down = () => setOnline(false);
     window.addEventListener("online", up); window.addEventListener("offline", down);
     return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
@@ -149,6 +156,23 @@ export default function POSPage() {
       const { data } = await api.post(`/ventas/sesiones/${sesionId}/cerrar/`, { efectivo_final_declarado: Number(efectivoDeclarado) || 0, nota_cierre: notaCierre });
       setResumenCierre(data); setSesionId(null); setSinSesion(true);
     } catch { toast.error("Error al cerrar la caja"); } finally { setCerrando(false); }
+  }
+
+  async function sincronizarCola() {
+    const pending = await getPendingSales().catch(() => []);
+    if (!pending.length) return;
+    let ok = 0;
+    for (const sale of pending) {
+      try {
+        await api.post("/ventas/", sale.payload);
+        await removeSale(sale.id!);
+        ok++;
+      } catch { break; }
+    }
+    if (ok > 0) {
+      toast.success(`${ok} venta${ok > 1 ? "s" : ""} sincronizada${ok > 1 ? "s" : ""} al reconectarse`);
+      setPendingCount(await countPending().catch(() => 0));
+    }
   }
 
   const buscarProducto = useCallback(async (q: string) => {
@@ -241,17 +265,34 @@ export default function POSPage() {
     if (metodoPago === "EFECTIVO" && montoPagado && Number(montoPagado) < total)
       return toast.error(`El monto recibido (${formatCurrency(Number(montoPagado))}) es menor al total (${formatCurrency(total)}).`);
     setProcesando(true);
+    const ventaPayload: Record<string, unknown> = {
+      sesion_caja: sesionId, cliente: clienteId, metodo_pago: metodoPago,
+      banco_cuenta: metodoPago === "TRANSFERENCIA" && bancoId ? Number(bancoId) : null,
+      monto_pagado: metodoPago === "EFECTIVO" ? Number(montoPagado) : total,
+      descuento: descuentoItems + descuentoPromo,
+      detalles: carrito.map((i) => ({ producto: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario, descuento: i.descuento, subtotal: i.precio_unitario * i.cantidad - i.descuento })),
+    };
+
+    // Si está offline, encolar en IndexedDB y salir
+    if (!online) {
+      try {
+        await enqueueSale(ventaPayload, carrito);
+        setPendingCount((n) => n + 1);
+        toast("Venta guardada offline. Se enviará al reconectarse.", { icon: "📶", duration: 6000 });
+        localStorage.removeItem("pos_borrador");
+        limpiarCarrito();
+      } catch {
+        toast.error("Error al guardar la venta offline.");
+      }
+      setProcesando(false);
+      return;
+    }
+
     // Guardar borrador antes del POST — si falla la conexión el carrito no se pierde
     const borrador = { carrito, metodoPago, clienteId, bancoId, descuentoTotal, total };
     localStorage.setItem("pos_borrador", JSON.stringify(borrador));
     try {
-      const { data } = await api.post("/ventas/", {
-        sesion_caja: sesionId, cliente: clienteId, metodo_pago: metodoPago,
-        banco_cuenta: metodoPago === "TRANSFERENCIA" && bancoId ? Number(bancoId) : null,
-        monto_pagado: metodoPago === "EFECTIVO" ? Number(montoPagado) : total,
-        descuento: descuentoItems + descuentoPromo,
-        detalles: carrito.map((i) => ({ producto: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario, descuento: i.descuento, subtotal: i.precio_unitario * i.cantidad - i.descuento })),
-      });
+      const { data } = await api.post("/ventas/", ventaPayload);
       setUltimaVenta({ ...data, itbis: itbisTotal.toFixed(2) });
       setUltimoNcf(null);
       if (emitirNcf) {
@@ -460,6 +501,15 @@ export default function POSPage() {
               {online ? <Wifi size={11} /> : <WifiOff size={11} />}
               {online ? "En línea" : "Sin conexión"}
             </span>
+            {pendingCount > 0 && (
+              <span
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-pointer hover:bg-amber-100 transition-colors"
+                onClick={sincronizarCola}
+                title="Haz clic para sincronizar ahora"
+              >
+                <AlertCircle size={11} /> {pendingCount} pendiente{pendingCount > 1 ? "s" : ""}
+              </span>
+            )}
             {sesionId && (
               <Button variant="ghost" size="sm" onClick={() => { setEfectivoDeclarado(""); setNotaCierre(""); setResumenCierre(null); setShowCierre(true); }}
                 className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950 gap-1.5 text-xs">

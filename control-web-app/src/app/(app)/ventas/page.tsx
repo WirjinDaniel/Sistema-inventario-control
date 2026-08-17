@@ -17,6 +17,8 @@ import { useAuthStore } from "@/store/auth";
 import { cn, formatCurrency } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Pagination } from "@/components/shared/Pagination";
+import { usePagination } from "@/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,7 +78,7 @@ export default function VentasPage() {
     setLoading(false);
   }, [busqueda, filtroMetodo, filtroEstado, fechaDesde, fechaHasta]);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { cargar(); resetPage(); }, [cargar]);
 
   async function verDetalle(id: number) {
     if (expandedId === id) { setExpandedId(null); setDetalle(null); return; }
@@ -111,6 +113,7 @@ export default function VentasPage() {
 
 const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, v) => s + Number(v.total), 0);
   const hayFiltros = !!(busqueda || filtroMetodo || filtroEstado || fechaDesde || fechaHasta);
+  const { paged: ventasPaged, page, setPage, totalPages, reset: resetPage } = usePagination(ventas, 20);
 
   return (
     <div className="p-6 space-y-5">
@@ -182,7 +185,7 @@ const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, 
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {ventas.map((v) => {
+              {ventasPaged.map((v) => {
                 const metodo = METODO_CONFIG[v.metodo_pago] ?? { label: v.metodo_pago, badge: "secondary" as const, icon: ShoppingCart };
                 const Icon = metodo.icon;
                 const isExpanded = expandedId === v.id;
@@ -282,6 +285,11 @@ const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, 
               })}
             </tbody>
           </table>
+        )}
+        {!loading && ventas.length > 0 && (
+          <div className="border-t border-border px-4">
+            <Pagination page={page} totalPages={totalPages} total={ventas.length} pageSize={20} onPage={setPage} />
+          </div>
         )}
       </div>
 

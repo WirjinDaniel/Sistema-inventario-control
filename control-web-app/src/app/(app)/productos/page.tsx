@@ -15,6 +15,9 @@ import CustomSelect from "@/components/CustomSelect";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/shared/Pagination";
+import { usePagination } from "@/hooks/use-pagination";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -157,6 +160,14 @@ export default function ProductosPage() {
     : null;
 
   const stockBajoCount = productos.filter((p) => p.stock_bajo).length;
+  const { paged: productosPaged, page, setPage, totalPages, reset: resetPage } = usePagination(productos, 20);
+
+  // reset page on filter change
+  useEffect(() => { resetPage(); }, [busquedaDebounced, filtroStockBajo, filtroCat]);
+
+  // warn on unsaved form changes
+  const formDirty = sheetOpen && (form.nombre !== FORM_EMPTY.nombre || form.precio_venta !== FORM_EMPTY.precio_venta);
+  useUnsavedChanges(formDirty);
 
   if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
 
@@ -267,7 +278,7 @@ export default function ProductosPage() {
                       />
                     </td>
                   </tr>
-                ) : productos.map((p) => (
+                ) : productosPaged.map((p) => (
                   <tr key={p.id} className="border-b border-border hover:bg-muted/30 transition-colors group">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
@@ -365,7 +376,7 @@ export default function ProductosPage() {
             <div className="col-span-full">
               <EmptyState icon={Package} title="No hay productos" action={{ label: "Nuevo producto", onClick: abrirCrear }} />
             </div>
-          ) : productos.map((p) => {
+          ) : productosPaged.map((p) => {
             const pct = Number(p.stock_minimo) > 0
               ? Math.min((Number(p.stock_actual) / Number(p.stock_minimo)) * 100, 100)
               : 100;
@@ -405,6 +416,11 @@ export default function ProductosPage() {
             );
           })}
         </div>
+      )}
+
+      {/* Paginación */}
+      {!loading && productos.length > 0 && (
+        <Pagination page={page} totalPages={totalPages} total={productos.length} pageSize={20} onPage={setPage} />
       )}
 
       {/* Sheet drawer crear/editar */}
