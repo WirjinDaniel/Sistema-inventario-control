@@ -1,5 +1,8 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Search, ShoppingCart, Trash2, CreditCard, Banknote,
   Smartphone, UserCheck, Building2,
@@ -39,6 +42,29 @@ interface VentaResponse {
   detalles: { producto_nombre: string; cantidad: string; precio_unitario: string; descuento: string; subtotal: string; }[];
 }
 
+const aberturaSchema = z.object({
+  efectivo_inicial: z.string().optional(),
+});
+type AberturaForm = z.infer<typeof aberturaSchema>;
+
+const cierreSchema = z.object({
+  efectivo_declarado: z.string().optional(),
+  nota_cierre: z.string().optional(),
+});
+type CierreForm = z.infer<typeof cierreSchema>;
+
+const ncfInlineSchema = z.object({
+  tipo: z.string(),
+  institucion: z.string().optional(),
+  rnc: z.string().optional(),
+}).superRefine((d, ctx) => {
+  if (d.tipo === "01" && !d.rnc?.trim())
+    ctx.addIssue({ code: "custom", message: "El RNC/Cédula es requerido para crédito fiscal.", path: ["rnc"] });
+  if ((d.tipo === "01" || d.tipo === "15") && !d.institucion?.trim())
+    ctx.addIssue({ code: "custom", message: "Este campo es requerido.", path: ["institucion"] });
+});
+type NCFInlineForm = z.infer<typeof ncfInlineSchema>;
+
 const METODOS = [
   { key: "EFECTIVO", label: "Efectivo", Icon: Banknote },
   { key: "TARJETA", label: "Tarjeta", Icon: CreditCard },
@@ -62,19 +88,24 @@ export default function POSPage() {
   const [colmadoNombre, setColmadoNombre] = useState("Colmado POS");
   const [sinSesion, setSinSesion] = useState(false);
   const [showApertura, setShowApertura] = useState(false);
-  const [efectivoInicial, setEfectivoInicial] = useState("");
   const [abriendo, setAbriendo] = useState(false);
   const [showCierre, setShowCierre] = useState(false);
-  const [efectivoDeclarado, setEfectivoDeclarado] = useState("");
-  const [notaCierre, setNotaCierre] = useState("");
   const [cerrando, setCerrando] = useState(false);
+
+  const { register: regApertura, handleSubmit: handleApertura, watch: watchApertura, setValue: setAperturaVal, reset: resetApertura } =
+    useForm<AberturaForm>({ resolver: zodResolver(aberturaSchema), defaultValues: { efectivo_inicial: "" } });
+  const efectivoInicial = watchApertura("efectivo_inicial") ?? "";
+
+  const { register: regCierre, handleSubmit: handleCierre, reset: resetCierre } =
+    useForm<CierreForm>({ resolver: zodResolver(cierreSchema), defaultValues: { efectivo_declarado: "", nota_cierre: "" } });
+
+  const { register: regNcf, control: ctrlNcf, watch: watchNcf, reset: resetNcf, trigger: triggerNcf, getValues: getNcfValues, formState: { errors: errNcf } } =
+    useForm<NCFInlineForm>({ resolver: zodResolver(ncfInlineSchema), defaultValues: { tipo: "02", institucion: "", rnc: "" } });
+  const ncfTipo = watchNcf("tipo");
   const [resumenCierre, setResumenCierre] = useState<null | { efectivo_calculado: string; efectivo_final_declarado: string; diferencia_caja: string | null; apertura: string; }>(null);
   const [ultimaVenta, setUltimaVenta] = useState<VentaResponse | null>(null);
   const [ultimoNcf, setUltimoNcf] = useState<{ ncf: string; tipo_nombre: string; cliente_nombre: string } | null>(null);
   const [emitirNcf, setEmitirNcf] = useState(false);
-  const [ncfTipo, setNcfTipo] = useState("02");
-  const [ncfRnc, setNcfRnc] = useState("");
-  const [ncfInstitucion, setNcfInstitucion] = useState("");
   const [promoAplicada, setPromoAplicada] = useState<PromocionSimple | null>(null);
   const [codigoCupon, setCodigoCupon] = useState("");
   const [cargandoCupon, setCargandoCupon] = useState(false);
@@ -141,22 +172,22 @@ export default function POSPage() {
   async function cargarBancos() { try { const { data } = await api.get("/ventas/bancos/"); setBancos(data.results ?? data); } catch {} }
   async function cargarPromos() { try { const { data } = await api.get("/promociones/?activo=true"); setPromocionesActivas(data.results ?? data); } catch {} }
 
-  async function abrirCaja() {
+  const onAbrirCaja = handleApertura(async (data) => {
     setAbriendo(true);
     try {
-      const { data } = await api.post("/ventas/sesiones/", { efectivo_inicial: Number(efectivoInicial) || 0 });
-      setSesionId(data.id); setSinSesion(false); setShowApertura(false); setEfectivoInicial("");
+      const { data: res } = await api.post("/ventas/sesiones/", { efectivo_inicial: Number(data.efectivo_inicial) || 0 });
+      setSesionId(res.id); setSinSesion(false); setShowApertura(false); resetApertura();
       toast.success("Caja abierta"); barrasRef.current?.focus();
     } catch { toast.error("Error al abrir la caja"); } finally { setAbriendo(false); }
-  }
+  });
 
-  async function cerrarCaja() {
+  const onCerrarCaja = handleCierre(async (data) => {
     if (!sesionId) return; setCerrando(true);
     try {
-      const { data } = await api.post(`/ventas/sesiones/${sesionId}/cerrar/`, { efectivo_final_declarado: Number(efectivoDeclarado) || 0, nota_cierre: notaCierre });
-      setResumenCierre(data); setSesionId(null); setSinSesion(true);
+      const { data: res } = await api.post(`/ventas/sesiones/${sesionId}/cerrar/`, { efectivo_final_declarado: Number(data.efectivo_declarado) || 0, nota_cierre: data.nota_cierre });
+      setResumenCierre(res); setSesionId(null); setSinSesion(true);
     } catch { toast.error("Error al cerrar la caja"); } finally { setCerrando(false); }
-  }
+  });
 
   async function sincronizarCola() {
     const pending = await getPendingSales().catch(() => []);
@@ -254,7 +285,7 @@ export default function POSPage() {
     setCarrito((prev) => { const next = [...prev]; next[idx] = { ...next[idx], cantidad: n, descuento: calcularDescuento(next[idx].producto, n) }; return next; });
   }
 
-  function limpiarCarrito() { setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO"); setBancoId(""); setEmitirNcf(false); setNcfTipo("02"); setNcfRnc(""); setNcfInstitucion(""); setPromoAplicada(null); setCodigoCupon(""); barrasRef.current?.focus(); }
+  function limpiarCarrito() { setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO"); setBancoId(""); setEmitirNcf(false); resetNcf({ tipo: "02", institucion: "", rnc: "" }); setPromoAplicada(null); setCodigoCupon(""); barrasRef.current?.focus(); }
 
   async function procesarVenta() {
     if (!sesionId) return toast.error("Abre una sesión de caja primero.");
@@ -264,6 +295,10 @@ export default function POSPage() {
       return toast.error(`Crédito insuficiente. Disponible: ${formatCurrency(clienteSeleccionado.credito_disponible)}`);
     if (metodoPago === "EFECTIVO" && montoPagado && Number(montoPagado) < total)
       return toast.error(`El monto recibido (${formatCurrency(Number(montoPagado))}) es menor al total (${formatCurrency(total)}).`);
+    if (emitirNcf) {
+      const ncfValid = await triggerNcf();
+      if (!ncfValid) return;
+    }
     setProcesando(true);
     const ventaPayload: Record<string, unknown> = {
       sesion_caja: sesionId, cliente: clienteId, metodo_pago: metodoPago,
@@ -296,15 +331,16 @@ export default function POSPage() {
       setUltimaVenta({ ...data, itbis: itbisTotal.toFixed(2) });
       setUltimoNcf(null);
       if (emitirNcf) {
+        const ncf = getNcfValues();
         try {
           const ncfRes = await api.post("/facturacion/facturas/", {
-            tipo: ncfTipo,
+            tipo: ncf.tipo,
             venta: data.id,
-            cliente_nombre: ncfTipo === "15" ? (ncfInstitucion || "Institución Gubernamental")
-              : ncfTipo === "01" ? (ncfInstitucion || data.cliente_nombre || "Consumidor Final")
+            cliente_nombre: ncf.tipo === "15" ? (ncf.institucion || "Institución Gubernamental")
+              : ncf.tipo === "01" ? (ncf.institucion || data.cliente_nombre || "Consumidor Final")
               : (data.cliente_nombre ?? "Consumidor Final"),
-            cliente_rnc: ncfRnc,
-            datos_especificos: ncfTipo === "15" ? { institucion_nombre: ncfInstitucion || "Institución Gubernamental" } : {},
+            cliente_rnc: ncf.rnc,
+            datos_especificos: ncf.tipo === "15" ? { institucion_nombre: ncf.institucion || "Institución Gubernamental" } : {},
             detalles: carrito.map((item) => ({
               producto: item.producto.id,
               descripcion: item.producto.nombre,
@@ -386,21 +422,20 @@ export default function POSPage() {
               <p className="text-xs text-muted-foreground">Ingresa el efectivo inicial del turno</p>
             </div>
             {!sinSesion && (
-              <button onClick={() => { setShowApertura(false); setEfectivoInicial(""); }} className="ml-auto p-1.5 rounded-lg hover:bg-muted transition-colors">
+              <button onClick={() => { setShowApertura(false); resetApertura(); }} className="ml-auto p-1.5 rounded-lg hover:bg-muted transition-colors">
                 <X size={16} className="text-muted-foreground" />
               </button>
             )}
           </div>
-          <div className="px-6 py-5 space-y-4">
-            <input autoFocus type="number" min="0" step="0.01" value={efectivoInicial}
-              onChange={(e) => setEfectivoInicial(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && abrirCaja()}
-              placeholder="0.00"
+          <form onSubmit={onAbrirCaja} className="px-6 py-5 space-y-4">
+            <input autoFocus type="number" min="0" step="0.01" placeholder="0.00"
+              {...regApertura("efectivo_inicial")}
+              onKeyDown={(e) => e.key === "Enter" && onAbrirCaja()}
               className="w-full border border-input bg-background rounded-xl px-4 py-3 text-3xl font-black text-center tabular-nums placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <div className="grid grid-cols-3 gap-2">
               {[500, 1000, 2000, 3000, 5000, 10000].map((v) => (
-                <button key={v} onClick={() => setEfectivoInicial(String(v))}
+                <button key={v} type="button" onClick={() => setAperturaVal("efectivo_inicial", String(v))}
                   className={cn("text-xs rounded-lg py-2 font-semibold transition-all",
                     Number(efectivoInicial) === v ? "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300" : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   )}>
@@ -408,12 +443,12 @@ export default function POSPage() {
                 </button>
               ))}
             </div>
-            <Button onClick={abrirCaja} disabled={abriendo} className="w-full gap-2" size="lg">
+            <Button type="submit" disabled={abriendo} className="w-full gap-2" size="lg">
               {abriendo ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <DollarSign size={16} />}
               Abrir Caja
             </Button>
             {sinSesion && <p className="text-center text-xs text-muted-foreground">No hay sesión activa. Abre la caja para comenzar.</p>}
-          </div>
+          </form>
         </div>
       </div>
     );
@@ -452,27 +487,29 @@ export default function POSPage() {
         <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <h2 className="font-bold">Cerrar Caja</h2>
-            <button onClick={() => setShowCierre(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors"><X size={16} /></button>
+            <button onClick={() => { setShowCierre(false); resetCierre(); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors"><X size={16} /></button>
           </div>
-          <div className="px-6 py-5 space-y-4">
+          <form onSubmit={onCerrarCaja} className="px-6 py-5 space-y-4">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Efectivo en caja (RD$)</label>
-              <input autoFocus type="number" min="0" step="0.01" value={efectivoDeclarado} onChange={(e) => setEfectivoDeclarado(e.target.value)} placeholder="0.00"
+              <input autoFocus type="number" min="0" step="0.01" placeholder="0.00"
+                {...regCierre("efectivo_declarado")}
                 className="w-full border border-input bg-background rounded-xl px-4 py-3 text-2xl font-black text-center tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Nota de cierre</label>
-              <textarea rows={2} value={notaCierre} onChange={(e) => setNotaCierre(e.target.value)} placeholder="Observaciones (opcional)"
+              <textarea rows={2} placeholder="Observaciones (opcional)"
+                {...regCierre("nota_cierre")}
                 className="w-full border border-input bg-background rounded-lg px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setShowCierre(false)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={cerrarCaja} disabled={cerrando} className="flex-1 gap-2">
+              <Button type="button" variant="outline" onClick={() => { setShowCierre(false); resetCierre(); }} className="flex-1">Cancelar</Button>
+              <Button type="submit" variant="destructive" disabled={cerrando} className="flex-1 gap-2">
                 {cerrando ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <LogOut size={14} />}
                 Cerrar caja
               </Button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     );
@@ -511,7 +548,7 @@ export default function POSPage() {
               </span>
             )}
             {sesionId && (
-              <Button variant="ghost" size="sm" onClick={() => { setEfectivoDeclarado(""); setNotaCierre(""); setResumenCierre(null); setShowCierre(true); }}
+              <Button variant="ghost" size="sm" onClick={() => { resetCierre(); setResumenCierre(null); setShowCierre(true); }}
                 className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950 gap-1.5 text-xs">
                 <LogOut size={12} /> Cerrar caja
               </Button>
@@ -790,45 +827,22 @@ export default function POSPage() {
             </button>
             {emitirNcf && (
               <div className="space-y-2 pl-1">
-                <select
-                  value={ncfTipo}
-                  onChange={(e) => setNcfTipo(e.target.value)}
-                  className="w-full h-8 text-xs border border-border rounded-lg bg-background px-2"
-                >
-                  <option value="02">B02 — Consumo (consumidor final)</option>
-                  <option value="01">B01 — Crédito Fiscal (empresa con RNC)</option>
-                  <option value="15">B15 — Gubernamental</option>
-                </select>
-                {ncfTipo === "01" && (
+                <Controller name="tipo" control={ctrlNcf} render={({ field }) => (
+                  <select value={field.value} onChange={(e) => field.onChange(e.target.value)}
+                    className="w-full h-8 text-xs border border-border rounded-lg bg-background px-2">
+                    <option value="02">B02 — Consumo (consumidor final)</option>
+                    <option value="01">B01 — Crédito Fiscal (empresa con RNC)</option>
+                    <option value="15">B15 — Gubernamental</option>
+                  </select>
+                )} />
+                {(ncfTipo === "01" || ncfTipo === "15") && (
                   <>
-                    <Input
-                      placeholder="Nombre / Razón social del cliente *"
-                      value={ncfInstitucion}
-                      onChange={(e) => setNcfInstitucion(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                    <Input
-                      placeholder="RNC / Cédula *"
-                      value={ncfRnc}
-                      onChange={(e) => setNcfRnc(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                  </>
-                )}
-                {ncfTipo === "15" && (
-                  <>
-                    <Input
-                      placeholder="Nombre de la institución *"
-                      value={ncfInstitucion}
-                      onChange={(e) => setNcfInstitucion(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                    <Input
-                      placeholder="RNC de la institución (opcional)"
-                      value={ncfRnc}
-                      onChange={(e) => setNcfRnc(e.target.value)}
-                      className="h-8 text-xs"
-                    />
+                    <Input placeholder={ncfTipo === "01" ? "Nombre / Razón social *" : "Nombre de la institución *"}
+                      className="h-8 text-xs" aria-invalid={!!errNcf.institucion} {...regNcf("institucion")} />
+                    {errNcf.institucion && <p role="alert" className="text-[10px] text-destructive">{errNcf.institucion.message}</p>}
+                    <Input placeholder={ncfTipo === "01" ? "RNC / Cédula *" : "RNC de la institución (opcional)"}
+                      className="h-8 text-xs font-mono" aria-invalid={!!errNcf.rnc} {...regNcf("rnc")} />
+                    {errNcf.rnc && <p role="alert" className="text-[10px] text-destructive">{errNcf.rnc.message}</p>}
                   </>
                 )}
               </div>
