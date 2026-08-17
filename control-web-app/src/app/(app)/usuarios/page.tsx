@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Plus, X, Check, Search, Shield, User2,
-  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock,
+  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock, AlertCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -51,6 +51,7 @@ export default function UsuariosPage() {
   const [form, setForm] = useState<FormUsuario>(FORM_EMPTY);
   const [showPass, setShowPass] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Permisos granulares
   const [permsTarget, setPermsTarget] = useState<UsuarioAPI | null>(null);
@@ -120,10 +121,26 @@ export default function UsuariosPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  function passwordStrength(p: string): { score: number; label: string; color: string } {
+    if (!p) return { score: 0, label: "", color: "" };
+    let score = 0;
+    if (p.length >= 6) score++;
+    if (p.length >= 10) score++;
+    if (/[A-Z]/.test(p)) score++;
+    if (/[0-9]/.test(p)) score++;
+    if (/[^A-Za-z0-9]/.test(p)) score++;
+    if (score <= 1) return { score, label: "Muy débil", color: "bg-red-500" };
+    if (score === 2) return { score, label: "Débil", color: "bg-orange-500" };
+    if (score === 3) return { score, label: "Moderada", color: "bg-yellow-500" };
+    if (score === 4) return { score, label: "Fuerte", color: "bg-green-500" };
+    return { score, label: "Muy fuerte", color: "bg-emerald-500" };
+  }
+
   function abrirCrear() {
     setForm(FORM_EMPTY);
     setEditando(null);
     setShowPass(false);
+    setFormErrors({});
     setModal("crear");
   }
 
@@ -131,13 +148,18 @@ export default function UsuariosPage() {
     setForm({ username: u.username, nombre: u.nombre, rol: u.rol, password: "", pin_caja: "", is_active: u.is_active });
     setEditando(u);
     setShowPass(false);
+    setFormErrors({});
     setModal("editar");
   }
 
   async function guardar() {
-    if (!form.username || !form.nombre) return toast.error("Usuario y nombre son requeridos.");
-    if (modal === "crear" && !form.password) return toast.error("La contraseña es requerida.");
-    if (form.pin_caja && !/^\d{4,6}$/.test(form.pin_caja)) return toast.error("El PIN debe tener 4 a 6 dígitos.");
+    const errs: Record<string, string> = {};
+    if (!form.nombre.trim()) errs.nombre = "El nombre es requerido.";
+    if (!form.username.trim()) errs.username = "El nombre de usuario es requerido.";
+    if (modal === "crear" && !form.password) errs.password = "La contraseña es requerida.";
+    if (form.password && form.password.length < 6) errs.password = "Mínimo 6 caracteres.";
+    if (form.pin_caja && !/^\d{4,6}$/.test(form.pin_caja)) errs.pin_caja = "El PIN debe tener 4 a 6 dígitos.";
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
     setGuardando(true);
     try {
       const base = { username: form.username, nombre: form.nombre, rol: form.rol, is_active: form.is_active };
@@ -450,11 +472,24 @@ export default function UsuariosPage() {
             <div className="px-6 py-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre completo *</label>
-                <Input value={form.nombre} onChange={f("nombre")} placeholder="Ej: Juan Pérez" autoFocus />
+                <Input
+                  value={form.nombre}
+                  onChange={(e) => { f("nombre")(e); setFormErrors((p) => ({ ...p, nombre: "" })); }}
+                  placeholder="Ej: Juan Pérez"
+                  autoFocus
+                  className={formErrors.nombre ? "border-red-400 focus-visible:ring-red-300" : ""}
+                />
+                {formErrors.nombre && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.nombre}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre de usuario *</label>
-                <Input value={form.username} onChange={f("username")} placeholder="Ej: jperez" />
+                <Input
+                  value={form.username}
+                  onChange={(e) => { f("username")(e); setFormErrors((p) => ({ ...p, username: "" })); }}
+                  placeholder="Ej: jperez"
+                  className={formErrors.username ? "border-red-400 focus-visible:ring-red-300" : ""}
+                />
+                {formErrors.username && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.username}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Rol</label>
@@ -476,15 +511,29 @@ export default function UsuariosPage() {
                   <Input
                     type={showPass ? "text" : "password"}
                     value={form.password}
-                    onChange={f("password")}
+                    onChange={(e) => { f("password")(e); setFormErrors((p) => ({ ...p, password: "" })); }}
                     placeholder={modal === "crear" ? "Contraseña segura" : "••••••••"}
-                    className="pr-10"
+                    className={`pr-10 ${formErrors.password ? "border-red-400 focus-visible:ring-red-300" : ""}`}
                   />
                   <button type="button" onClick={() => setShowPass((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                     {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
+                {formErrors.password && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.password}</p>}
+                {form.password && (() => {
+                  const s = passwordStrength(form.password);
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex gap-0.5 h-1">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <div key={i} className={`flex-1 rounded-full transition-colors ${i <= s.score ? s.color : "bg-slate-200"}`} />
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-slate-400">Seguridad: <span className="font-medium text-slate-600">{s.label}</span></p>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
@@ -493,10 +542,12 @@ export default function UsuariosPage() {
                 <Input
                   type="number"
                   value={form.pin_caja}
-                  onChange={f("pin_caja")}
+                  onChange={(e) => { f("pin_caja")(e); setFormErrors((p) => ({ ...p, pin_caja: "" })); }}
                   placeholder="Ej: 1234"
                   maxLength={6}
+                  className={formErrors.pin_caja ? "border-red-400 focus-visible:ring-red-300" : ""}
                 />
+                {formErrors.pin_caja && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors.pin_caja}</p>}
               </div>
               {modal === "editar" && (
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -513,7 +564,7 @@ export default function UsuariosPage() {
             </div>
             <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
               <button onClick={() => setModal(null)}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors duration-150 active:scale-95">
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold transition-colors duration-150 active:scale-95">
                 Cancelar
               </button>
               <button onClick={guardar} disabled={guardando}

@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -132,8 +131,7 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 export default function Sidebar() {
-  const { collapsed } = useSidebarStore();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const { collapsed, openGroups, toggleGroup: storeToggleGroup, setGroupOpen } = useSidebarStore();
   const pathname = usePathname();
   const { usuario, esAdmin, esSuperadmin } = useAuthStore();
   const { theme, toggle } = useTheme();
@@ -161,11 +159,15 @@ export default function Sidebar() {
 
   function isGroupOpen(title: string, hasActiveItem: boolean): boolean {
     if (title in openGroups) return openGroups[title];
-    return hasActiveItem;
+    if (hasActiveItem) {
+      setGroupOpen(title, true);
+      return true;
+    }
+    return false;
   }
 
-  function toggleGroup(title: string, currentOpen: boolean) {
-    setOpenGroups((prev: Record<string, boolean>) => ({ ...prev, [title]: !currentOpen }));
+  function toggleGroup(title: string) {
+    storeToggleGroup(title);
   }
 
   return (
@@ -225,11 +227,12 @@ export default function Sidebar() {
 
             // Multi-item groups — collapsible
             const open = isGroupOpen(group.title, hasActiveItem);
+
             const GroupIcon = group.icon;
 
             const groupHeader = (
               <button
-                onClick={() => !collapsed && toggleGroup(group.title, open)}
+                onClick={() => !collapsed && toggleGroup(group.title)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 relative",
                   hasActiveItem

@@ -10,6 +10,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 
 export default function Header() {
@@ -44,8 +45,11 @@ export default function Header() {
         <PanelLeft size={17} />
       </button>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Breadcrumb */}
+      <Breadcrumb className="hidden sm:flex flex-1" />
+
+      {/* Spacer mobile */}
+      <div className="flex-1 sm:hidden" />
 
       {/* Search */}
       <Button

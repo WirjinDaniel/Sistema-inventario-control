@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Plus, Edit2, AlertTriangle, Package,
   Check, Filter, ScanBarcode, Sparkles, Camera,
-  ScrollText, LayoutGrid, List, Tag,
+  ScrollText, LayoutGrid, List, Tag, AlertCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -56,8 +56,11 @@ export default function ProductosPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [suplidores, setSuplidores] = useState<{ id: number; nombre: string }[]>([]);
   const [busqueda, setBusqueda] = useState("");
+  const [busquedaDebounced, setBusquedaDebounced] = useState("");
   const [filtroStockBajo, setFiltroStockBajo] = useState(false);
   const [filtroCat, setFiltroCat] = useState("");
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
   const [vista, setVista] = useState<"tabla" | "grid">("tabla");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -67,11 +70,17 @@ export default function ProductosPage() {
   const [guardando, setGuardando] = useState(false);
   const [proveedorOpen, setProveedorOpen] = useState(false);
 
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setBusquedaDebounced(busqueda), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [busqueda]);
+
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (busqueda) params.append("search", busqueda);
+      if (busquedaDebounced) params.append("search", busquedaDebounced);
       if (filtroStockBajo) params.append("stock_bajo", "true");
       if (filtroCat) params.append("categoria", filtroCat);
       const [{ data: p }, { data: c }, { data: s }] = await Promise.all([
@@ -84,7 +93,7 @@ export default function ProductosPage() {
       setSuplidores(s.results ?? s);
     } catch { toast.error("Error cargando productos"); }
     setLoading(false);
-  }, [busqueda, filtroStockBajo, filtroCat]);
+  }, [busquedaDebounced, filtroStockBajo, filtroCat]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -108,14 +117,18 @@ export default function ProductosPage() {
   }
 
   async function guardar() {
-    if (!form.nombre || !form.precio_venta) return toast.error("Nombre y precio de venta son requeridos.");
-    if (Number(form.precio_venta) <= 0) return toast.error("El precio de venta debe ser mayor a 0.");
-    if (form.precio_costo && Number(form.precio_venta) < Number(form.precio_costo))
-      return toast.error("El precio de venta no puede ser menor al precio de costo.");
-    if (Number(form.stock_actual) < 0) return toast.error("El stock no puede ser negativo.");
-    if (Number(form.stock_minimo) < 0) return toast.error("El stock mínimo no puede ser negativo.");
+    const errs: Record<string, string> = {};
+    if (!form.nombre) errs.nombre = "El nombre es requerido.";
+    if (!form.precio_venta) errs.precio_venta = "El precio de venta es requerido.";
+    else if (Number(form.precio_venta) <= 0) errs.precio_venta = "Debe ser mayor a 0.";
+    else if (form.precio_costo && Number(form.precio_venta) < Number(form.precio_costo))
+      errs.precio_venta = "No puede ser menor al precio de costo.";
+    if (Number(form.stock_actual) < 0) errs.stock_actual = "No puede ser negativo.";
+    if (Number(form.stock_minimo) < 0) errs.stock_minimo = "No puede ser negativo.";
     if (form.oferta_inicio && form.oferta_fin && form.oferta_inicio >= form.oferta_fin)
-      return toast.error("La fecha de inicio de oferta debe ser anterior a la fecha de fin.");
+      errs.oferta_fin = "La fecha de fin debe ser posterior a la de inicio.";
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
+    setFormErrors({});
     setGuardando(true);
     try {
       const payload = {
@@ -432,7 +445,14 @@ export default function ProductosPage() {
                   </div>
                   <div className="flex-1">
                     <Label className="text-xs mb-1.5 block">Nombre *</Label>
-                    <Input value={form.nombre} onChange={f("nombre")} placeholder="Ej: Arroz Cristal 1lb" autoFocus />
+                    <Input
+                      value={form.nombre}
+                      onChange={(e) => { f("nombre")(e); setFormErrors((p) => ({ ...p, nombre: "" })); }}
+                      placeholder="Ej: Arroz Cristal 1lb"
+                      autoFocus
+                      className={formErrors.nombre ? "border-red-400 focus-visible:ring-red-300" : ""}
+                    />
+                    {formErrors.nombre && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{formErrors.nombre}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -507,7 +527,15 @@ export default function ProductosPage() {
                   </div>
                   <div>
                     <Label className="text-xs mb-1.5 block">Precio venta (RD$) *</Label>
-                    <Input type="number" value={form.precio_venta} onChange={f("precio_venta")} placeholder="0.00" step="0.01" />
+                    <Input
+                      type="number"
+                      value={form.precio_venta}
+                      onChange={(e) => { f("precio_venta")(e); setFormErrors((p) => ({ ...p, precio_venta: "" })); }}
+                      placeholder="0.00"
+                      step="0.01"
+                      className={formErrors.precio_venta ? "border-red-400 focus-visible:ring-red-300" : ""}
+                    />
+                    {formErrors.precio_venta && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{formErrors.precio_venta}</p>}
                   </div>
                 </div>
 

@@ -5,7 +5,7 @@ import {
   DollarSign, Users, Phone, CreditCard, TrendingDown,
   Check, Edit2, MoreHorizontal, BadgeCheck,
   UserX, RefreshCw, X, AlertTriangle, ChevronRight,
-  LayoutList, LayoutGrid, ArrowUpDown, UserCheck,
+  LayoutList, LayoutGrid, ArrowUpDown, UserCheck, AlertCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -43,6 +43,7 @@ export default function ClientesPage() {
   const [montoAbono, setMontoAbono] = useState("");
   const [notaAbono, setNotaAbono] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -70,7 +71,7 @@ export default function ClientesPage() {
     setLoadingHistorial(false);
   }
 
-  function abrirCrear() { setForm(FORM_EMPTY); setModal("crear"); }
+  function abrirCrear() { setForm(FORM_EMPTY); setFormErrors({}); setModal("crear"); }
   function abrirEditar(c: Cliente) {
     setForm({ nombre: c.nombre, telefono: c.telefono, cedula: c.cedula, limite_credito: c.limite_credito });
     setClienteActivo(c);
@@ -87,7 +88,12 @@ export default function ClientesPage() {
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
   async function guardar() {
-    if (!form.nombre.trim()) return toast.error("El nombre es requerido.");
+    const errs: Record<string, string> = {};
+    if (!form.nombre.trim()) errs.nombre = "El nombre es requerido.";
+    if (form.telefono && !/^[\d\s()\-+]{7,15}$/.test(form.telefono)) errs.telefono = "Formato inválido (ej: 809-000-0000).";
+    if (form.cedula && !/^\d{3}-\d{7}-\d$/.test(form.cedula)) errs.cedula = "Formato inválido (ej: 001-0000000-0).";
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
+    setFormErrors({});
     setGuardando(true);
     try {
       if (modal === "crear") {
@@ -801,9 +807,11 @@ export default function ClientesPage() {
                 </Label>
                 <Input
                   value={form[key]}
-                  onChange={setField(key)}
-                  placeholder={key === "nombre" ? "Ej: Juan Pérez" : key === "telefono" ? "809-000-0000" : "000-0000000-0"}
+                  onChange={(e) => { setField(key)(e); setFormErrors((p) => ({ ...p, [key]: "" })); }}
+                  placeholder={key === "nombre" ? "Ej: Juan Pérez" : key === "telefono" ? "809-000-0000" : "001-0000000-0"}
+                  className={formErrors[key] ? "border-red-400 focus-visible:ring-red-300" : ""}
                 />
+                {formErrors[key] && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{formErrors[key]}</p>}
               </div>
             ))}
             <div className="space-y-1.5">
