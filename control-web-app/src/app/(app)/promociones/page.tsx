@@ -1,5 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Tag, Plus, Search, RefreshCw, Check, X, Edit2,
   Percent, DollarSign, Gift, Layers, ToggleLeft, ToggleRight, Copy,
@@ -18,13 +21,31 @@ import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Categoria, Producto } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
 
 type TipoPromo = "PORCENTAJE" | "MONTO_FIJO" | "2X1" | "NXPRECIO" | "CUPON";
+
+const promocionSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido."),
+  descripcion: z.string().optional(),
+  tipo: z.enum(["PORCENTAJE", "MONTO_FIJO", "2X1", "NXPRECIO", "CUPON"] as const),
+  valor: z.string().optional(),
+  cantidad_minima: z.number().min(1),
+  cantidad_paga: z.number().min(1),
+  precio_especial: z.string().optional(),
+  codigo_cupon: z.string().optional(),
+  producto: z.number().nullable().optional(),
+  categoria: z.number().nullable().optional(),
+  fecha_inicio: z.string().optional(),
+  fecha_fin: z.string().optional(),
+  activo: z.boolean(),
+  limite_usos: z.string().optional(),
+});
+
+type PromocionForm = z.infer<typeof promocionSchema>;
 
 interface Promocion {
   id: number; nombre: string; descripcion: string; tipo: TipoPromo;
@@ -44,11 +65,11 @@ const TIPO_INFO: Record<TipoPromo, { label: string; icon: React.ElementType; col
   CUPON:       { label: "Cupón",         icon: Tag,        color: "text-amber-500",   desc: "Código de descuento" },
 };
 
-const FORM_EMPTY = {
-  nombre: "", descripcion: "", tipo: "PORCENTAJE" as TipoPromo,
+const FORM_EMPTY: PromocionForm = {
+  nombre: "", descripcion: "", tipo: "PORCENTAJE",
   valor: "", cantidad_minima: 1, cantidad_paga: 1, precio_especial: "",
-  codigo_cupon: "", producto: null as number | null, categoria: null as number | null,
-  fecha_inicio: "", fecha_fin: "", activo: true, limite_usos: "" as string,
+  codigo_cupon: "", producto: null, categoria: null,
+  fecha_inicio: "", fecha_fin: "", activo: true, limite_usos: "",
 };
 
 const fmtFecha = (s: string) => s ? new Date(s).toLocaleDateString("es-DO") : "—";
@@ -66,8 +87,12 @@ export default function PromocionesPage() {
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<Promocion | null>(null);
-  const [form, setForm] = useState({ ...FORM_EMPTY });
   const [guardando, setGuardando] = useState(false);
+
+  const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } =
+    useForm<PromocionForm>({ resolver: zodResolver(promocionSchema), defaultValues: FORM_EMPTY });
+  const tipoActual = watch("tipo");
+  const productoActual = watch("producto");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -92,14 +117,14 @@ export default function PromocionesPage() {
   function abrirNueva() {
     setEditando(null);
     setBusqProd("");
-    setForm({ ...FORM_EMPTY });
+    reset(FORM_EMPTY);
     setModalOpen(true);
   }
 
   function abrirEditar(p: Promocion) {
     setEditando(p);
     setBusqProd(p.producto_nombre ?? "");
-    setForm({
+    reset({
       nombre: p.nombre, descripcion: p.descripcion, tipo: p.tipo,
       valor: p.valor, cantidad_minima: p.cantidad_minima, cantidad_paga: p.cantidad_paga,
       precio_especial: p.precio_especial, codigo_cupon: p.codigo_cupon,
@@ -122,19 +147,18 @@ export default function PromocionesPage() {
   function generarCupon() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const code = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-    setForm((f) => ({ ...f, codigo_cupon: code }));
+    setValue("codigo_cupon", code, { shouldDirty: true });
   }
 
-  async function guardar() {
-    if (!form.nombre.trim()) { toast.error("El nombre es requerido"); return; }
+  const onSubmit = handleSubmit(async (data) => {
     setGuardando(true);
     const payload = {
-      ...form,
-      limite_usos: form.limite_usos ? Number(form.limite_usos) : null,
-      precio_especial: form.precio_especial || "0",
-      valor: form.valor || "0",
-      fecha_inicio: form.fecha_inicio || null,
-      fecha_fin: form.fecha_fin || null,
+      ...data,
+      limite_usos: data.limite_usos ? Number(data.limite_usos) : null,
+      precio_especial: data.precio_especial || "0",
+      valor: data.valor || "0",
+      fecha_inicio: data.fecha_inicio || null,
+      fecha_fin: data.fecha_fin || null,
     };
     try {
       if (editando) {
@@ -158,7 +182,7 @@ export default function PromocionesPage() {
       }
     }
     setGuardando(false);
-  }
+  });
 
   const prodFiltrados = productos.filter((p) =>
     p.nombre.toLowerCase().includes(busqProd.toLowerCase())
@@ -291,82 +315,73 @@ export default function PromocionesPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-4">
             {/* Nombre */}
             <div>
-              <Label className="text-xs mb-1.5 block">Nombre *</Label>
-              <Input value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
-                className="h-8 text-sm" placeholder="Ej: Descuento fin de semana" />
+              <Label className="text-xs mb-1.5 block" htmlFor="promo-nombre">Nombre <span className="text-destructive">*</span></Label>
+              <Input id="promo-nombre" aria-required="true" aria-invalid={!!errors.nombre}
+                className="h-8 text-sm" placeholder="Ej: Descuento fin de semana" {...register("nombre")} />
+              {errors.nombre && <p role="alert" className="text-xs text-destructive mt-1">{errors.nombre.message}</p>}
             </div>
 
             {/* Tipo */}
             <div>
               <Label className="text-xs mb-1.5 block">Tipo de promoción</Label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {(Object.keys(TIPO_INFO) as TipoPromo[]).map((t) => {
-                  const { label, icon: Icon, color } = TIPO_INFO[t];
-                  return (
-                    <button key={t} onClick={() => setForm((f) => ({ ...f, tipo: t }))}
-                      className={cn("flex flex-col items-center gap-1 p-2 rounded-lg border text-center transition-all",
-                        form.tipo === t ? "border-brand-500 bg-brand-50 dark:bg-brand-950/30" : "border-border hover:bg-muted/40")}>
-                      <Icon size={14} className={form.tipo === t ? color : "text-muted-foreground"} />
-                      <span className="text-[10px] font-medium leading-tight">{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <Controller name="tipo" control={control} render={({ field }) => (
+                <div className="grid grid-cols-5 gap-1.5">
+                  {(Object.keys(TIPO_INFO) as TipoPromo[]).map((t) => {
+                    const { label, icon: Icon, color } = TIPO_INFO[t];
+                    return (
+                      <button key={t} type="button" onClick={() => field.onChange(t)}
+                        className={cn("flex flex-col items-center gap-1 p-2 rounded-lg border text-center transition-all",
+                          field.value === t ? "border-brand-500 bg-brand-50 dark:bg-brand-950/30" : "border-border hover:bg-muted/40")}>
+                        <Icon size={14} className={field.value === t ? color : "text-muted-foreground"} />
+                        <span className="text-[10px] font-medium leading-tight">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )} />
             </div>
 
             {/* Valor según tipo */}
-            {(form.tipo === "PORCENTAJE" || form.tipo === "MONTO_FIJO") && (
+            {(tipoActual === "PORCENTAJE" || tipoActual === "MONTO_FIJO") && (
               <div>
                 <Label className="text-xs mb-1.5 block">
-                  {form.tipo === "PORCENTAJE" ? "Porcentaje de descuento (%)" : "Monto de descuento (RD$)"}
+                  {tipoActual === "PORCENTAJE" ? "Porcentaje de descuento (%)" : "Monto de descuento (RD$)"}
                 </Label>
-                <Input type="number" min="0" value={form.valor}
-                  onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
-                  className="h-8 text-sm" placeholder={form.tipo === "PORCENTAJE" ? "Ej: 10" : "Ej: 50"} />
+                <Input type="number" min="0" className="h-8 text-sm"
+                  placeholder={tipoActual === "PORCENTAJE" ? "Ej: 10" : "Ej: 50"} {...register("valor")} />
               </div>
             )}
-            {form.tipo === "NXPRECIO" && (
+            {tipoActual === "NXPRECIO" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs mb-1.5 block">Cantidad mínima</Label>
-                  <Input type="number" min="1" value={form.cantidad_minima}
-                    onChange={(e) => setForm((f) => ({ ...f, cantidad_minima: Number(e.target.value) }))}
-                    className="h-8 text-sm" />
+                  <Input type="number" min="1" className="h-8 text-sm"
+                    {...register("cantidad_minima", { valueAsNumber: true })} />
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Precio especial (RD$)</Label>
-                  <Input type="number" min="0" value={form.precio_especial}
-                    onChange={(e) => setForm((f) => ({ ...f, precio_especial: e.target.value }))}
-                    className="h-8 text-sm" placeholder="Ej: 100" />
+                  <Input type="number" min="0" className="h-8 text-sm" placeholder="Ej: 100" {...register("precio_especial")} />
                 </div>
               </div>
             )}
-            {form.tipo === "CUPON" && (
+            {tipoActual === "CUPON" && (
               <div>
                 <Label className="text-xs mb-1.5 block">Código del cupón</Label>
                 <div className="flex gap-2">
-                  <Input value={form.codigo_cupon}
-                    onChange={(e) => setForm((f) => ({ ...f, codigo_cupon: e.target.value.toUpperCase() }))}
-                    className="h-8 text-sm font-mono flex-1" placeholder="DESCUENTO10" />
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={generarCupon}>
+                  <Controller name="codigo_cupon" control={control} render={({ field }) => (
+                    <Input value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      className="h-8 text-sm font-mono flex-1" placeholder="DESCUENTO10" />
+                  )} />
+                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={generarCupon}>
                     <Copy size={12} /> Generar
                   </Button>
                 </div>
                 <div className="mt-2">
                   <Label className="text-xs mb-1.5 block">Valor del cupón</Label>
-                  <div className="flex gap-2">
-                    <Input type="number" min="0" value={form.valor}
-                      onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
-                      className="h-8 text-sm flex-1" placeholder="10" />
-                    <select value={form.tipo === "CUPON" ? "PORCENTAJE" : "MONTO_FIJO"}
-                      className="h-8 text-sm border border-border rounded-md bg-background px-2">
-                      <option value="PORCENTAJE">%</option>
-                      <option value="MONTO_FIJO">RD$</option>
-                    </select>
-                  </div>
+                  <Input type="number" min="0" className="h-8 text-sm" placeholder="10" {...register("valor")} />
                 </div>
               </div>
             )}
@@ -387,7 +402,8 @@ export default function PromocionesPage() {
                     {busqProd && (
                       <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg z-10 mt-1 max-h-40 overflow-y-auto">
                         {prodFiltrados.length > 0 ? prodFiltrados.map((p) => (
-                          <button key={p.id} onClick={() => { setForm((f) => ({ ...f, producto: p.id, categoria: null })); setBusqProd(p.nombre); }}
+                          <button key={p.id} type="button"
+                            onClick={() => { setValue("producto", p.id, { shouldDirty: true }); setValue("categoria", null); setBusqProd(p.nombre); }}
                             className="w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors">
                             {p.nombre}
                           </button>
@@ -400,12 +416,14 @@ export default function PromocionesPage() {
                 </div>
                 <div>
                   <Label className="text-[11px] text-muted-foreground mb-1 block">Categoría</Label>
-                  <select value={form.categoria ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value ? Number(e.target.value) : null, producto: null }))}
-                    className="w-full h-8 text-sm border border-border rounded-md bg-background px-2">
-                    <option value="">Todas las categorías</option>
-                    {categorias.map((c) => <option key={c.id} value={c.id.toString()}>{c.nombre}</option>)}
-                  </select>
+                  <Controller name="categoria" control={control} render={({ field }) => (
+                    <select value={field.value ?? ""}
+                      onChange={(e) => { field.onChange(e.target.value ? Number(e.target.value) : null); setValue("producto", null); setBusqProd(""); }}
+                      className="w-full h-8 text-sm border border-border rounded-md bg-background px-2">
+                      <option value="">Todas las categorías</option>
+                      {categorias.map((c) => <option key={c.id} value={c.id.toString()}>{c.nombre}</option>)}
+                    </select>
+                  )} />
                 </div>
               </div>
             </div>
@@ -414,37 +432,41 @@ export default function PromocionesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs mb-1.5 block">Fecha inicio</Label>
-                <DatePicker value={form.fecha_inicio} onChange={(v) => setForm((f) => ({ ...f, fecha_inicio: v }))} className="h-8 text-sm w-full" />
+                <Controller name="fecha_inicio" control={control} render={({ field }) => (
+                  <DatePicker value={field.value ?? ""} onChange={field.onChange} className="h-8 text-sm w-full" />
+                )} />
               </div>
               <div>
                 <Label className="text-xs mb-1.5 block">Fecha fin</Label>
-                <DatePicker value={form.fecha_fin} onChange={(v) => setForm((f) => ({ ...f, fecha_fin: v }))} className="h-8 text-sm w-full" />
+                <Controller name="fecha_fin" control={control} render={({ field }) => (
+                  <DatePicker value={field.value ?? ""} onChange={field.onChange} className="h-8 text-sm w-full" />
+                )} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs mb-1.5 block">Límite de usos (opcional)</Label>
-                <Input type="number" min="1" value={form.limite_usos}
-                  onChange={(e) => setForm((f) => ({ ...f, limite_usos: e.target.value }))}
-                  className="h-8 text-sm" placeholder="Sin límite" />
+                <Input type="number" min="1" className="h-8 text-sm" placeholder="Sin límite" {...register("limite_usos")} />
               </div>
               <div className="flex items-end pb-1">
                 <div className="flex items-center gap-2">
-                  <Switch checked={form.activo} onCheckedChange={(v) => setForm((f) => ({ ...f, activo: v }))} />
+                  <Controller name="activo" control={control} render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )} />
                   <Label className="text-xs">Activa</Label>
                 </div>
               </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button size="sm" onClick={guardar} disabled={guardando} className="gap-2">
-              {guardando ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
-              {editando ? "Guardar cambios" : "Crear promoción"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" size="sm" onClick={() => setModalOpen(false)}>Cancelar</Button>
+              <Button type="submit" size="sm" disabled={guardando} className="gap-2">
+                {guardando ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
+                {editando ? "Guardar cambios" : "Crear promoción"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

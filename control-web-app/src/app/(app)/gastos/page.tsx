@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import api from "@/lib/api";
 import type { CategoriaGasto, Gasto } from "@/types";
 import toast from "react-hot-toast";
@@ -18,8 +21,20 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { FormField } from "@/components/shared/FormField";
 import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
+
+const gastoSchema = z.object({
+  categoria: z.string().min(1, "Selecciona una categoría."),
+  descripcion: z.string().min(1, "La descripción es requerida."),
+  monto: z.string().min(1, "El monto es requerido.").refine((v) => Number(v) > 0, { message: "Debe ser mayor a 0." }),
+  metodo_pago: z.enum(["EFECTIVO", "TARJETA", "TRANSFERENCIA", "CHEQUE"]),
+  comprobante: z.string().optional(),
+  nota: z.string().optional(),
+});
+
+type GastoForm = z.infer<typeof gastoSchema>;
 
 const METODOS_PAGO = [
   { value: "EFECTIVO",      label: "Efectivo",      icon: Banknote },
@@ -60,10 +75,16 @@ export default function GastosPage() {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [form, setForm] = useState({
-    categoria: "", descripcion: "", monto: "",
-    metodo_pago: "EFECTIVO", comprobante: "", nota: "",
+
+  const {
+    register, handleSubmit, watch, setValue, reset,
+    formState: { errors },
+  } = useForm<GastoForm>({
+    resolver: zodResolver(gastoSchema),
+    defaultValues: { categoria: "", descripcion: "", monto: "", metodo_pago: "EFECTIVO", comprobante: "", nota: "" },
   });
+
+  const metodoPago = watch("metodo_pago");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -93,23 +114,21 @@ export default function GastosPage() {
     });
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.categoria || !form.descripcion || !form.monto) return toast.error("Completa los campos requeridos");
+  const onSubmit = handleSubmit(async (data) => {
     setSubmitting(true);
     try {
       await api.post("/gastos/", {
-        categoria: Number(form.categoria), descripcion: form.descripcion,
-        monto: form.monto, metodo_pago: form.metodo_pago,
-        comprobante: form.comprobante, nota: form.nota,
+        categoria: Number(data.categoria), descripcion: data.descripcion,
+        monto: data.monto, metodo_pago: data.metodo_pago,
+        comprobante: data.comprobante, nota: data.nota,
       });
       toast.success("Gasto registrado");
       setShowModal(false);
-      setForm({ categoria: "", descripcion: "", monto: "", metodo_pago: "EFECTIVO", comprobante: "", nota: "" });
+      reset();
       fetchData();
     } catch { toast.error("Error al registrar gasto"); }
     finally { setSubmitting(false); }
-  }
+  });
 
   const gastosFiltrados = gastos.filter((g) => {
     if (!busqueda) return true;
@@ -278,7 +297,7 @@ export default function GastosPage() {
       </div>
 
       {/* Modal registrar gasto */}
-      <Dialog open={showModal} onOpenChange={(o) => !o && setShowModal(false)}>
+      <Dialog open={showModal} onOpenChange={(o) => { if (!o) { setShowModal(false); reset(); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -289,13 +308,19 @@ export default function GastosPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <form onSubmit={onSubmit} className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Categoría *</Label>
+              <Label className="text-xs font-medium">
+                Categoría <span className="text-destructive" aria-hidden="true">*</span>
+              </Label>
               <select
-                value={form.categoria}
-                onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}
-                className="w-full h-9 px-3 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                {...register("categoria")}
+                aria-required
+                aria-invalid={!!errors.categoria}
+                className={cn(
+                  "w-full h-9 px-3 text-sm rounded-md border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+                  errors.categoria ? "border-destructive" : "border-input"
+                )}
               >
                 <option value="">Seleccionar categoría...</option>
                 {categorias.map((c) => (
@@ -304,26 +329,29 @@ export default function GastosPage() {
                   </option>
                 ))}
               </select>
+              {errors.categoria && <p role="alert" className="text-xs text-destructive">{errors.categoria.message}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Descripción *</Label>
-              <Input
-                value={form.descripcion}
-                onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
-                placeholder="Ej: Pago alquiler local"
-              />
-            </div>
+            <FormField
+              label="Descripción"
+              required
+              placeholder="Ej: Pago alquiler local"
+              error={errors.descripcion?.message}
+              {...register("descripcion")}
+            />
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Monto (RD$) *</Label>
+              <Label className="text-xs font-medium">
+                Monto (RD$) <span className="text-destructive" aria-hidden="true">*</span>
+              </Label>
               <Input
                 type="number" min="0" step="0.01"
-                value={form.monto}
-                onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))}
-                className="text-center text-2xl font-bold h-14 tabular-nums"
                 placeholder="0.00"
+                aria-invalid={!!errors.monto}
+                className={cn("text-center text-2xl font-bold h-14 tabular-nums", errors.monto ? "border-destructive" : "")}
+                {...register("monto")}
               />
+              {errors.monto && <p role="alert" className="text-xs text-destructive">{errors.monto.message}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -333,10 +361,10 @@ export default function GastosPage() {
                   <button
                     key={m.value}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, metodo_pago: m.value }))}
+                    onClick={() => setValue("metodo_pago", m.value as GastoForm["metodo_pago"], { shouldDirty: true })}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium border transition-all",
-                      form.metodo_pago === m.value
+                      metodoPago === m.value
                         ? "border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300"
                         : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-muted-foreground"
                     )}
@@ -347,28 +375,25 @@ export default function GastosPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">No. Comprobante (opcional)</Label>
-              <Input
-                value={form.comprobante}
-                onChange={(e) => setForm((f) => ({ ...f, comprobante: e.target.value }))}
-                placeholder="No. factura o recibo"
-              />
-            </div>
+            <FormField
+              label="No. Comprobante"
+              hint="Opcional"
+              placeholder="No. factura o recibo"
+              {...register("comprobante")}
+            />
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Nota (opcional)</Label>
+              <Label className="text-xs font-medium">Nota <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <textarea
                 rows={2}
+                {...register("nota")}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 placeholder="Observaciones adicionales..."
-                value={form.nota}
-                onChange={(e) => setForm((f) => ({ ...f, nota: e.target.value }))}
               />
             </div>
 
             <DialogFooter className="gap-2 pt-2">
-              <Button variant="outline" type="button" onClick={() => setShowModal(false)}>Cancelar</Button>
+              <Button variant="outline" type="button" onClick={() => { setShowModal(false); reset(); }}>Cancelar</Button>
               <Button type="submit" disabled={submitting} className="gap-2">
                 {submitting
                   ? <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>

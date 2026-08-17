@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import api from '@/lib/api';
 import { Suplidor, OrdenCompra, Producto } from '@/types';
 import { useAuthStore } from '@/store/auth';
@@ -12,6 +15,7 @@ import {
   Truck, Plus, X, Search, ChevronRight, ArrowLeft,
   Loader2, Package, CreditCard, Info, ShoppingCart, DollarSign, Trash2, FileText
 } from 'lucide-react';
+import { FormField } from '@/components/shared/FormField';
 
 interface OrdenItem {
   producto: Producto | null;
@@ -52,7 +56,32 @@ const ESTADO_OPTS = [
   { value: 'CANCELADA', label: 'Cancelada' },
 ];
 
-const empty = {
+const suplidorSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es requerido.'),
+  contacto: z.string().optional(),
+  telefono: z.string().optional(),
+  email: z.string().email('Email inválido.').optional().or(z.literal('')),
+  rnc: z.string().optional(),
+  direccion: z.string().optional(),
+  tipo_pago: z.enum(['CONTADO', 'CREDITO']),
+  dias_credito: z.string().optional(),
+  limite_credito: z.string().optional(),
+  descuento_habitual: z.string().optional(),
+  frecuencia_entrega: z.string().optional(),
+  notas: z.string().optional(),
+});
+
+const pagoSchema = z.object({
+  monto: z.string().min(1, 'El monto es requerido.').refine((v) => Number(v) > 0, { message: 'Debe ser mayor a 0.' }),
+  metodo: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'CHEQUE']),
+  referencia: z.string().optional(),
+  nota: z.string().optional(),
+});
+
+type SuplidorForm = z.infer<typeof suplidorSchema>;
+type PagoForm = z.infer<typeof pagoSchema>;
+
+const FORM_EMPTY: SuplidorForm = {
   nombre: '', contacto: '', telefono: '', email: '', rnc: '',
   direccion: '', tipo_pago: 'CONTADO', dias_credito: '30',
   limite_credito: '0', descuento_habitual: '0', frecuencia_entrega: '', notas: '',
@@ -72,7 +101,12 @@ export default function SuplidoresPage() {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState<Suplidor | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState(empty);
+
+  const {
+    register: regSup, handleSubmit: handleSup, control: ctrlSup,
+    watch: watchSup, reset: resetSup, formState: { errors: errSup },
+  } = useForm<SuplidorForm>({ resolver: zodResolver(suplidorSchema), defaultValues: FORM_EMPTY });
+  const tipoPago = watchSup('tipo_pago');
 
   // Detail view
   const [detalle, setDetalle] = useState<Suplidor | null>(null);
@@ -92,8 +126,12 @@ export default function SuplidoresPage() {
   // Payment modal
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [ordenSeleccionada, setOrdenSeleccionada] = useState<OrdenCompra | null>(null);
-  const [pagoForm, setPagoForm] = useState({ monto: '', metodo: 'EFECTIVO', referencia: '', nota: '' });
   const [submittingPago, setSubmittingPago] = useState(false);
+
+  const {
+    register: regPago, handleSubmit: handlePago, control: ctrlPago,
+    reset: resetPago, formState: { errors: errPago },
+  } = useForm<PagoForm>({ resolver: zodResolver(pagoSchema), defaultValues: { monto: '', metodo: 'EFECTIVO', referencia: '', nota: '' } });
 
   const buscarProducto = async (idx: number, q: string) => {
     setOrdenItems(prev => prev.map((it, i) => i === idx ? { ...it, busqueda: q, buscando: !!q } : it));
@@ -192,12 +230,12 @@ export default function SuplidoresPage() {
     }
   }, [detalle, tab, fetchOrdenes]);
 
-  const openCreate = () => { setEditando(null); setForm(empty); setShowModal(true); };
+  const openCreate = () => { setEditando(null); resetSup(FORM_EMPTY); setShowModal(true); };
   const openEdit = (s: Suplidor) => {
     setEditando(s);
-    setForm({
+    resetSup({
       nombre: s.nombre, contacto: s.contacto, telefono: s.telefono, email: s.email,
-      rnc: s.rnc, direccion: s.direccion, tipo_pago: s.tipo_pago,
+      rnc: s.rnc, direccion: s.direccion, tipo_pago: s.tipo_pago as 'CONTADO' | 'CREDITO',
       dias_credito: String(s.dias_credito), limite_credito: s.limite_credito,
       descuento_habitual: s.descuento_habitual, frecuencia_entrega: s.frecuencia_entrega,
       notas: s.notas,
@@ -205,12 +243,10 @@ export default function SuplidoresPage() {
     setShowModal(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.nombre) { toast.error('El nombre es requerido'); return; }
+  const onSubmitSuplidor = handleSup(async (data) => {
     setSubmitting(true);
     try {
-      const payload = { ...form, dias_credito: Number(form.dias_credito) };
+      const payload = { ...data, dias_credito: Number(data.dias_credito) };
       if (editando) {
         await api.patch(`/compras/suplidores/${editando.id}/`, payload);
         toast.success('Suplidor actualizado');
@@ -225,23 +261,20 @@ export default function SuplidoresPage() {
     } finally {
       setSubmitting(false);
     }
-  };
+  });
 
-  const handlePago = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ordenSeleccionada || !pagoForm.monto) return;
+  const onSubmitPago = handlePago(async (data) => {
+    if (!ordenSeleccionada) return;
     setSubmittingPago(true);
     try {
       await api.post('/compras/pagos/', {
         orden: ordenSeleccionada.id,
-        monto: pagoForm.monto,
-        metodo: pagoForm.metodo,
-        referencia: pagoForm.referencia,
-        nota: pagoForm.nota,
+        monto: data.monto, metodo: data.metodo,
+        referencia: data.referencia, nota: data.nota,
       });
       toast.success('Pago registrado');
       setShowPagoModal(false);
-      setPagoForm({ monto: '', metodo: 'EFECTIVO', referencia: '', nota: '' });
+      resetPago();
       setOrdenSeleccionada(null);
       if (detalle) {
         fetchOrdenes(detalle.id);
@@ -253,7 +286,7 @@ export default function SuplidoresPage() {
     } finally {
       setSubmittingPago(false);
     }
-  };
+  });
 
   const recibirOrden = async (orden: OrdenCompra) => {
     try {
@@ -470,32 +503,34 @@ export default function SuplidoresPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <form onSubmit={handlePago} className="p-6 space-y-4">
+              <form onSubmit={onSubmitPago} className="p-6 space-y-4">
                 <p className="text-sm text-slate-500">
                   Orden #{ordenSeleccionada.id} · Pendiente: <span className="font-bold text-red-600">{fmt(ordenSeleccionada.balance_pendiente)}</span>
                 </p>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Monto (RD$) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Monto (RD$) <span className="text-red-500">*</span></label>
                   <input
                     type="number" min="0" step="0.01"
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-2xl font-bold text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center"
                     placeholder="0.00"
-                    value={pagoForm.monto}
-                    onChange={e => setPagoForm(f => ({ ...f, monto: e.target.value }))}
+                    aria-required="true"
+                    aria-invalid={!!errPago.monto}
+                    {...regPago('monto')}
+                  />
+                  {errPago.monto && <p role="alert" className="text-xs text-destructive mt-1">{errPago.monto.message}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Método</label>
+                  <Controller
+                    name="metodo"
+                    control={ctrlPago}
+                    render={({ field }) => (
+                      <CustomSelect value={field.value} onChange={v => field.onChange(v)} options={METODO_OPTS} placeholder="Método de pago" />
+                    )}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Método</label>
-                  <CustomSelect value={pagoForm.metodo} onChange={v => setPagoForm(f => ({ ...f, metodo: v as string }))} options={METODO_OPTS} placeholder="Método de pago" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Referencia</label>
-                  <input className={inputCls} placeholder="No. cheque, transferencia, etc." value={pagoForm.referencia} onChange={e => setPagoForm(f => ({ ...f, referencia: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Nota</label>
-                  <input className={inputCls} placeholder="Opcional" value={pagoForm.nota} onChange={e => setPagoForm(f => ({ ...f, nota: e.target.value }))} />
-                </div>
+                <FormField label="Referencia" placeholder="No. cheque, transferencia, etc." {...regPago('referencia')} />
+                <FormField label="Nota" placeholder="Opcional" {...regPago('nota')} />
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setShowPagoModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold text-sm transition">
                     Cancelar
@@ -814,59 +849,48 @@ export default function SuplidoresPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={onSubmitSuplidor} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre <span className="text-red-500">*</span></label>
-                  <input className={inputCls} placeholder="Nombre del suplidor" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
+                  <FormField label="Nombre" required placeholder="Nombre del suplidor" error={errSup.nombre?.message} {...regSup('nombre')} />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Contacto</label>
-                  <input className={inputCls} placeholder="Persona de contacto" value={form.contacto} onChange={e => setForm(f => ({ ...f, contacto: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Teléfono</label>
-                  <input className={inputCls} placeholder="809-000-0000" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
-                  <input type="email" className={inputCls} placeholder="correo@empresa.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">RNC</label>
-                  <input className={inputCls} placeholder="000-00000-0" value={form.rnc} onChange={e => setForm(f => ({ ...f, rnc: e.target.value }))} />
-                </div>
+                <FormField label="Contacto" placeholder="Persona de contacto" {...regSup('contacto')} />
+                <FormField label="Teléfono" placeholder="809-000-0000" {...regSup('telefono')} />
+                <FormField label="Email" type="email" placeholder="correo@empresa.com" error={errSup.email?.message} {...regSup('email')} />
+                <FormField label="RNC" placeholder="000-00000-0" {...regSup('rnc')} />
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Dirección</label>
-                  <input className={inputCls} placeholder="Dirección física" value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} />
+                  <FormField label="Dirección" placeholder="Dirección física" {...regSup('direccion')} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Tipo de pago</label>
-                  <CustomSelect value={form.tipo_pago} onChange={v => setForm(f => ({ ...f, tipo_pago: v as string }))} options={TIPO_PAGO_OPTS} placeholder="Tipo" />
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Tipo de pago</label>
+                  <Controller
+                    name="tipo_pago"
+                    control={ctrlSup}
+                    render={({ field }) => (
+                      <CustomSelect value={field.value} onChange={v => field.onChange(v)} options={TIPO_PAGO_OPTS} placeholder="Tipo" />
+                    )}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Frecuencia de entrega</label>
-                  <CustomSelect value={form.frecuencia_entrega} onChange={v => setForm(f => ({ ...f, frecuencia_entrega: v as string }))} options={FRECUENCIA_OPTS} placeholder="Frecuencia" />
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Frecuencia de entrega</label>
+                  <Controller
+                    name="frecuencia_entrega"
+                    control={ctrlSup}
+                    render={({ field }) => (
+                      <CustomSelect value={field.value ?? ''} onChange={v => field.onChange(v)} options={FRECUENCIA_OPTS} placeholder="Frecuencia" />
+                    )}
+                  />
                 </div>
-                {form.tipo_pago === 'CREDITO' && (
+                {tipoPago === 'CREDITO' && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Días de crédito</label>
-                      <input type="number" min="0" className={inputCls} placeholder="30" value={form.dias_credito} onChange={e => setForm(f => ({ ...f, dias_credito: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Límite de crédito (RD$)</label>
-                      <input type="number" min="0" className={inputCls} placeholder="0.00" value={form.limite_credito} onChange={e => setForm(f => ({ ...f, limite_credito: e.target.value }))} />
-                    </div>
+                    <FormField label="Días de crédito" type="number" min="0" placeholder="30" {...regSup('dias_credito')} />
+                    <FormField label="Límite de crédito (RD$)" type="number" min="0" placeholder="0.00" {...regSup('limite_credito')} />
                   </>
                 )}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Descuento habitual (%)</label>
-                  <input type="number" min="0" max="100" step="0.01" className={inputCls} placeholder="0" value={form.descuento_habitual} onChange={e => setForm(f => ({ ...f, descuento_habitual: e.target.value }))} />
-                </div>
+                <FormField label="Descuento habitual (%)" type="number" min="0" max="100" step="0.01" placeholder="0" {...regSup('descuento_habitual')} />
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Notas</label>
-                  <textarea rows={2} className={inputCls} placeholder="Observaciones adicionales" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} />
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Notas</label>
+                  <textarea rows={2} className={inputCls} placeholder="Observaciones adicionales" {...regSup('notas')} />
                 </div>
               </div>
 
