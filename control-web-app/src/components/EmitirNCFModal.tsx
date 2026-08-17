@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { FileText, RefreshCw, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -17,6 +19,21 @@ const TIPOS_NCF = [
   { codigo: "14", nombre: "Régimen Especial (B14)" },
   { codigo: "15", nombre: "Gubernamental (B15)" },
 ];
+
+const ncfSchema = z.object({
+  tipo: z.string().min(1),
+  rnc: z.string().optional(),
+  institucion: z.string().optional(),
+}).superRefine((d, ctx) => {
+  if (d.tipo === "01" && !d.rnc?.trim()) {
+    ctx.addIssue({ code: "custom", message: "El RNC/Cédula es requerido.", path: ["rnc"] });
+  }
+  if ((d.tipo === "01" || d.tipo === "15") && !d.institucion?.trim()) {
+    ctx.addIssue({ code: "custom", message: "Este campo es requerido.", path: ["institucion"] });
+  }
+});
+
+type NCFForm = z.infer<typeof ncfSchema>;
 
 interface EmitirNCFModalProps {
   ventaId: number;
@@ -42,40 +59,38 @@ export default function EmitirNCFModal({
   ventaId, clienteNombre, detalles, subtotal, itbis, total,
   onSuccess, onClose,
 }: EmitirNCFModalProps) {
-  const [tipo, setTipo] = useState("02");
-  const [rnc, setRnc] = useState("");
-  const [institucion, setInstitucion] = useState("");
-  const [emitiendo, setEmitiendo] = useState(false);
+  const { register, handleSubmit, control, watch, formState: { errors, isSubmitting } } =
+    useForm<NCFForm>({ resolver: zodResolver(ncfSchema), defaultValues: { tipo: "02", rnc: "", institucion: "" } });
 
-  async function emitir() {
-    setEmitiendo(true);
+  const tipoActual = watch("tipo");
+
+  const onSubmit = handleSubmit(async (data) => {
     try {
       const body: Record<string, unknown> = {
-        tipo,
+        tipo: data.tipo,
         venta: ventaId,
-        cliente_nombre: tipo === "15"
-          ? (institucion || "Institución Gubernamental")
-          : tipo === "01"
-            ? (institucion || clienteNombre || "Consumidor Final")
+        cliente_nombre: data.tipo === "15"
+          ? (data.institucion || "Institución Gubernamental")
+          : data.tipo === "01"
+            ? (data.institucion || clienteNombre || "Consumidor Final")
             : (clienteNombre ?? "Consumidor Final"),
-        cliente_rnc: rnc,
-        datos_especificos: tipo === "15"
-          ? { institucion_nombre: institucion || "Institución Gubernamental" }
+        cliente_rnc: data.rnc,
+        datos_especificos: data.tipo === "15"
+          ? { institucion_nombre: data.institucion || "Institución Gubernamental" }
           : {},
       };
 
       if (detalles?.length) {
         body.detalles = detalles;
       } else {
-        // Legacy: solo totales (sin ítems)
         body.subtotal = subtotal;
         body.itbis = itbis ?? "0";
         body.total = total;
       }
 
-      const { data } = await api.post("/facturacion/facturas/", body);
+      const { data: res } = await api.post("/facturacion/facturas/", body);
       toast.success("Comprobante fiscal emitido");
-      onSuccess(data.ncf, data.tipo_nombre, data.cliente_nombre);
+      onSuccess(res.ncf, res.tipo_nombre, res.cliente_nombre);
     } catch (e: unknown) {
       const err = e as { response?: { data?: unknown } };
       const d = err.response?.data;
@@ -91,8 +106,7 @@ export default function EmitirNCFModal({
       }
       toast.error(msg, { duration: 7000 });
     }
-    setEmitiendo(false);
-  }
+  });
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -102,66 +116,60 @@ export default function EmitirNCFModal({
             <FileText size={16} className="text-brand-500" /> Emitir comprobante fiscal
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <Label className="text-xs mb-1.5 block">Tipo de comprobante</Label>
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
-              className="w-full h-8 text-sm border border-border rounded-md bg-background px-2"
-            >
-              {TIPOS_NCF.map((t) => (
-                <option key={t.codigo} value={t.codigo}>{t.nombre}</option>
-              ))}
-            </select>
+            <Controller name="tipo" control={control} render={({ field }) => (
+              <select
+                value={field.value}
+                onChange={(e) => field.onChange(e.target.value)}
+                className="w-full h-8 text-sm border border-border rounded-md bg-background px-2"
+              >
+                {TIPOS_NCF.map((t) => (
+                  <option key={t.codigo} value={t.codigo}>{t.nombre}</option>
+                ))}
+              </select>
+            )} />
           </div>
-          {(tipo === "01") && (
+          {(tipoActual === "01" || tipoActual === "15") && (
             <div>
               <Label className="text-xs mb-1.5 block">
-                Nombre / Razón social <span className="text-rose-500">*</span>
+                {tipoActual === "01" ? "Nombre / Razón social" : "Nombre de la institución"}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
-                placeholder="Nombre del contribuyente"
-                value={institucion}
-                onChange={(e) => setInstitucion(e.target.value)}
+                placeholder={tipoActual === "01" ? "Nombre del contribuyente" : "Ej: Ministerio de Educación"}
                 className="h-8 text-sm"
+                aria-required="true"
+                aria-invalid={!!errors.institucion}
+                {...register("institucion")}
               />
+              {errors.institucion && <p role="alert" className="text-xs text-destructive mt-1">{errors.institucion.message}</p>}
             </div>
           )}
-          {(tipo === "15") && (
+          {(tipoActual === "01" || tipoActual === "15") && (
             <div>
               <Label className="text-xs mb-1.5 block">
-                Nombre de la institución <span className="text-rose-500">*</span>
-              </Label>
-              <Input
-                placeholder="Ej: Ministerio de Educación"
-                value={institucion}
-                onChange={(e) => setInstitucion(e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-          )}
-          {(tipo === "01" || tipo === "15") && (
-            <div>
-              <Label className="text-xs mb-1.5 block">
-                RNC / Cédula {tipo === "01" && <span className="text-rose-500">*</span>}
+                RNC / Cédula {tipoActual === "01" && <span className="text-destructive">*</span>}
               </Label>
               <Input
                 placeholder="000-00000-0"
-                value={rnc}
-                onChange={(e) => setRnc(e.target.value)}
                 className="h-8 text-sm font-mono"
+                aria-required={tipoActual === "01"}
+                aria-invalid={!!errors.rnc}
+                {...register("rnc")}
               />
+              {errors.rnc && <p role="alert" className="text-xs text-destructive mt-1">{errors.rnc.message}</p>}
             </div>
           )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
-          <Button size="sm" onClick={emitir} disabled={emitiendo} className="gap-2">
-            {emitiendo ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
-            Emitir NCF
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" size="sm" disabled={isSubmitting} className="gap-2">
+              {isSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
+              Emitir NCF
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
