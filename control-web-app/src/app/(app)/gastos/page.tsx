@@ -73,12 +73,11 @@ export default function GastosPage() {
   const [filtroTipo, setFiltroTipo] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const {
     register, handleSubmit, watch, setValue, reset,
-    formState: { errors },
+    formState: { errors, isSubmitting: submitting },
   } = useForm<GastoForm>({
     resolver: zodResolver(gastoSchema),
     defaultValues: { categoria: "", descripcion: "", monto: "", metodo_pago: "EFECTIVO", comprobante: "", nota: "" },
@@ -115,7 +114,6 @@ export default function GastosPage() {
   }, []);
 
   const onSubmit = handleSubmit(async (data) => {
-    setSubmitting(true);
     try {
       await api.post("/gastos/", {
         categoria: Number(data.categoria), descripcion: data.descripcion,
@@ -127,7 +125,6 @@ export default function GastosPage() {
       reset();
       fetchData();
     } catch { toast.error("Error al registrar gasto"); }
-    finally { setSubmitting(false); }
   });
 
   const gastosFiltrados = gastos.filter((g) => {
@@ -267,9 +264,11 @@ export default function GastosPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground">{g.descripcion}</td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground">
-                          {METODOS_PAGO.find((m) => m.value === g.metodo_pago)?.label ?? g.metodo_pago}
-                        </span>
+                        {(() => { const m = METODOS_PAGO.find((m) => m.value === g.metodo_pago); return m ? (
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <m.icon size={13} /> {m.label}
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">{g.metodo_pago}</span>; })()}
                       </td>
                       <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
                         {g.comprobante || "—"}
@@ -281,10 +280,18 @@ export default function GastosPage() {
                         {isExp ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
                       </td>
                     </tr>
-                    {isExp && g.nota && (
-                      <tr key={`${g.id}-note`} className="bg-muted/20">
-                        <td colSpan={7} className="px-4 py-2.5 text-xs text-muted-foreground italic">
-                          Nota: {g.nota}
+                    {isExp && (
+                      <tr key={`${g.id}-det`} className="bg-muted/20">
+                        <td colSpan={7} className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                            {g.comprobante && (
+                              <span>Comprobante: <span className="font-mono text-foreground">{g.comprobante}</span></span>
+                            )}
+                            {g.nota && <span className="italic">"{g.nota}"</span>}
+                            {!g.comprobante && !g.nota && (
+                              <span className="italic">Sin información adicional</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )}
