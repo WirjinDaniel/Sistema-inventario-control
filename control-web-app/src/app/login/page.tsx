@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, ShoppingCart, Lock, User, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, User, AlertCircle } from "lucide-react";
+import Image from "next/image";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
@@ -43,6 +44,16 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-950">
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
       {/* Fondo animado */}
       <div className="absolute inset-0">
@@ -59,11 +70,21 @@ export default function LoginPage() {
 
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-indigo-500/40 mb-4 transition-transform duration-300 hover:scale-105">
-              <ShoppingCart size={28} className="text-white" />
+            <div className="relative mb-4 w-24 h-24" style={{ animation: "float 3s ease-in-out infinite" }}>
+              <div className="absolute -inset-3 rounded-full bg-indigo-500/50 blur-xl animate-pulse z-0" />
+              <div className="absolute -inset-1 rounded-full border-2 border-indigo-400/40 z-0" style={{ animation: "spin 8s linear infinite" }} />
+              <Image
+                src="/compras.png"
+                alt="Colmado POS"
+                width={96}
+                height={96}
+                unoptimized
+                className="relative z-10 rounded-full object-cover shadow-2xl hover:scale-110 transition-transform duration-300 drop-shadow-[0_0_24px_rgba(99,102,241,0.9)]"
+                priority
+              />
             </div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Colmado POS</h1>
-            <p className="text-slate-400 text-sm mt-1">Sistema de Inventario y Ventas</p>
+            <h1 className="text-2xl font-black text-white tracking-tight">ComerSys</h1>
+            <p className="text-slate-400 text-sm mt-1 text-center leading-relaxed">Sistema Integral de Inventario,<br />Ventas y Gestión Comercial</p>
           </div>
 
           {/* Error de autenticación */}

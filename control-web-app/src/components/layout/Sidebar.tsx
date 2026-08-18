@@ -76,7 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Comercial",
     icon: Store,
     items: [
-      { label: "POS", href: "/pos", icon: Store, roles: ["all"] },
+      { label: "Caja", href: "/pos", icon: Store, roles: ["all"] },
       { label: "Ventas", href: "/ventas", icon: TrendingUp, roles: ["all"] },
       { label: "Clientes", href: "/clientes", icon: Users, roles: ["all"] },
       { label: "Devoluciones", href: "/devoluciones", icon: RotateCcw, roles: ["all"] },

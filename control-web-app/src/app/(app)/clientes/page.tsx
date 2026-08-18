@@ -182,15 +182,10 @@ export default function ClientesPage() {
       <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-6 py-4 shrink-0">
         <div className="max-w-full mx-auto space-y-4">
 
-          {/* Fila 1: título + botón */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Clientes</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Gestiona clientes y cuentas por cobrar</p>
-            </div>
-            <Button onClick={abrirCrear} className="gap-2 rounded-xl shadow-sm font-semibold">
-              <Plus size={15} /> Nuevo cliente
-            </Button>
+          {/* Fila 1: título */}
+          <div>
+            <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Clientes</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Gestiona clientes y cuentas por cobrar</p>
           </div>
 
           {/* Fila 2: KPI chips */}
@@ -224,21 +219,9 @@ export default function ClientesPage() {
               </div>
             </div>
 
-            <div className="flex-1" />
-
-            {/* Búsqueda */}
-            <div className="relative w-56">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="Buscar cliente..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="pl-9 h-9 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-              />
-            </div>
           </div>
 
-          {/* Fila 3: filtros + orden + toggle vista */}
+          {/* Fila 3: filtros + orden + toggle vista + búsqueda + botón */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5">
               {([
@@ -275,6 +258,21 @@ export default function ClientesPage() {
             </div>
 
             <div className="flex-1" />
+
+            {/* Búsqueda */}
+            <div className="relative w-52">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="pl-9 h-9 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+              />
+            </div>
+
+            <Button onClick={abrirCrear} className="gap-2 rounded-xl shadow-sm font-semibold h-9">
+              <Plus size={15} /> Nuevo cliente
+            </Button>
 
             {/* Toggle vista */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
@@ -582,19 +580,13 @@ export default function ClientesPage() {
         <div className="w-88 shrink-0 bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 overflow-y-auto flex flex-col">
           {!clienteActivo ? (
             /* Estado vacío del panel */
-            <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+            <div className="flex flex-col items-center p-6 pt-10 text-center">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
                 <UserCheck size={28} className="text-slate-400 dark:text-slate-500" />
               </div>
               <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Selecciona un cliente</p>
               <p className="text-xs text-slate-400 mt-1 mb-6">Haz clic en cualquier fila para ver los detalles y el historial de abonos</p>
               <div className="w-full space-y-2">
-                <button
-                  onClick={abrirCrear}
-                  className="w-full flex items-center justify-center gap-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl transition-colors"
-                >
-                  <Plus size={13} /> Nuevo cliente
-                </button>
                 <button
                   onClick={() => setFiltro("con_deuda")}
                   className="w-full flex items-center justify-center gap-2 py-2 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-semibold text-xs rounded-xl transition-colors border border-rose-100 dark:border-rose-900/50"

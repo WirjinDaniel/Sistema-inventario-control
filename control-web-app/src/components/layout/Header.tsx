@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { Search, LogOut, Settings, Store, PanelLeft, Keyboard } from "lucide-react";
+import { Search, LogOut, Settings, PanelLeft, Keyboard } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import { useSidebarStore } from "@/store/sidebar";
@@ -27,11 +27,10 @@ export default function Header() {
     <header className="h-14 bg-navy flex items-center px-4 gap-3 shrink-0 z-30 shadow-lg">
       {/* Logo + branding */}
       <div className="flex items-center gap-2.5 shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-white/20 border border-white/10 flex items-center justify-center shrink-0">
-          <Store size={15} className="text-white" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/compras.png" alt="Logo" className="w-8 h-8 rounded-lg object-cover shrink-0" />
         <div className="hidden sm:block leading-tight">
-          <p className="text-sm font-bold text-white leading-tight">Colmado POS</p>
+          <p className="text-[14px] font-bold text-white leading-tight">ComerSys</p>
           <p className="text-[10px] text-blue-200 leading-none">Control Total</p>
         </div>
       </div>
@@ -39,7 +38,7 @@ export default function Header() {
       {/* Sidebar collapse toggle */}
       <button
         onClick={toggle}
-        className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0 ml-1"
+        className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0 ml-22"
         title="Colapsar menú"
       >
         <PanelLeft size={17} />
