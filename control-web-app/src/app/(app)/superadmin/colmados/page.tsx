@@ -252,7 +252,7 @@ export default function ColmadosPage() {
                 <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{c.nombre}</td>
                 <td className="px-4 py-3 text-muted-foreground">{c.ruc || "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{c.telefono || "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground truncate max-w-[180px]">{c.direccion || "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground truncate max-w-45">{c.direccion || "—"}</td>
                 <td className="px-4 py-3">{planBadge(c.id)}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${c.activo ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
