@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import { Wallet, AlertTriangle, Clock, Check } from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -50,16 +50,16 @@ export default function CuentasPorCobrarPage() {
   } = useForm<AbonoForm>({ resolver: zodResolver(abonoSchema), defaultValues: { monto: "", nota: "" } });
   const montoAbono = watchAbono("monto") ?? "";
 
-  async function cargar() {
+  const cargar = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get("/clientes/aging/");
       setAging(data);
     } catch { toast.error("Error cargando cuentas por cobrar"); }
     setLoading(false);
-  }
+  }, []);
 
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => { cargar(); }, [cargar]);
 
   const registrarAbono = handleAbono(async (data) => {
     if (!abonoModal) return;
@@ -128,7 +128,7 @@ export default function CuentasPorCobrarPage() {
                   <span className="font-bold text-foreground tabular-nums text-sm">{formatCurrency(bucket.total)}</span>
                 </div>
                 <table className="w-full text-sm">
-                  <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
+                  <thead className="bg-muted/50">
                     <tr className="border-b border-border">
                       {["Cliente", "Teléfono", "Último movimiento", "Días", "Saldo", ""].map((h) => (
                         <th key={h} className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">{h}</th>
@@ -141,7 +141,7 @@ export default function CuentasPorCobrarPage() {
                         <td className="px-4 py-3 font-medium text-foreground">{c.nombre}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{c.telefono || "—"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Clock size={11} /> {c.ultima_fecha}</span>
+                          <span className="flex items-center gap-1"><Clock size={11} /> {formatDate(c.ultima_fecha)}</span>
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={cfg.badge} className="text-[10px]">{c.dias}d</Badge>
