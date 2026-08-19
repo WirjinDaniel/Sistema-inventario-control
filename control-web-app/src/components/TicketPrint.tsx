@@ -197,7 +197,7 @@ export default function TicketPrint({ venta, colmadoNombre, ncf, onClose }: Prop
           </button>
           <button
             onClick={imprimir}
-            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-violet-600 text-white text-sm font-semibold hover:shadow-md transition flex items-center justify-center gap-2 active:scale-95"
+            className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-brand-600 to-violet-600 text-white text-sm font-semibold hover:shadow-md transition flex items-center justify-center gap-2 active:scale-95"
           >
             <Printer size={15} /> Imprimir
           </button>
