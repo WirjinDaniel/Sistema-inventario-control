@@ -113,7 +113,7 @@ export default function EmitirNCFModal({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText size={16} className="text-brand-500" /> Emitir comprobante fiscal
+            <FileText size={16} className="text-brand-600" /> Emitir comprobante fiscal
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">

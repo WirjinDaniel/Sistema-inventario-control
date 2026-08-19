@@ -7,7 +7,7 @@ interface Props {
 
 export function AccessDenied({ mensaje = "No tienes permisos para acceder a este módulo." }: Props) {
   return (
-    <div className="p-6 flex items-center justify-center min-h-[60vh]">
+    <div className="p-6 flex items-center justify-center flex-1 py-24">
       <div className="text-center">
         <ShieldX size={48} className="mx-auto mb-3 text-slate-300" />
         <h2 className="text-lg font-bold text-slate-400">Acceso restringido</h2>
@@ -19,7 +19,7 @@ export function AccessDenied({ mensaje = "No tienes permisos para acceder a este
 
 export function SuperadminRedirect() {
   return (
-    <div className="p-6 flex items-center justify-center min-h-[60vh]">
+    <div className="p-6 flex items-center justify-center flex-1 py-24">
       <div className="text-center max-w-sm">
         <LayoutDashboard size={48} className="mx-auto mb-3 text-brand-300" />
         <h2 className="text-lg font-bold text-slate-600 dark:text-slate-300">
