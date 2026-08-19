@@ -238,22 +238,70 @@ export default function SuperadminDashboard() {
               {loading ? (
                 <Skeleton className="w-full h-56" />
               ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={ventasColmado} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="colmado_nombre" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: 12 }}
-                      formatter={(v) => [`RD$${Number(v).toFixed(2)}`, 'Ventas']}
-                    />
-                    <Bar dataKey="total" radius={[6, 6, 0, 0]} name="Ventas (RD$)">
-                      {ventasColmado.map((_, i) => (
-                        <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <>
+                  <svg width="0" height="0" style={{ position: 'absolute' }}>
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#818cf8" />
+                        <stop offset="100%" stopColor="#4338ca" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <ResponsiveContainer width="100%" height={Math.max(180, ventasColmado.length * 52)}>
+                    <BarChart
+                      data={ventasColmado}
+                      layout="vertical"
+                      margin={{ top: 4, right: 80, left: 8, bottom: 4 }}
+                      barCategoryGap="30%"
+                    >
+                      <CartesianGrid strokeDasharray="4 4" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="colmado_nombre"
+                        width={160}
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0].payload as VentasPorColmado;
+                          const totalGlobal = ventasColmado.reduce((s, c) => s + Number(c.total), 0);
+                          const pct = totalGlobal > 0 ? ((Number(d.total) / totalGlobal) * 100).toFixed(1) : '0.0';
+                          return (
+                            <div className="bg-slate-900 text-white rounded-xl px-4 py-3 shadow-xl text-xs space-y-1 border border-white/10">
+                              <p className="font-bold text-sm">{d.colmado_nombre}</p>
+                              <p className="text-indigo-300 font-semibold">{fmt(Number(d.total))}</p>
+                              <p className="text-slate-400">{pct}% del total</p>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Bar dataKey="total" radius={[0, 10, 10, 0]} name="Ventas (RD$)" label={{
+                        position: 'right',
+                        formatter: (v: unknown) => fmt(Number(v)),
+                        fontSize: 10,
+                        fill: 'hsl(var(--muted-foreground))',
+                      }}>
+                        {ventasColmado.map((row, i) => (
+                          <Cell
+                            key={i}
+                            fill={Number(row.total) === 0 ? '#eef0f9' : 'url(#barGradient)'}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </>
               )}
             </div>
           </div>
