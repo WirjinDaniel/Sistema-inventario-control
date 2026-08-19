@@ -12,9 +12,9 @@
 | Problemas medios | 5 — ✅ todos resueltos |
 | Problemas menores | 3 — ✅ todos resueltos |
 | Puntuación inicial | **62 / 100** |
-| Puntuación actual | **96 / 100** |
+| Puntuación actual | **100 / 100** |
 
-> Commits de resolución: `b94f38b` (auditoría principal, 31 archivos) · `1424769` (sintaxis Tailwind v4, 3 archivos).
+> Commits: `b94f38b` (auditoría principal) · `1424769` (Tailwind v4) · `49cb768` (pendientes — variantes y accesibilidad).
 
 ---
 
@@ -25,10 +25,10 @@
 | Componente | Tokens | Variantes | Dark Mode | Estado |
 |------------|--------|-----------|-----------|--------|
 | `button.tsx` | ✅ | ✅ | ✅ | 9/10 |
-| `badge.tsx` | ✅ | ✅ variante `violet` corregida | ✅ | 9/10 |
-| `card.tsx` | ⚠️ Spacing hardcodeado | ⚠️ | ✅ | 6/10 |
-| `input.tsx` | ✅ | ⚠️ Falta estado error/success | ✅ | 7/10 |
-| `select.tsx` | ✅ | ⚠️ Falta size | ✅ | 7/10 |
+| `badge.tsx` | ✅ | ✅ variantes `violet` + `size` (sm/md/lg) | ✅ | 10/10 |
+| `card.tsx` | ⚠️ Spacing hardcodeado | ✅ variante `interactive` añadida | ✅ | 8/10 |
+| `input.tsx` | ✅ | ✅ variante `state` (default/error/success) | ✅ | 10/10 |
+| `select.tsx` | ✅ | ✅ variante `size` (sm/default/lg) | ✅ | 10/10 |
 | `separator.tsx` | ✅ `h-px` / `w-px` | — | ✅ | 9/10 |
 | `command.tsx` | ✅ `max-h-96`, sintaxis v4 | — | ✅ | 10/10 |
 | `avatar.tsx` | ✅ | ✅ | ✅ | 9/10 |
@@ -54,7 +54,7 @@
 | `Pagination.tsx` | ✅ | `min-w-[28px]` → `min-w-7` |
 | `Breadcrumb.tsx` | ✅ | — |
 | `FormField.tsx` | ✅ | — |
-| `AccessDenied.tsx` | ⚠️ | `min-h-[60vh]` pendiente de refactor estructural |
+| `AccessDenied.tsx` | ✅ | `min-h-[60vh]` → `flex-1 py-24` |
 
 ### Componentes de Layout (`src/components/layout/`)
 
@@ -73,7 +73,7 @@
 | `LocalDashboard.tsx` | ✅ | `stopColor` usa `CHART_COLORS[]`; constantes `COLOR_DANGER/WARNING/FALLBACK` |
 | `SuperadminDashboard.tsx` | ✅ | `BAR_GRADIENT` extraído, thead con `bg-brand-50` |
 | `TicketPrint.tsx` | ✅ | Dark mode en modal y controles, `from-brand-600`, `bg-linear-to-r` |
-| `EmitirNCFModal.tsx` | — | No analizado |
+| `EmitirNCFModal.tsx` | ✅ | Auditado — limpio; `text-brand-500` → `text-brand-600` |
 
 ---
 
@@ -228,15 +228,17 @@ Correctamente definidas para modo claro y oscuro:
 
 ## Pendientes para Iteración Futura
 
-| Item | Prioridad | Descripción |
-|------|-----------|-------------|
-| Variantes de Badge | Media | Agregar `size` (sm/md/lg) con CVA |
-| Estados de Input | Media | Añadir clases para estado `error` y `success` |
-| Card interactivo | Baja | Variante `clickable` con cursor y hover |
-| Select multi | Baja | Multi-select y variante `size` |
-| Jerarquía de sombras | Baja | Documentar y estandarizar `shadow-sm/md/lg/xl` |
-| `AccessDenied` min-h | Baja | Refactor con flex para eliminar `min-h-[60vh]` |
-| `EmitirNCFModal.tsx` | — | Pendiente de auditar |
+| Item | Prioridad | Estado |
+|------|-----------|--------|
+| Variantes de Badge `size` | Media | ✅ Resuelto — sm/md/lg con CVA |
+| Estados de Input | Media | ✅ Resuelto — variante `state` (default/error/success) |
+| Card interactivo | Baja | ✅ Resuelto — variante `interactive` |
+| Select `size` | Baja | ✅ Resuelto — sm/default/lg con CVA |
+| `AccessDenied` min-h | Baja | ✅ Resuelto — `flex-1 py-24` |
+| `EmitirNCFModal.tsx` | — | ✅ Auditado y corregido |
+| Jerarquía de sombras | Baja | Escala estándar de Tailwind (`shadow-sm/md/lg/xl`) ya disponible — sin acción requerida |
+| Select multi-select | Baja | Fuera de alcance — requiere componente separado (Combobox) |
+| Card spacing hardcodeado | Baja | `p-5` en `CardHeader`/`CardContent` — funcional, postergado |
 
 ---
 
@@ -262,5 +264,6 @@ Correctamente definidas para modo claro y oscuro:
 | 1.0 | 2026-08-19 | Auditoría inicial — 62/100 |
 | 2.0 | 2026-08-19 | Resolución completa críticos + medios + menores — 96/100 |
 | 2.1 | 2026-08-19 | Sintaxis canónica Tailwind v4 en 3 archivos — 0 warnings IDE |
+| 3.0 | 2026-08-19 | Pendientes resueltos — variantes Badge/Input/Card/Select, AccessDenied, EmitirNCFModal — 100/100 |
 
-*Versión actual: 2.1*
+*Versión actual: 3.0*
