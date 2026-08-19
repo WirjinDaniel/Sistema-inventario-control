@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import {
   Download, TrendingUp, ShoppingBag, DollarSign, Users, FileText,
@@ -275,7 +275,7 @@ export default function ReportesPage() {
                             className="h-full bg-brand-500 dark:bg-brand-400 rounded-full flex items-center justify-end pr-2 transition-all"
                             style={{ width: `${Math.max((total / maxDia) * 100, 4)}%` }}
                           >
-                            <span className="text-[10px] text-white font-medium tabular-nums">{formatCurrency(total)}</span>
+                            <span className="text-2xs text-white font-medium tabular-nums">{formatCurrency(total)}</span>
                           </div>
                         </div>
                       </div>
@@ -292,7 +292,7 @@ export default function ReportesPage() {
                   <div className="flex items-center gap-2">
                     <Star size={15} className="text-amber-500" />
                     <h3 className="text-sm font-semibold">Análisis ABC de productos</h3>
-                    <Badge variant="secondary" className="text-[10px] h-4">
+                    <Badge variant="secondary" className="text-2xs h-4">
                       A=80% ventas · B=95% · C=resto
                     </Badge>
                   </div>
@@ -316,7 +316,7 @@ export default function ReportesPage() {
                         {abcData.slice(0, 50).map((p, i) => (
                           <tr key={i} className="hover:bg-muted/30">
                             <td className="px-4 py-2.5">
-                              <Badge variant={p.clase === "A" ? "success" : p.clase === "B" ? "info" : "secondary"} className="text-[10px] w-6 justify-center">
+                              <Badge variant={p.clase === "A" ? "success" : p.clase === "B" ? "info" : "secondary"} className="text-2xs w-6 justify-center">
                                 {p.clase}
                               </Badge>
                             </td>
@@ -345,7 +345,7 @@ export default function ReportesPage() {
                   <div className="flex items-center gap-2">
                     <FileText size={15} className="text-muted-foreground" />
                     <h3 className="text-sm font-semibold">Detalle de ventas</h3>
-                    <Badge variant="secondary" className="text-[10px] h-4">{ventas.length}</Badge>
+                    <Badge variant="secondary" className="text-2xs h-4">{ventas.length}</Badge>
                   </div>
                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
                     onClick={() => exportarCSV(ventas, `ventas-detalle-${rangoLabel}`)}>
@@ -369,18 +369,18 @@ export default function ReportesPage() {
                           <tr key={v.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3">
                               <p className="text-xs font-medium">{new Date(v.fecha).toLocaleDateString("es-DO")}</p>
-                              <p className="text-[11px] text-muted-foreground">{new Date(v.fecha).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}</p>
+                              <p className="text-xs text-muted-foreground">{new Date(v.fecha).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}</p>
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{v.cajero_nombre}</td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{v.cliente_nombre ?? "—"}</td>
                             <td className="px-4 py-3">
-                              <Badge variant={METODO_BADGE[v.metodo_pago] ?? "secondary"} className="text-[10px]">
+                              <Badge variant={METODO_BADGE[v.metodo_pago] ?? "secondary"} className="text-2xs">
                                 {METODO_LABELS[v.metodo_pago] ?? v.metodo_pago}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 font-bold tabular-nums text-sm">{formatCurrency(Number(v.total))}</td>
                             <td className="px-4 py-3">
-                              <Badge variant={v.estado === "COMPLETADA" ? "success" : "danger"} className="text-[10px]">
+                              <Badge variant={v.estado === "COMPLETADA" ? "success" : "danger"} className="text-2xs">
                                 {v.estado === "COMPLETADA" ? "Completada" : "Anulada"}
                               </Badge>
                             </td>

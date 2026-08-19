@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 
-const STATUS_MAP: Record<string, { label: string; variant: "success" | "warning" | "danger" | "info" | "secondary" | "purple" }> = {
+const STATUS_MAP: Record<string, { label: string; variant: "success" | "warning" | "danger" | "info" | "secondary" | "violet" }> = {
   ACTIVO: { label: "Activo", variant: "success" },
   INACTIVO: { label: "Inactivo", variant: "secondary" },
   COMPLETADA: { label: "Completada", variant: "success" },
@@ -8,7 +8,7 @@ const STATUS_MAP: Record<string, { label: string; variant: "success" | "warning"
   CANCELADA: { label: "Cancelada", variant: "danger" },
   BORRADOR: { label: "Borrador", variant: "secondary" },
   ENVIADA: { label: "Enviada", variant: "info" },
-  CONFIRMADA: { label: "Confirmada", variant: "purple" },
+  CONFIRMADA: { label: "Confirmada", variant: "violet" },
   RECIBIDA: { label: "Recibida", variant: "success" },
   CERRADA: { label: "Cerrada", variant: "secondary" },
   ABIERTA: { label: "Abierta", variant: "success" },

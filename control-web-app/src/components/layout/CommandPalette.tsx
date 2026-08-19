@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -78,9 +78,9 @@ export default function CommandPalette() {
         ))}
       </CommandList>
       <div className="border-t px-3 py-2 flex items-center gap-3 text-xs text-muted-foreground">
-        <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">↑↓</kbd> navegar</span>
-        <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">↵</kbd> abrir</span>
-        <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">Esc</kbd> cerrar</span>
+        <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono text-2xs">↑↓</kbd> navegar</span>
+        <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono text-2xs">↵</kbd> abrir</span>
+        <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono text-2xs">Esc</kbd> cerrar</span>
       </div>
     </CommandDialog>
   );

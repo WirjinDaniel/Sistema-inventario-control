@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -239,7 +239,7 @@ export default function DevolucionesPage() {
                     <p className="text-xs text-muted-foreground">{fmtFecha(d.fecha)} · {d.cajero_nombre}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={estadoBadge(d.estado)} className="text-[10px]">{d.estado}</Badge>
+                    <Badge variant={estadoBadge(d.estado)} className="text-2xs">{d.estado}</Badge>
                     <span className="text-sm font-bold text-foreground tabular-nums">{formatCurrency(Number(d.monto_devuelto))}</span>
                     {expandedId === d.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </div>
@@ -351,7 +351,7 @@ export default function DevolucionesPage() {
                     <div key={it.id} className="flex items-center gap-3 px-3 py-2.5">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium truncate">{it.producto_nombre}</p>
-                        <p className="text-[11px] text-muted-foreground">{formatCurrency(Number(it.precio_unitario))} c/u</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(Number(it.precio_unitario))} c/u</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => toggleCantidad(it.id, Number(it.cantidad), -1)}
@@ -359,7 +359,7 @@ export default function DevolucionesPage() {
                         <span className="w-8 text-center text-sm font-medium tabular-nums">{itemsSeleccionados[it.id] ?? 0}</span>
                         <button onClick={() => toggleCantidad(it.id, Number(it.cantidad), 1)}
                           className="w-6 h-6 rounded border border-border flex items-center justify-center hover:bg-muted text-xs font-bold">+</button>
-                        <span className="text-[10px] text-muted-foreground">/ {it.cantidad}</span>
+                        <span className="text-2xs text-muted-foreground">/ {it.cantidad}</span>
                       </div>
                     </div>
                   ))}

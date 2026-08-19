@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -214,7 +214,7 @@ export default function DevolucionesSuplidoresPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={ESTADOS_BADGE[d.estado] ?? "secondary"} className="text-[10px]">{d.estado}</Badge>
+                    <Badge variant={ESTADOS_BADGE[d.estado] ?? "secondary"} className="text-2xs">{d.estado}</Badge>
                     <span className="text-sm font-bold tabular-nums">{formatCurrency(Number(d.monto_credito))}</span>
                     {expandedId === d.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </div>
@@ -303,7 +303,7 @@ export default function DevolucionesSuplidoresPage() {
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
                           <p className="text-xs font-medium">{it.producto_nombre}</p>
-                          <p className="text-[11px] text-muted-foreground">{formatCurrency(Number(it.precio_unitario))} c/u · máx {it.cantidad_max}</p>
+                          <p className="text-xs text-muted-foreground">{formatCurrency(Number(it.precio_unitario))} c/u · máx {it.cantidad_max}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => setItems((prev) => prev.map((x, j) => j === i ? { ...x, cantidad: Math.max(0, x.cantidad - 1) } : x))}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Building2, Plus, Edit2, Power, Search, X, Check,
@@ -373,7 +373,7 @@ export default function ColmadosPage() {
                       className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-brand-500"
                       placeholder="18"
                     />
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Usa 0 si no aplica ITBIS</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Usa 0 si no aplica ITBIS</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Moneda</label>
@@ -432,7 +432,7 @@ export default function ColmadosPage() {
                     className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-brand-500"
                     placeholder="500"
                   />
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Se aplica automáticamente a nuevos clientes</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Se aplica automáticamente a nuevos clientes</p>
                 </div>
               </div>
             </div>

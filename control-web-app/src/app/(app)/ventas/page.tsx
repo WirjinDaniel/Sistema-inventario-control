@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
@@ -251,7 +251,7 @@ export default function VentasPage() {
                                 <div className="flex items-center gap-2">
                                   {!anulada && (
                                     detalle.factura_ncf ? (
-                                      <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
+                                      <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
                                         <FileText size={12} /> NCF: {detalle.factura_ncf}
                                       </span>
                                     ) : (

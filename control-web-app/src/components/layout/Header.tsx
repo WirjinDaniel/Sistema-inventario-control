@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useRouter } from "next/navigation";
 import { Search, LogOut, Settings, PanelLeft, Keyboard } from "lucide-react";
 import { getInitials } from "@/lib/utils";
@@ -31,7 +31,7 @@ export default function Header() {
         <img src="/compras.png" alt="Logo" className="w-8 h-8 rounded-lg object-cover shrink-0" />
         <div className="hidden sm:block leading-tight">
           <p className="text-[14px] font-bold text-white leading-tight">ComerSys</p>
-          <p className="text-[10px] text-blue-200 leading-none">Control Total</p>
+          <p className="text-2xs text-brand-200 leading-none">Control Total</p>
         </div>
       </div>
 
@@ -66,7 +66,7 @@ export default function Header() {
             <Search size={12} />
             Buscar...
           </span>
-          <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono text-white/40">⌘K</kbd>
+          <kbd className="text-2xs bg-white/10 px-1.5 py-0.5 rounded font-mono text-white/40">⌘K</kbd>
         </Button>
 
         {/* Keyboard shortcuts hint */}
@@ -84,7 +84,7 @@ export default function Header() {
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 hover:bg-white/10 rounded-lg px-2 py-1.5 transition-colors">
             <Avatar className="w-7 h-7">
-              <AvatarFallback className="text-[10px] bg-blue-500/80 text-white font-semibold">
+              <AvatarFallback className="text-2xs bg-brand-600/80 text-white font-semibold">
                 {usuario ? getInitials(usuario.nombre || usuario.username) : "U"}
               </AvatarFallback>
             </Avatar>
@@ -92,7 +92,7 @@ export default function Header() {
               <p className="text-xs font-semibold leading-tight text-white">
                 {usuario?.nombre || usuario?.username}
               </p>
-              <p className="text-[10px] text-blue-200 leading-tight">{usuario?.rol}</p>
+              <p className="text-2xs text-brand-200 leading-tight">{usuario?.rol}</p>
             </div>
           </button>
         </DropdownMenuTrigger>

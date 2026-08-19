@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -247,7 +247,7 @@ export default function ProductosPage() {
         >
           <Filter size={13} /> Stock bajo
           {filtroStockBajo && stockBajoCount > 0 && (
-            <Badge variant="danger" className="text-[10px] px-1 h-4 ml-1">{stockBajoCount}</Badge>
+            <Badge variant="danger" className="text-2xs px-1 h-4 ml-1">{stockBajoCount}</Badge>
           )}
         </Button>
         {/* Vista toggle */}
@@ -314,7 +314,7 @@ export default function ProductosPage() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-semibold text-foreground">{p.nombre}</p>
-                            {p.en_oferta && <Badge variant="danger" className="text-[10px] px-1.5 py-0">OFERTA</Badge>}
+                            {p.en_oferta && <Badge variant="danger" className="text-2xs px-1.5 py-0">OFERTA</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground font-mono">{p.codigo_barras || p.sku || "—"}</p>
                         </div>
@@ -357,7 +357,7 @@ export default function ProductosPage() {
                           <span className="text-xs text-muted-foreground ml-1">{p.unidad_medida}</span>
                         </span>
                         {p.stock_bajo && (
-                          <div className="flex items-center gap-1 text-[10px] text-rose-500">
+                          <div className="flex items-center gap-1 text-2xs text-rose-500">
                             <AlertTriangle size={9} /> Stock bajo
                           </div>
                         )}
@@ -413,7 +413,7 @@ export default function ProductosPage() {
                     {p.nombre.charAt(0).toUpperCase()}
                   </span>
                   {p.en_oferta && (
-                    <Badge variant="danger" className="absolute top-2 right-2 text-[10px]">OFERTA</Badge>
+                    <Badge variant="danger" className="absolute top-2 right-2 text-2xs">OFERTA</Badge>
                   )}
                   {p.stock_bajo && (
                     <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
@@ -423,15 +423,15 @@ export default function ProductosPage() {
                 </div>
                 <CardContent className="p-3">
                   <p className="font-semibold text-sm text-foreground line-clamp-2 leading-tight">{p.nombre}</p>
-                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{p.sku || p.codigo_barras || "—"}</p>
+                  <p className="text-2xs text-muted-foreground font-mono mt-0.5">{p.sku || p.codigo_barras || "—"}</p>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-sm font-bold text-brand-600">{formatCurrency(p.en_oferta ? p.precio_vigente : p.precio_venta)}</span>
                     {p.categoria_nombre && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5">{p.categoria_nombre}</Badge>
+                      <Badge variant="secondary" className="text-2xs px-1.5">{p.categoria_nombre}</Badge>
                     )}
                   </div>
                   <div className="mt-2 space-y-1">
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <div className="flex justify-between text-2xs text-muted-foreground">
                       <span>Stock: {Number(p.stock_actual).toFixed(0)} {p.unidad_medida}</span>
                       <span>Mín: {p.stock_minimo}</span>
                     </div>
@@ -486,7 +486,7 @@ export default function ProductosPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground cursor-pointer hover:border-brand-400 hover:text-brand-500 transition-colors shrink-0 group">
                       <Camera size={20} className="group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] mt-1 font-medium">Foto</span>
+                      <span className="text-2xs mt-1 font-medium">Foto</span>
                     </div>
                     <div className="flex-1">
                       <FormField
@@ -660,11 +660,11 @@ export default function ProductosPage() {
                     <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Precio de oferta (opcional)</p>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <Label className="text-[10px] mb-1 block">Precio (RD$)</Label>
+                        <Label className="text-2xs mb-1 block">Precio (RD$)</Label>
                         <Input type="number" {...register("precio_oferta")} placeholder="0.00" step="0.01" className="border-rose-200" />
                       </div>
                       <div>
-                        <Label className="text-[10px] mb-1 block">Desde</Label>
+                        <Label className="text-2xs mb-1 block">Desde</Label>
                         <Controller
                           control={control}
                           name="oferta_inicio"
@@ -674,7 +674,7 @@ export default function ProductosPage() {
                         />
                       </div>
                       <div>
-                        <Label className="text-[10px] mb-1 block">Hasta</Label>
+                        <Label className="text-2xs mb-1 block">Hasta</Label>
                         <Controller
                           control={control}
                           name="oferta_fin"

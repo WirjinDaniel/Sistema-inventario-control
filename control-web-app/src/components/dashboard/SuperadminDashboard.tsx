@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -43,6 +43,8 @@ interface VentasPorColmado {
   porcentaje: number;
   tickets: number;
 }
+
+const BAR_GRADIENT = ['#818cf8', '#4338ca']; // brand-400 → brand-700
 
 const BAR_COLORS = [
   'var(--color-chart-1, #6366f1)',
@@ -242,8 +244,8 @@ export default function SuperadminDashboard() {
                   <svg width="0" height="0" style={{ position: 'absolute' }}>
                     <defs>
                       <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#818cf8" />
-                        <stop offset="100%" stopColor="#4338ca" />
+                        <stop offset="0%" stopColor={BAR_GRADIENT[0]} />
+                        <stop offset="100%" stopColor={BAR_GRADIENT[1]} />
                       </linearGradient>
                     </defs>
                   </svg>
@@ -353,7 +355,7 @@ export default function SuperadminDashboard() {
                         <p className="text-sm font-black tabular-nums text-foreground">
                           {fmt(Number(col.total))}
                         </p>
-                        <p className="text-[10px] text-muted-foreground font-medium flex items-center justify-end gap-0.5">
+                        <p className="text-2xs text-muted-foreground font-medium flex items-center justify-end gap-0.5">
                           <ArrowUpRight size={9} />
                           {Number(col.porcentaje).toFixed(1)}%
                         </p>
@@ -387,7 +389,7 @@ export default function SuperadminDashboard() {
                 </div>
               ) : data?.colmados_stats.length ? (
                 <table className="w-full text-sm">
-                  <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
+                  <thead className="bg-brand-50 dark:bg-slate-700/50">
                     <tr className="border-b border-border">
                       <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Colmado</th>
                       <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wide">Ventas</th>

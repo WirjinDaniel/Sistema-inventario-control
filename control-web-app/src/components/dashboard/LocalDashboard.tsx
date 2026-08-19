@@ -55,6 +55,10 @@ const CHART_COLORS = {
   5: "var(--color-chart-5, #8b5cf6)",
 } as const;
 
+const COLOR_FALLBACK = "#94a3b8"; // slate-400 — color neutro para métodos de pago desconocidos
+const COLOR_DANGER   = "var(--color-chart-4, #ef4444)";
+const COLOR_WARNING  = "var(--color-chart-3, #f59e0b)";
+
 const METODO_COLORS: Record<string, string> = {
   EFECTIVO: CHART_COLORS[1],
   TARJETA: CHART_COLORS[2],
@@ -418,8 +422,8 @@ export default function LocalDashboard() {
                   <AreaChart data={stats.ventas_por_hora} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorVentasNew" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                        <stop offset="5%" stopColor={CHART_COLORS[1]} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS[1]} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -432,8 +436,8 @@ export default function LocalDashboard() {
                       formatter={(v) => [formatCurrency(Number(v)), "Ventas"]}
                       labelFormatter={(h) => `${h}:00 hrs`}
                     />
-                    <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2.5}
-                      fill="url(#colorVentasNew)" dot={false} activeDot={{ r: 5, fill: "#6366f1", strokeWidth: 0 }} />
+                    <Area type="monotone" dataKey="total" stroke={CHART_COLORS[1]} strokeWidth={2.5}
+                      fill="url(#colorVentasNew)" dot={false} activeDot={{ r: 5, fill: CHART_COLORS[1], strokeWidth: 0 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
@@ -478,7 +482,7 @@ export default function LocalDashboard() {
                       <div key={m.metodo} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-2 font-medium text-foreground">
-                            <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ background: METODO_COLORS[m.metodo] ?? "#94a3b8" }} />
+                            <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ background: METODO_COLORS[m.metodo] ?? COLOR_FALLBACK }} />
                             {m.metodo}
                           </span>
                           <span className="font-bold text-foreground">
@@ -490,7 +494,7 @@ export default function LocalDashboard() {
                             className="h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${totalMetodos > 0 ? (m.total / totalMetodos) * 100 : 0}%`,
-                              background: METODO_COLORS[m.metodo] ?? "#94a3b8",
+                              background: METODO_COLORS[m.metodo] ?? COLOR_FALLBACK,
                             }}
                           />
                         </div>
@@ -602,10 +606,10 @@ export default function LocalDashboard() {
                         <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, background: isCritical ? "#ef4444" : "#f59e0b" }}
+                            style={{ width: `${pct}%`, background: isCritical ? COLOR_DANGER : COLOR_WARNING }}
                           />
                         </div>
-                        <span className="text-[10px] text-muted-foreground font-medium">mín: {p.stock_minimo}</span>
+                        <span className="text-xs text-muted-foreground font-medium">mín: {p.stock_minimo}</span>
                       </div>
                     </div>
                   );

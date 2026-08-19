@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import * as React from "react";
 import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -121,7 +121,7 @@ export function DatePicker({ value, onChange, placeholder = "Seleccionar fecha",
                   <div className="absolute top-full mt-1 left-0 z-10 bg-popover border border-border rounded-lg shadow-lg p-1 grid grid-cols-3 gap-0.5 w-44">
                     {MONTHS.map((m, i) => (
                       <button key={m} onClick={() => { setViewMonth(i); setShowMonths(false); }}
-                        className={cn("text-[10px] px-1 py-1 rounded hover:bg-muted text-foreground transition-colors",
+                        className={cn("text-2xs px-1 py-1 rounded hover:bg-muted text-foreground transition-colors",
                           i === viewMonth && "bg-brand-600 text-white hover:bg-brand-700"
                         )}>
                         {m.slice(0, 3)}
@@ -160,7 +160,7 @@ export function DatePicker({ value, onChange, placeholder = "Seleccionar fecha",
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-1">
             {DAYS.map(d => (
-              <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</div>
+              <div key={d} className="text-center text-2xs font-medium text-muted-foreground py-1">{d}</div>
             ))}
           </div>
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -260,7 +260,7 @@ export default function GastosPage() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-foreground">{g.categoria_nombre}</p>
-                        <Badge variant={tipo.variant} className="mt-0.5 text-[10px] h-4">{tipo.label}</Badge>
+                        <Badge variant={tipo.variant} className="mt-0.5 text-2xs h-4">{tipo.label}</Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground">{g.descripcion}</td>
                       <td className="px-4 py-3">

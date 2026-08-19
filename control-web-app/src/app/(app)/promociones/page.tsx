@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -270,8 +270,8 @@ export default function PromocionesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-sm font-semibold text-foreground truncate">{p.nombre}</span>
-                      <Badge variant="secondary" className="text-[10px] h-4">{info.label}</Badge>
-                      {vencida && <Badge variant="danger" className="text-[10px] h-4">Vencida</Badge>}
+                      <Badge variant="secondary" className="text-2xs h-4">{info.label}</Badge>
+                      {vencida && <Badge variant="danger" className="text-2xs h-4">Vencida</Badge>}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {p.producto_nombre && <span>📦 {p.producto_nombre}</span>}
@@ -336,7 +336,7 @@ export default function PromocionesPage() {
                         className={cn("flex flex-col items-center gap-1 p-2 rounded-lg border text-center transition-all",
                           field.value === t ? "border-brand-500 bg-brand-50 dark:bg-brand-950/30" : "border-border hover:bg-muted/40")}>
                         <Icon size={14} className={field.value === t ? color : "text-muted-foreground"} />
-                        <span className="text-[10px] font-medium leading-tight">{label}</span>
+                        <span className="text-2xs font-medium leading-tight">{label}</span>
                       </button>
                     );
                   })}
@@ -391,7 +391,7 @@ export default function PromocionesPage() {
               <Label className="text-xs mb-1.5 block">Aplica a</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-[11px] text-muted-foreground mb-1 block">Producto específico</Label>
+                  <Label className="text-xs text-muted-foreground mb-1 block">Producto específico</Label>
                   <div className="relative">
                     <Input
                       placeholder="Buscar producto…"
@@ -415,7 +415,7 @@ export default function PromocionesPage() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[11px] text-muted-foreground mb-1 block">Categoría</Label>
+                  <Label className="text-xs text-muted-foreground mb-1 block">Categoría</Label>
                   <Controller name="categoria" control={control} render={({ field }) => (
                     <select value={field.value ?? ""}
                       onChange={(e) => { field.onChange(e.target.value ? Number(e.target.value) : null); setValue("producto", null); setBusqProd(""); }}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -586,7 +586,7 @@ export default function POSPage() {
                     <p className={cn("font-bold text-sm tabular-nums", p.en_oferta ? "text-rose-500" : "text-brand-600")}>
                       {formatCurrency(p.en_oferta ? p.precio_vigente : p.precio_venta)}
                     </p>
-                    {p.en_oferta && <Badge variant="danger" className="text-[10px]">OFERTA</Badge>}
+                    {p.en_oferta && <Badge variant="danger" className="text-2xs">OFERTA</Badge>}
                   </div>
                 </button>
               ))}
@@ -612,12 +612,12 @@ export default function POSPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-semibold text-sm truncate">{item.producto.nombre}</p>
-                      {item.producto.en_oferta && <Badge variant="danger" className="text-[10px] px-1.5 shrink-0">OFERTA</Badge>}
+                      {item.producto.en_oferta && <Badge variant="danger" className="text-2xs px-1.5 shrink-0">OFERTA</Badge>}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-muted-foreground font-mono">{formatCurrency(item.precio_unitario)} / {item.producto.unidad_medida}</p>
                       {item.descuento > 0 && (
-                        <Badge variant="purple" className="text-[10px]">−{formatCurrency(item.descuento)} desc.</Badge>
+                        <Badge variant="violet" className="text-2xs">−{formatCurrency(item.descuento)} desc.</Badge>
                       )}
                     </div>
                   </div>
@@ -668,7 +668,7 @@ export default function POSPage() {
 
         {/* Total */}
         <div className="px-5 pt-5 pb-4 border-b border-border">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Total a cobrar</p>
+          <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Total a cobrar</p>
           <p className="text-4xl font-black text-foreground leading-none tabular-nums">
             <span className="text-lg text-muted-foreground font-medium">RD$</span>
             <span className="text-brand-600">{total.toFixed(2)}</span>
@@ -686,7 +686,7 @@ export default function POSPage() {
 
           {/* Cupón de descuento */}
           <div>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
               <Tag size={11} /> Cupón de descuento
             </p>
             {promoAplicada ? (
@@ -694,7 +694,7 @@ export default function POSPage() {
                 <Tag size={13} className="text-emerald-600 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate">{promoAplicada.nombre}</p>
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-500">−{formatCurrency(descuentoPromo)}</p>
+                  <p className="text-2xs text-emerald-600 dark:text-emerald-500">−{formatCurrency(descuentoPromo)}</p>
                 </div>
                 <button onClick={() => { setPromoAplicada(null); setCodigoCupon(""); }} className="text-emerald-400 hover:text-rose-500 transition-colors">
                   <X size={13} />
@@ -721,7 +721,7 @@ export default function POSPage() {
 
           {/* Método de pago */}
           <div>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">Método de pago</p>
+            <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Método de pago</p>
             <div className="grid grid-cols-2 gap-2">
               {METODOS.map(({ key, label, Icon }) => (
                 <button key={key} onClick={() => setMetodoPago(key)}
@@ -743,7 +743,7 @@ export default function POSPage() {
           {/* Banco para transferencia */}
           {metodoPago === "TRANSFERENCIA" && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+              <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                 <Building2 size={11} /> Banco destino
               </p>
               <CustomSelect value={bancoId} onChange={(v) => setBancoId(v as string)}
@@ -755,7 +755,7 @@ export default function POSPage() {
           {/* Cliente para fiado */}
           {metodoPago === "FIADO" && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Cliente</p>
+              <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest">Cliente</p>
               <select value={clienteId ?? ""} onChange={(e) => setClienteId(Number(e.target.value) || null)}
                 className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Selecciona un cliente…</option>
@@ -781,7 +781,7 @@ export default function POSPage() {
           {/* Efectivo */}
           {metodoPago === "EFECTIVO" && (
             <div className="space-y-3">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Monto recibido</p>
+              <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest">Monto recibido</p>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">RD$</span>
                 <Input type="number" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)}
@@ -797,7 +797,7 @@ export default function POSPage() {
                 <div className="grid grid-cols-3 gap-1.5">
                   {Array.from(new Set([total, Math.ceil(total / 100) * 100, Math.ceil(total / 500) * 500])).map((v) => (
                     <button key={v} onClick={() => setMontoPagado(String(v))}
-                      className="text-[11px] bg-muted hover:bg-muted/80 rounded-lg py-1.5 font-semibold text-muted-foreground transition-colors tabular-nums">
+                      className="text-xs bg-muted hover:bg-muted/80 rounded-lg py-1.5 font-semibold text-muted-foreground transition-colors tabular-nums">
                       RD${v.toFixed(0)}
                     </button>
                   ))}
@@ -839,10 +839,10 @@ export default function POSPage() {
                   <>
                     <Input placeholder={ncfTipo === "01" ? "Nombre / Razón social *" : "Nombre de la institución *"}
                       className="h-8 text-xs" aria-invalid={!!errNcf.institucion} {...regNcf("institucion")} />
-                    {errNcf.institucion && <p role="alert" className="text-[10px] text-destructive">{errNcf.institucion.message}</p>}
+                    {errNcf.institucion && <p role="alert" className="text-2xs text-destructive">{errNcf.institucion.message}</p>}
                     <Input placeholder={ncfTipo === "01" ? "RNC / Cédula *" : "RNC de la institución (opcional)"}
                       className="h-8 text-xs font-mono" aria-invalid={!!errNcf.rnc} {...regNcf("rnc")} />
-                    {errNcf.rnc && <p role="alert" className="text-[10px] text-destructive">{errNcf.rnc.message}</p>}
+                    {errNcf.rnc && <p role="alert" className="text-2xs text-destructive">{errNcf.rnc.message}</p>}
                   </>
                 )}
               </div>

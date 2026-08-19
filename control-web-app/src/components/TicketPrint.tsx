@@ -86,15 +86,15 @@ export default function TicketPrint({ venta, colmadoNombre, ncf, onClose }: Prop
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
 
         {/* Header modal */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="text-emerald-500" size={20} />
-            <span className="font-bold text-slate-800">¡Venta completada!</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100">¡Venta completada!</span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition">
             <X size={17} />
           </button>
         </div>
@@ -188,16 +188,16 @@ export default function TicketPrint({ venta, colmadoNombre, ncf, onClose }: Prop
         </div>
 
         {/* Botones */}
-        <div className="flex gap-3 px-5 py-4 border-t border-slate-100">
+        <div className="flex gap-3 px-5 py-4 border-t border-slate-100 dark:border-slate-800">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm font-semibold transition active:scale-95"
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-semibold transition active:scale-95"
           >
             Cerrar
           </button>
           <button
             onClick={imprimir}
-            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:shadow-md transition flex items-center justify-center gap-2 active:scale-95"
+            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-violet-600 text-white text-sm font-semibold hover:shadow-md transition flex items-center justify-center gap-2 active:scale-95"
           >
             <Printer size={15} /> Imprimir
           </button>

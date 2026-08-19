@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import React from "react";
 import {
@@ -412,7 +412,7 @@ export default function FacturacionPage() {
                         return (
                           <div key={pt.tipo} className="flex items-center justify-between text-sm py-2 border-b border-border last:border-0">
                             <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-[10px] font-mono">B{pt.tipo}</Badge>
+                              <Badge variant="secondary" className="text-2xs font-mono">B{pt.tipo}</Badge>
                               <span className="text-xs text-muted-foreground">{tipoInfo?.nombre ?? `Tipo ${pt.tipo}`}</span>
                             </div>
                             <div className="flex items-center gap-4 text-xs">
@@ -488,12 +488,12 @@ export default function FacturacionPage() {
                           </td>
                           <td className="px-3 py-3 font-mono text-xs font-medium whitespace-nowrap">{f.ncf}</td>
                           <td className="px-3 py-3">
-                            <Badge variant="secondary" className="text-[10px]">B{f.tipo}</Badge>
+                            <Badge variant="secondary" className="text-2xs">B{f.tipo}</Badge>
                           </td>
                           <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmtFecha(f.fecha)}</td>
                           <td className="px-3 py-3">
                             <p className="text-xs font-medium truncate max-w-36">{f.cliente_nombre || "Consumidor Final"}</p>
-                            {f.cliente_rnc && <p className="text-[10px] text-muted-foreground font-mono">{f.cliente_rnc}</p>}
+                            {f.cliente_rnc && <p className="text-2xs text-muted-foreground font-mono">{f.cliente_rnc}</p>}
                           </td>
                           <td className="px-3 py-3 font-bold tabular-nums text-sm whitespace-nowrap">{formatCurrency(Number(f.total))}</td>
                           <td className="px-3 py-3 text-xs tabular-nums whitespace-nowrap">
@@ -504,7 +504,7 @@ export default function FacturacionPage() {
                             )}
                           </td>
                           <td className="px-3 py-3">
-                            <Badge variant={ESTADO_BADGE[f.estado] as any} className="text-[10px]">
+                            <Badge variant={ESTADO_BADGE[f.estado] as any} className="text-2xs">
                               {f.estado_nombre ?? f.estado}
                             </Badge>
                           </td>
@@ -514,7 +514,7 @@ export default function FacturacionPage() {
                                 {f.estado !== "ANULADA" && f.estado !== "PAGADA" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setPagoModal(f); setPagoForm({ metodo: "EFECTIVO", monto: String(f.saldo_pendiente), referencia: "", notas: "" }); }}
-                                    className="text-[11px] text-emerald-600 hover:text-emerald-700 font-medium whitespace-nowrap"
+                                    className="text-xs text-emerald-600 hover:text-emerald-700 font-medium whitespace-nowrap"
                                   >
                                     + Pago
                                   </button>
@@ -522,7 +522,7 @@ export default function FacturacionPage() {
                                 {f.estado !== "ANULADA" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setAnularModal(f); setMotivo(""); }}
-                                    className="flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-700 font-medium"
+                                    className="flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 font-medium"
                                   >
                                     <XCircle size={12} /> Anular
                                   </button>
@@ -677,11 +677,11 @@ export default function FacturacionPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-mono text-sm font-bold">B{s.tipo}XXXXXXXX</span>
-                          <Badge variant={s.agotada || s.vencida ? "danger" : s.activo ? "success" : "secondary"} className="text-[10px]">
+                          <Badge variant={s.agotada || s.vencida ? "danger" : s.activo ? "success" : "secondary"} className="text-2xs">
                             {s.agotada ? "Agotada" : s.vencida ? "Vencida" : s.activo ? "Activa" : "Inactiva"}
                           </Badge>
                           {s.proxima_a_agotar && !s.agotada && !s.vencida && (
-                            <Badge variant="warning" className="text-[10px]">⚠ Solo {s.disponibles} disponibles</Badge>
+                            <Badge variant="warning" className="text-2xs">⚠ Solo {s.disponibles} disponibles</Badge>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -722,7 +722,7 @@ export default function FacturacionPage() {
                       value={pct}
                       className={cn("h-2", critica ? "[&>div]:bg-rose-500" : "[&>div]:bg-brand-500")}
                     />
-                    <div className="flex justify-between mt-1.5 text-[11px] text-muted-foreground">
+                    <div className="flex justify-between mt-1.5 text-xs text-muted-foreground">
                       <span>{s.secuencia_desde.toString().padStart(8, "0")}</span>
                       <span>{pct.toFixed(0)}% usado</span>
                       <span>{s.secuencia_hasta.toString().padStart(8, "0")}</span>
@@ -746,7 +746,7 @@ export default function FacturacionPage() {
                   <p className="text-sm font-semibold">{t.nombre}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{t.descripcion}</p>
                   {TIPOS_REQUIEREN_RELACIONADO.has(t.codigo) && (
-                    <Badge variant="secondary" className="text-[10px] mt-1.5">Requiere NCF relacionado</Badge>
+                    <Badge variant="secondary" className="text-2xs mt-1.5">Requiere NCF relacionado</Badge>
                   )}
                 </div>
               </div>
@@ -948,7 +948,7 @@ export default function FacturacionPage() {
                   className="w-full h-8 text-sm border border-border rounded-md bg-background px-2">
                   {TIPOS_NCF.map((t) => <option key={t.codigo} value={t.codigo}>B{t.codigo} — {t.nombre}</option>)}
                 </select>
-                <p className="text-[11px] text-muted-foreground mt-1">{TIPOS_NCF.find((t) => t.codigo === facForm.tipo)?.descripcion}</p>
+                <p className="text-xs text-muted-foreground mt-1">{TIPOS_NCF.find((t) => t.codigo === facForm.tipo)?.descripcion}</p>
               </div>
               <div>
                 <Label className="text-xs mb-1.5 block">Forma de pago</Label>

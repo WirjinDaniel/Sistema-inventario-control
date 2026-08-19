@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { UserCog, Plus, Search, Power, Edit2, X, Check, Lock, KeyRound } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
@@ -286,7 +286,7 @@ export default function UsuariosGlobalPage() {
                 <td className="px-4 py-3">
                   <div>
                     <p className="font-medium text-slate-900 dark:text-white">{u.username}</p>
-                    {u.is_superuser && <span className="text-[10px] text-purple-600 font-semibold">SUPERADMIN</span>}
+                    {u.is_superuser && <span className="text-2xs text-purple-600 font-semibold">SUPERADMIN</span>}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{u.nombre}</td>

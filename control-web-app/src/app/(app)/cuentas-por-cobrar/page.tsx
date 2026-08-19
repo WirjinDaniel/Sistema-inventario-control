@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -123,7 +123,7 @@ export default function CuentasPorCobrarPage() {
                   <div className="flex items-center gap-2">
                     <span className={cn("w-2 h-2 rounded-full shrink-0", cfg.dotColor)} />
                     <span className="text-sm font-semibold text-foreground">{bucket.label}</span>
-                    <Badge variant={cfg.badge} className="text-[10px] h-4">{bucket.clientes.length} clientes</Badge>
+                    <Badge variant={cfg.badge} className="text-2xs h-4">{bucket.clientes.length} clientes</Badge>
                   </div>
                   <span className="font-bold text-foreground tabular-nums text-sm">{formatCurrency(bucket.total)}</span>
                 </div>
@@ -144,7 +144,7 @@ export default function CuentasPorCobrarPage() {
                           <span className="flex items-center gap-1"><Clock size={11} /> {formatDate(c.ultima_fecha)}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={cfg.badge} className="text-[10px]">{c.dias}d</Badge>
+                          <Badge variant={cfg.badge} className="text-2xs">{c.dias}d</Badge>
                         </td>
                         <td className="px-4 py-3 font-bold text-foreground tabular-nums">{formatCurrency(c.saldo_deuda)}</td>
                         <td className="px-4 py-3">

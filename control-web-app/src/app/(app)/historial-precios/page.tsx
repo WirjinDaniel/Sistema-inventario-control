@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import {
   TrendingUp, TrendingDown, Search, RefreshCw, Package,
@@ -189,7 +189,7 @@ export default function HistorialPreciosPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={CAMPO_BADGE[h.campo] ?? "secondary"} className="text-[10px]">
+                        <Badge variant={CAMPO_BADGE[h.campo] ?? "secondary"} className="text-2xs">
                           {CAMPO_LABELS[h.campo] ?? h.campo}
                         </Badge>
                       </td>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -574,7 +574,7 @@ export default function UsuariosPage() {
                             <div key={i} className={`flex-1 rounded-full transition-colors ${i <= s.score ? s.color : "bg-slate-200"}`} />
                           ))}
                         </div>
-                        <p className="text-[11px] text-slate-400">Seguridad: <span className="font-medium text-slate-600">{s.label}</span></p>
+                        <p className="text-xs text-slate-400">Seguridad: <span className="font-medium text-slate-600">{s.label}</span></p>
                       </div>
                     );
                   })()}

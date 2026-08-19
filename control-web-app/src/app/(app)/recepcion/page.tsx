@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
@@ -239,7 +239,7 @@ function RecepcionContent() {
 
               {/* Cantidad recibida */}
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">Cantidad</label>
+                <label className="text-2xs text-slate-400 font-semibold uppercase">Cantidad</label>
                 <input type="number" value={linea.cantidad_recibida} min="0" step="0.01"
                   onChange={e => setLineas(ls => ls.map((l, i) => i === idx ? { ...l, cantidad_recibida: e.target.value } : l))}
                   className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
@@ -247,7 +247,7 @@ function RecepcionContent() {
 
               {/* Precio costo */}
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">Costo unit.</label>
+                <label className="text-2xs text-slate-400 font-semibold uppercase">Costo unit.</label>
                 <div className="relative">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
                   <input type="number" value={linea.precio_costo} step="0.01"
@@ -258,7 +258,7 @@ function RecepcionContent() {
 
               {/* Subtotal */}
               <div className="flex flex-col gap-0.5 text-right">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">Subtotal</label>
+                <label className="text-2xs text-slate-400 font-semibold uppercase">Subtotal</label>
                 <span className="text-sm font-semibold text-slate-700 pt-1.5">
                   {fmt(Number(linea.cantidad_recibida || 0) * Number(linea.precio_costo || 0))}
                 </span>

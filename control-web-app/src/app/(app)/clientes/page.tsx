@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -193,28 +193,28 @@ export default function ClientesPage() {
             <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 rounded-xl px-4 py-2">
               <AlertTriangle size={13} className="text-rose-500" />
               <div>
-                <p className="text-[10px] font-semibold text-rose-500 uppercase tracking-wide leading-none">Total fiados</p>
+                <p className="text-2xs font-semibold text-rose-500 uppercase tracking-wide leading-none">Total fiados</p>
                 <p className="text-sm font-black text-rose-700 dark:text-rose-300 tabular-nums">{formatCurrency(totalDeudas)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2">
               <Users size={13} className="text-slate-500" />
               <div>
-                <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wide leading-none">Con deuda</p>
+                <p className="text-2xs font-bold text-slate-700 uppercase tracking-wide leading-none">Con deuda</p>
                 <p className="text-sm font-black text-slate-700 dark:text-slate-200 tabular-nums">{conDeuda} / {clientes.length}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-xl px-4 py-2">
               <TrendingDown size={13} className="text-amber-500" />
               <div>
-                <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wide leading-none">Promedio deuda</p>
+                <p className="text-2xs font-semibold text-amber-500 uppercase tracking-wide leading-none">Promedio deuda</p>
                 <p className="text-sm font-black text-amber-700 dark:text-amber-300 tabular-nums">{formatCurrency(promedioDeuda)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 rounded-xl px-4 py-2">
               <Check size={13} className="text-emerald-500" />
               <div>
-                <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wide leading-none">Al día</p>
+                <p className="text-2xs font-semibold text-emerald-500 uppercase tracking-wide leading-none">Al día</p>
                 <p className="text-sm font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{pctAlDia.toFixed(0)}%</p>
               </div>
             </div>
@@ -431,18 +431,18 @@ export default function ClientesPage() {
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
-                              <span className="text-[10px] text-slate-400 w-7 text-right">{pct.toFixed(0)}%</span>
+                              <span className="text-2xs text-slate-400 w-7 text-right">{pct.toFixed(0)}%</span>
                             </div>
-                          ) : <span className="text-[10px] text-slate-300 italic">sin límite</span>}
+                          ) : <span className="text-2xs text-slate-300 italic">sin límite</span>}
                         </td>
                         {/* Estado */}
                         <td className="px-4 py-3 text-center">
                           {tieneDeuda ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
                               Con deuda
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
                               <Check size={9} /> Al día
                             </span>
                           )}
@@ -543,7 +543,7 @@ export default function ClientesPage() {
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                            <div className="flex items-center justify-between text-2xs text-slate-400">
                               <span>{pct.toFixed(0)}% usado</span>
                               <span>Disponible: <strong className="text-slate-600 dark:text-slate-300">{formatCurrency(disponible)}</strong></span>
                             </div>
@@ -559,7 +559,7 @@ export default function ClientesPage() {
                           <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Al día</span>
                         </div>
                         {limite > 0 && (
-                          <span className="text-[10px] text-slate-400">Límite: {formatCurrency(limite)}</span>
+                          <span className="text-2xs text-slate-400">Límite: {formatCurrency(limite)}</span>
                         )}
                       </div>
                     )}
@@ -598,7 +598,7 @@ export default function ClientesPage() {
               {/* Mini resumen */}
               {clientes.length > 0 && !loading && (
                 <div className="mt-8 w-full space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left mb-3">Resumen del portafolio</p>
+                  <p className="text-2xs font-bold text-slate-400 uppercase tracking-wider text-left mb-3">Resumen del portafolio</p>
                   {[
                     { label: "Total clientes", value: String(clientes.length), color: "text-slate-700 dark:text-slate-200" },
                     { label: "Con deuda", value: `${conDeuda}`, color: "text-rose-600" },
@@ -708,13 +708,13 @@ export default function ClientesPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Límite</p>
+                      <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wide">Límite</p>
                       <p className="text-base font-black text-slate-700 dark:text-slate-200 tabular-nums mt-0.5">
                         {formatCurrency(Number(clienteActivo.limite_credito))}
                       </p>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Disponible</p>
+                      <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wide">Disponible</p>
                       <p className="text-base font-black text-slate-700 dark:text-slate-200 tabular-nums mt-0.5">
                         {formatCurrency(Math.max(Number(clienteActivo.limite_credito) - Number(clienteActivo.saldo_deuda), 0))}
                       </p>
@@ -737,7 +737,7 @@ export default function ClientesPage() {
                         style={{ width: `${Math.min((Number(clienteActivo.saldo_deuda) / Number(clienteActivo.limite_credito)) * 100, 100)}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                    <div className="flex justify-between text-2xs text-slate-400 mt-1">
                       <span>RD$0</span>
                       <span>{formatCurrency(Number(clienteActivo.limite_credito))}</span>
                     </div>
@@ -791,12 +791,12 @@ export default function ClientesPage() {
                                 <span className="font-normal text-slate-400"> · {(a as { cajero_nombre: string }).cajero_nombre}</span>
                               )}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
+                            <p className="text-2xs text-slate-400 mt-0.5">
                               {new Date(a.fecha).toLocaleDateString("es-DO", {
                                 day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
                               })}
                             </p>
-                            {a.nota && <p className="text-[10px] text-slate-400 italic mt-0.5">{a.nota}</p>}
+                            {a.nota && <p className="text-2xs text-slate-400 italic mt-0.5">{a.nota}</p>}
                           </div>
                           <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums shrink-0">
                             +{formatCurrency(Number(a.monto))}

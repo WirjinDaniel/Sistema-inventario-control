@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { X, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ const GROUPS: Group[] = [
 
 function Kbd({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-md bg-muted border border-border text-[11px] font-mono font-semibold text-foreground shadow-sm">
+    <kbd className="inline-flex items-center justify-center min-w-7 h-6 px-1.5 rounded-md bg-muted border border-border text-xs font-mono font-semibold text-foreground shadow-sm">
       {children}
     </kbd>
   );
@@ -83,7 +83,7 @@ export default function KeyboardShortcutsModal() {
       aria-modal="true"
       aria-label="Guía de atajos de teclado"
     >
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90svh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
@@ -109,7 +109,7 @@ export default function KeyboardShortcutsModal() {
         <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
           {GROUPS.map((group) => (
             <div key={group.title}>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 {group.title}
               </p>
               <div className="space-y-1">
@@ -125,7 +125,7 @@ export default function KeyboardShortcutsModal() {
                     <div className="flex items-center gap-1 shrink-0 ml-4">
                       {s.keys.map((k, ki) => (
                         <span key={ki} className="flex items-center gap-1">
-                          {ki > 0 && <span className="text-[10px] text-muted-foreground">+</span>}
+                          {ki > 0 && <span className="text-2xs text-muted-foreground">+</span>}
                           <Kbd>{k}</Kbd>
                         </span>
                       ))}

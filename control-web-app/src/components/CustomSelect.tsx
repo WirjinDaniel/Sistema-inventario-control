@@ -38,10 +38,10 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center justify-between gap-2 border rounded-xl px-3 py-2.5 text-sm text-left transition-all duration-150 bg-white ${
+        className={`w-full flex items-center justify-between gap-2 border rounded-xl px-3 py-2.5 text-sm text-left transition-all duration-150 bg-white dark:bg-slate-900 ${
           open
-            ? "border-indigo-400 ring-2 ring-indigo-200"
-            : "border-slate-200 hover:border-slate-300"
+            ? "border-brand-400 ring-2 ring-brand-200 dark:ring-brand-800"
+            : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
         }`}>
         <span className="flex items-center gap-2 flex-1 min-w-0">
           {selected ? (
@@ -51,7 +51,7 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
                   <selected.icon size={13} />
                 </span>
               )}
-              <span className="font-medium text-slate-700 truncate">{selected.label}</span>
+              <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{selected.label}</span>
             </>
           ) : (
             <span className="text-slate-400">{placeholder}</span>
@@ -61,7 +61,7 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -70,7 +70,7 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
                 type="button"
                 onClick={() => { onChange(opt.value); setOpen(false); }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors duration-100 ${
-                  isSelected ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-50"
+                  isSelected ? "bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}>
                 {opt.icon && (
                   <span className={`w-6 h-6 rounded-lg flex items-center justify-center ${opt.color ?? "bg-slate-100 text-slate-500"}`}>
@@ -78,7 +78,7 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
                   </span>
                 )}
                 <span className="flex-1 font-medium">{opt.label}</span>
-                {isSelected && <Check size={14} className="text-indigo-500 shrink-0" />}
+                {isSelected && <Check size={14} className="text-brand-600 dark:text-brand-400 shrink-0" />}
               </button>
             );
           })}

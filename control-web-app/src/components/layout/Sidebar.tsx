@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -175,8 +175,8 @@ export default function Sidebar() {
       <aside
         className={cn(
           "flex flex-col h-full transition-all duration-300 ease-in-out",
-          "bg-[#eef2f8] border-r border-slate-200",
-          "dark:bg-[#0d1b2e] dark:border-slate-700/50",
+          "bg-brand-50 border-r border-slate-200",
+          "dark:bg-navy-dark dark:border-slate-700/50",
           collapsed ? "w-16" : "w-60"
         )}
       >
@@ -202,15 +202,15 @@ export default function Sidebar() {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 relative",
                     isActive
-                      ? "bg-blue-100 text-blue-700 font-medium dark:bg-blue-900/40 dark:text-blue-300"
+                      ? "bg-brand-100 text-brand-700 font-medium dark:bg-brand-900/40 dark:text-brand-300"
                       : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white",
                     collapsed && "justify-center px-2"
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-blue-500 dark:bg-blue-400 rounded-r-full" />
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-brand-600 dark:bg-brand-400 rounded-r-full" />
                   )}
-                  <GroupIcon size={18} className={cn("shrink-0", isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500")} />
+                  <GroupIcon size={18} className={cn("shrink-0", isActive ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500")} />
                   {!collapsed && <span className="flex-1 truncate">{group.title}</span>}
                 </Link>
               );
@@ -242,11 +242,11 @@ export default function Sidebar() {
                 )}
               >
                 {hasActiveItem && !open && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-blue-500 dark:bg-blue-400 rounded-r-full" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-brand-600 dark:bg-brand-400 rounded-r-full" />
                 )}
                 <GroupIcon
                   size={18}
-                  className={cn("shrink-0", hasActiveItem ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500")}
+                  className={cn("shrink-0", hasActiveItem ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500")}
                 />
                 {!collapsed && (
                   <>
@@ -270,7 +270,7 @@ export default function Sidebar() {
                     <TooltipTrigger asChild>{groupHeader}</TooltipTrigger>
                     <TooltipContent side="right" className="p-0 w-40">
                       <div className="py-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 px-3 py-1.5">
+                        <p className="text-2xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400 px-3 py-1.5">
                           {group.title}
                         </p>
                         {visibleItems.map(item => {
@@ -283,7 +283,7 @@ export default function Sidebar() {
                               className={cn(
                                 "flex items-center gap-2 px-3 py-1.5 text-sm transition-colors",
                                 isActive
-                                  ? "text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-900/30"
+                                  ? "text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-brand-900/30"
                                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/8"
                               )}
                             >
@@ -316,17 +316,17 @@ export default function Sidebar() {
                             className={cn(
                               "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150 relative",
                               isActive
-                                ? "bg-blue-100 text-blue-700 font-medium dark:bg-blue-900/40 dark:text-blue-300"
+                                ? "bg-brand-100 text-brand-700 font-medium dark:bg-brand-900/40 dark:text-brand-300"
                                 : "text-slate-500 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/8 dark:hover:text-white"
                             )}
                           >
                             {isActive && (
                               <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-blue-500 dark:bg-blue-400 rounded-r-full" />
                             )}
-                            <Icon size={14} className={cn("shrink-0", isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500")} />
+                            <Icon size={14} className={cn("shrink-0", isActive ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500")} />
                             <span className="flex-1 truncate">{item.label}</span>
                             {item.badge && (
-                              <Badge variant="danger" className="text-[10px] px-1.5 py-0 h-4">{item.badge}</Badge>
+                              <Badge variant="danger" className="text-2xs px-1.5 py-0 h-4">{item.badge}</Badge>
                             )}
                           </Link>
                         );

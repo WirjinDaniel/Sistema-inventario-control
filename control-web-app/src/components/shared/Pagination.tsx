@@ -46,7 +46,7 @@ export function Pagination({ page, totalPages, total, pageSize, onPage, classNam
               key={p}
               onClick={() => onPage(p as number)}
               className={cn(
-                "min-w-[28px] h-7 px-1 rounded-lg text-xs font-medium transition-colors",
+                "min-w-7 h-7 px-1 rounded-lg text-xs font-medium transition-colors",
                 page === p
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-muted text-muted-foreground"
