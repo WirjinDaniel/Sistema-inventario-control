@@ -55,7 +55,7 @@ const CHART_COLORS = {
   5: "var(--color-chart-5, #8b5cf6)",
 } as const;
 
-const COLOR_FALLBACK = "#94a3b8"; // slate-400 — color neutro para métodos de pago desconocidos
+const COLOR_FALLBACK = "#94a3b8";
 const COLOR_DANGER   = "var(--color-chart-4, #ef4444)";
 const COLOR_WARNING  = "var(--color-chart-3, #f59e0b)";
 
@@ -69,7 +69,7 @@ const PIE_COLORS = [CHART_COLORS[1], CHART_COLORS[2], CHART_COLORS[3], CHART_COL
 
 function isoDate(d: Date) { return d.toISOString().split("T")[0]; }
 
-function rangoFechas(periodo: Periodo): { desde: string; hasta: string; anterior_desde: string; anterior_hasta: string } {
+function rangoFechas(periodo: Periodo) {
   const hoy = new Date();
   const hasta = isoDate(hoy);
   if (periodo === "hoy") {
@@ -82,73 +82,114 @@ function rangoFechas(periodo: Periodo): { desde: string; hasta: string; anterior
     const ant_desde = new Date(ant_hasta); ant_desde.setDate(ant_hasta.getDate() - 6);
     return { desde: isoDate(desde), hasta, anterior_desde: isoDate(ant_desde), anterior_hasta: isoDate(ant_hasta) };
   }
-  // mes
   const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   const ant_hasta = new Date(desde); ant_hasta.setDate(ant_hasta.getDate() - 1);
   const ant_desde = new Date(ant_hasta.getFullYear(), ant_hasta.getMonth(), 1);
   return { desde: isoDate(desde), hasta, anterior_desde: isoDate(ant_desde), anterior_hasta: isoDate(ant_hasta) };
 }
 
-interface KpiConfig {
-  icon: React.ElementType; label: string; value: string; sub?: string;
-  delta?: number; accent: string; iconBg: string; iconColor: string; loading?: boolean;
+/* ─── Hero KPI (ventas del período) ─── */
+function HeroKpiCard({ value, label, sub, delta, loading }: {
+  value: string; label: string; sub?: string; delta?: number; loading?: boolean;
+}) {
+  if (loading) return (
+    <div className="rounded-2xl p-6 shadow-md border border-white/20 bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
+      <Skeleton className="w-12 h-12 rounded-2xl mb-5" />
+      <Skeleton className="h-10 w-40 mb-2" />
+      <Skeleton className="h-4 w-28" />
+    </div>
+  );
+  const isPositive = delta === undefined || delta >= 0;
+  return (
+    <div className="rounded-2xl p-6 shadow-md border border-white/20 bg-linear-to-br from-indigo-600 to-violet-700 relative overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_80%_20%,white,transparent_60%)]" />
+      <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-5 shadow-sm">
+        <DollarSign size={20} className="text-white" />
+      </div>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-4xl font-black text-white tabular-nums tracking-tight leading-none mb-2">{value}</p>
+          <p className="text-sm font-bold text-white/80">{label}</p>
+          {sub && <p className="text-xs text-white/60 mt-0.5">{sub}</p>}
+        </div>
+        {delta !== undefined && (
+          <span className={cn(
+            "flex items-center gap-0.5 text-xs font-bold px-3 py-1.5 rounded-full shrink-0",
+            isPositive
+              ? "bg-white/20 text-white"
+              : "bg-rose-500/30 text-white"
+          )}>
+            {isPositive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {Math.abs(delta).toFixed(1)}%
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function KpiCard({ icon: Icon, label, value, sub, delta, accent, iconBg, iconColor, loading }: KpiConfig) {
+/* ─── KPI secundario (con badge de delta) ─── */
+function KpiCard({ icon: Icon, label, value, sub, delta, accent, iconBg, iconColor, loading }: {
+  icon: React.ElementType; label: string; value: string; sub?: string;
+  delta?: number; accent: string; iconBg: string; iconColor: string; loading?: boolean;
+}) {
   if (loading) return (
-    <div className="bg-card rounded-2xl border border-border p-5 shadow-sm">
-      <Skeleton className="w-11 h-11 rounded-xl mb-4" />
-      <Skeleton className="h-8 w-32 mb-2" />
-      <Skeleton className="h-4 w-40" />
+    <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
+      <div className="flex items-start justify-between mb-3">
+        <Skeleton className="w-9 h-9 rounded-xl" />
+        <Skeleton className="w-14 h-5 rounded-full" />
+      </div>
+      <Skeleton className="h-7 w-28 mb-1.5" />
+      <Skeleton className="h-3.5 w-36" />
     </div>
   );
   const isPositive = delta === undefined || delta >= 0;
   return (
     <div className={cn(
-      "bg-card rounded-2xl border-l-4 border-t border-r border-b p-5 shadow-sm",
-      "hover:shadow-md transition-all duration-200 cursor-default",
-      "border-t-border border-r-border border-b-border",
-      accent
+      "bg-card rounded-2xl border border-border p-4 shadow-sm relative overflow-hidden",
+      "hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-default",
     )}>
-      <div className="flex items-start justify-between mb-4">
-        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shadow-sm", iconBg)}>
-          <Icon size={19} className={iconColor} />
+      <div className={cn("absolute top-0 left-0 h-0.5 w-full", accent)} />
+      <div className="flex items-start justify-between mb-3">
+        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shadow-sm", iconBg)}>
+          <Icon size={16} className={iconColor} />
         </div>
         {delta !== undefined && (
           <span className={cn(
-            "flex items-center gap-0.5 text-xs font-bold px-2.5 py-1 rounded-full",
+            "flex items-center gap-0.5 text-2xs font-bold px-2 py-1 rounded-full",
             isPositive
               ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400"
               : "text-rose-600 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400"
           )}>
-            {isPositive ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+            {isPositive ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
             {Math.abs(delta).toFixed(1)}%
           </span>
         )}
       </div>
-      <p className="text-3xl font-black text-foreground tabular-nums tracking-tight leading-none mb-1">{value}</p>
-      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
-      {sub && <p className="text-xs text-muted-foreground/70 mt-1">{sub}</p>}
+      <p className="text-2xl font-black text-foreground tabular-nums tracking-tight leading-none mb-1">{value}</p>
+      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</p>
+      {sub && <p className="text-2xs text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
 
-function SecondaryKpi({ icon: Icon, label, value, iconBg, iconColor, valueColor, loading }: {
+/* ─── Micro KPI strip ─── */
+function MicroKpi({ icon: Icon, label, value, iconBg, iconColor, valueColor, loading }: {
   icon: React.ElementType; label: string; value: string;
   iconBg: string; iconColor: string; valueColor?: string; loading?: boolean;
 }) {
   return (
-    <div className="bg-card rounded-2xl border border-border p-4 shadow-sm hover:shadow-md transition-all">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", iconBg)}>
-          <Icon size={15} className={iconColor} />
-        </div>
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="bg-card rounded-2xl border border-border p-4 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
+        <Icon size={15} className={iconColor} />
       </div>
-      {loading
-        ? <Skeleton className="h-7 w-28" />
-        : <p className={cn("text-xl font-black tabular-nums tracking-tight", valueColor ?? "text-foreground")}>{value}</p>
-      }
+      <div className="min-w-0">
+        <p className="text-2xs font-medium text-muted-foreground truncate">{label}</p>
+        {loading
+          ? <Skeleton className="h-5 w-24 mt-0.5" />
+          : <p className={cn("text-sm font-black tabular-nums tracking-tight", valueColor ?? "text-foreground")}>{value}</p>
+        }
+      </div>
     </div>
   );
 }
@@ -253,23 +294,22 @@ export default function LocalDashboard() {
     <div className="min-h-screen bg-background">
       <div className="p-6 max-w-7xl mx-auto space-y-6">
 
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="space-y-1">
             <h1 className="text-2xl font-black text-foreground tracking-tight">
               {saludoHora} 👋
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5 capitalize">
+            <p className="text-sm text-muted-foreground capitalize flex items-center gap-2 flex-wrap">
               {hora?.toLocaleDateString("es-DO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
               {hora && (
-                <span className="ml-2 font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded-md text-xs">
+                <span className="font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded-md text-xs">
                   {hora.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Selector de período */}
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
               <CalendarDays size={13} className="text-muted-foreground ml-2 shrink-0" />
               {(["hoy", "semana", "mes"] as Periodo[]).map((p) => (
@@ -291,15 +331,15 @@ export default function LocalDashboard() {
               variant="outline" size="sm"
               onClick={() => cargarStats(true)}
               disabled={refreshing}
-              className="gap-2 shadow-sm hover:shadow-md transition-all"
+              className="gap-2 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all"
             >
-              <RefreshCw size={13} className={cn("text-muted-foreground", refreshing && "animate-spin")} />
+              <RefreshCw size={13} className={cn("text-indigo-500", refreshing && "animate-spin")} />
               <span className="text-xs font-medium">Actualizar</span>
             </Button>
           </div>
         </div>
 
-        {/* Banner suscripción */}
+        {/* ── Banner suscripción ── */}
         {suscripcion && (() => {
           const vencida = suscripcion.estado === "VENCIDA" || suscripcion.estado === "SUSPENDIDA";
           const proxima = !vencida && suscripcion.dias_restantes <= 7;
@@ -312,7 +352,7 @@ export default function LocalDashboard() {
                 : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50"
             )}>
               <div className={cn(
-                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
                 vencida ? "bg-rose-100 dark:bg-rose-900/50" : "bg-amber-100 dark:bg-amber-900/50"
               )}>
                 <Layers size={16} className={vencida ? "text-rose-600" : "text-amber-600"} />
@@ -333,22 +373,22 @@ export default function LocalDashboard() {
           );
         })()}
 
-        {/* KPI Cards principales */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard
-            icon={DollarSign} label={`Ventas — ${periodoLabel}`} loading={loading}
-            value={formatCurrency(stats?.total_periodo ?? 0)}
-            sub={stats?.total_anterior ? `vs ${formatCurrency(stats.total_anterior)} período ant.` : undefined}
-            delta={trend}
-            accent="border-l-indigo-500"
-            iconBg="bg-indigo-50 dark:bg-indigo-950"
-            iconColor="text-indigo-600 dark:text-indigo-400"
-          />
+        {/* ── Hero + KPIs principales ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="sm:col-span-2 xl:col-span-1">
+            <HeroKpiCard
+              value={formatCurrency(stats?.total_periodo ?? 0)}
+              label={`Ventas — ${periodoLabel}`}
+              sub={stats?.total_anterior ? `vs ${formatCurrency(stats.total_anterior)} período ant.` : undefined}
+              delta={trend}
+              loading={loading}
+            />
+          </div>
           <KpiCard
             icon={ShoppingBag} label="Transacciones" loading={loading}
             value={String(stats?.ventas_periodo ?? 0)}
-            sub={`ventas completadas — ${periodoLabel.toLowerCase()}`}
-            accent="border-l-sky-500"
+            sub={`completadas — ${periodoLabel.toLowerCase()}`}
+            accent="bg-sky-500"
             iconBg="bg-sky-50 dark:bg-sky-950"
             iconColor="text-sky-600 dark:text-sky-400"
           />
@@ -356,7 +396,7 @@ export default function LocalDashboard() {
             icon={Users} label="Clientes con fiado" loading={loading}
             value={String(stats?.clientes_con_deuda ?? 0)}
             sub="deudas pendientes"
-            accent="border-l-amber-500"
+            accent="bg-amber-500"
             iconBg="bg-amber-50 dark:bg-amber-950"
             iconColor="text-amber-600 dark:text-amber-400"
           />
@@ -364,22 +404,22 @@ export default function LocalDashboard() {
             icon={AlertTriangle} label="Stock bajo" loading={loading}
             value={String(stats?.productos_stock_bajo ?? 0)}
             sub="productos a reponer"
-            accent="border-l-rose-500"
+            accent="bg-rose-500"
             iconBg="bg-rose-50 dark:bg-rose-950"
             iconColor="text-rose-600 dark:text-rose-400"
           />
         </div>
 
-        {/* KPIs secundarios */}
-        <div className="grid grid-cols-3 gap-4">
-          <SecondaryKpi
+        {/* ── Micro KPIs ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <MicroKpi
             icon={BarChart2} label="Ticket promedio"
             value={formatCurrency(stats?.ticket_promedio ?? 0)}
             iconBg="bg-purple-50 dark:bg-purple-950"
             iconColor="text-purple-600 dark:text-purple-400"
             loading={loading}
           />
-          <SecondaryKpi
+          <MicroKpi
             icon={TrendingDown} label={`Gastos — ${periodoLabel.toLowerCase()}`}
             value={formatCurrency(stats?.gastos_periodo ?? 0)}
             iconBg="bg-rose-50 dark:bg-rose-950"
@@ -387,7 +427,7 @@ export default function LocalDashboard() {
             valueColor="text-rose-600 dark:text-rose-400"
             loading={loading}
           />
-          <SecondaryKpi
+          <MicroKpi
             icon={Receipt} label="Total fiado pendiente"
             value={formatCurrency(stats?.fiado_total ?? 0)}
             iconBg="bg-amber-50 dark:bg-amber-950"
@@ -397,26 +437,26 @@ export default function LocalDashboard() {
           />
         </div>
 
-        {/* Gráfica ventas por hora + Métodos de pago */}
+        {/* ── Gráfica ventas por hora + Métodos de pago ── */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <div className="bg-card rounded-2xl border border-border shadow-sm xl:col-span-2">
-            <div className="flex items-center justify-between p-5 pb-3">
+          <div className="bg-card rounded-2xl border border-border shadow-sm xl:col-span-2 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center">
-                  <TrendingUp size={15} className="text-indigo-600 dark:text-indigo-400" />
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+                  <TrendingUp size={15} className="text-white" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">Ventas por hora</p>
                   <p className="text-xs text-muted-foreground">Actividad — {periodoLabel.toLowerCase()}</p>
                 </div>
               </div>
-              <span className="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold px-3 py-1 rounded-full">
+              <span className="text-2xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 px-3 py-1 rounded-full uppercase tracking-wide">
                 {periodoLabel}
               </span>
             </div>
-            <div className="px-5 pb-5">
+            <div className="p-6">
               {loading ? (
-                <Skeleton className="w-full h-44" />
+                <Skeleton className="w-full h-44 rounded-xl" />
               ) : stats && stats.ventas_por_hora.some((v) => v.total > 0) ? (
                 <ResponsiveContainer width="100%" height={176}>
                   <AreaChart data={stats.ventas_por_hora} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -450,20 +490,20 @@ export default function LocalDashboard() {
           </div>
 
           {/* Métodos de pago */}
-          <div className="bg-card rounded-2xl border border-border shadow-sm">
-            <div className="flex items-center gap-3 p-5 pb-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center">
-                <DollarSign size={15} className="text-emerald-600 dark:text-emerald-400" />
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+                <DollarSign size={15} className="text-white" />
               </div>
               <div>
                 <p className="text-sm font-bold text-foreground">Métodos de pago</p>
                 <p className="text-xs text-muted-foreground">Distribución — {periodoLabel.toLowerCase()}</p>
               </div>
             </div>
-            <div className="px-5 pb-5">
+            <div className="p-6">
               {loading ? (
                 <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-full rounded-xl" />)}
                 </div>
               ) : stats?.metodos_pago.length ? (
                 <>
@@ -511,13 +551,14 @@ export default function LocalDashboard() {
           </div>
         </div>
 
-        {/* Últimas ventas + Stock bajo */}
+        {/* ── Últimas ventas + Stock bajo ── */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
           {/* Últimas ventas */}
           <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 p-5 pb-4 border-b border-border">
-              <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center">
-                <ShoppingBag size={15} className="text-sky-600 dark:text-sky-400" />
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-sm">
+                <ShoppingBag size={15} className="text-white" />
               </div>
               <div>
                 <p className="text-sm font-bold text-foreground">Últimas ventas</p>
@@ -526,12 +567,12 @@ export default function LocalDashboard() {
             </div>
             {loading ? (
               <div className="p-5 space-y-3">
-                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
+                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
               </div>
             ) : stats?.ultimas_ventas.length ? (
               <div className="divide-y divide-border">
                 {stats.ultimas_ventas.map((v) => (
-                  <div key={v.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                  <div key={v.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
                         <ShoppingBag size={14} className="text-indigo-600 dark:text-indigo-400" />
@@ -566,10 +607,10 @@ export default function LocalDashboard() {
 
           {/* Productos stock bajo */}
           <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-5 pb-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950 flex items-center justify-center">
-                  <Package size={15} className="text-rose-600 dark:text-rose-400" />
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-sm">
+                  <Package size={15} className="text-white" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">Productos con stock bajo</p>
@@ -582,7 +623,7 @@ export default function LocalDashboard() {
             </div>
             {loading ? (
               <div className="p-5 space-y-3">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
               </div>
             ) : stats?.productos_bajo.length ? (
               <div className="divide-y divide-border">
@@ -590,7 +631,7 @@ export default function LocalDashboard() {
                   const pct = p.stock_minimo > 0 ? Math.min((p.stock_actual / p.stock_minimo) * 100, 100) : 0;
                   const isCritical = p.stock_actual === 0 || p.stock_actual < p.stock_minimo / 2;
                   return (
-                    <div key={i} className="px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                    <div key={i} className="px-6 py-4 hover:bg-muted/30 transition-colors">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-semibold text-foreground truncate flex-1 mr-3">{p.nombre}</p>
                         <span className={cn(
@@ -609,7 +650,7 @@ export default function LocalDashboard() {
                             style={{ width: `${pct}%`, background: isCritical ? COLOR_DANGER : COLOR_WARNING }}
                           />
                         </div>
-                        <span className="text-xs text-muted-foreground font-medium">mín: {p.stock_minimo}</span>
+                        <span className="text-xs text-muted-foreground font-medium shrink-0">mín: {p.stock_minimo}</span>
                       </div>
                     </div>
                   );
@@ -624,10 +665,10 @@ export default function LocalDashboard() {
           </div>
         </div>
 
-        {/* Alerta crítica */}
+        {/* ── Alerta crítica stock ── */}
         {(stats?.productos_stock_bajo ?? 0) > 0 && !loading && (
-          <div className="flex items-start gap-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 p-4">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center shrink-0">
+          <div className="flex items-start gap-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 p-5">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center shrink-0 shadow-sm">
               <AlertTriangle size={18} className="text-rose-600" />
             </div>
             <div>
