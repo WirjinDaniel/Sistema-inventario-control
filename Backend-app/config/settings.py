@@ -304,6 +304,15 @@ UNFOLD = {
                 ],
             },
             {
+                "title": "Suscripciones",
+                "separator": True,
+                "items": [
+                    {"title": "Planes", "icon": "workspace_premium", "link": "/admin/suscripciones/plan/"},
+                    {"title": "Suscripciones", "icon": "subscriptions", "link": "/admin/suscripciones/suscripcion/"},
+                    {"title": "Pagos de Suscripción", "icon": "receipt", "link": "/admin/suscripciones/pagosuscripcion/"},
+                ],
+            },
+            {
                 "title": "Sistema",
                 "separator": True,
                 "items": [
