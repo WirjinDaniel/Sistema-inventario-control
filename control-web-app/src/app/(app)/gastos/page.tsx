@@ -187,7 +187,7 @@ export default function GastosPage() {
           className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="">Todos los tipos</option>
-          {Object.entries(TIPOS_LABEL).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          {Object.entries(TIPOS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         {/* Período toggle */}
         <div className="flex gap-1 bg-muted rounded-lg p-1">
