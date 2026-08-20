@@ -328,16 +328,42 @@ export default function SuplidoresPage() {
 
         {/* Balance cards */}
         <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Total comprado', value: detalle.total_comprado, color: 'text-slate-800' },
-            { label: 'Total pagado', value: detalle.total_pagado, color: 'text-green-600' },
-            { label: 'Balance pendiente', value: detalle.balance_pendiente, color: detalle.balance_pendiente > 0 ? 'text-red-600' : 'text-slate-400' },
-          ].map(c => (
-            <div key={c.label} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-              <p className="text-xs text-slate-500 mb-1">{c.label}</p>
-              <p className={`text-xl font-bold ${c.color}`}>{fmt(c.value)}</p>
+          <div className="relative bg-card border border-border rounded-xl p-4 overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+                <ShoppingCart className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-2xs text-muted-foreground font-medium uppercase tracking-wide">Total comprado</p>
+                <p className="text-xl font-black text-foreground tabular-nums">{fmt(detalle.total_comprado)}</p>
+              </div>
             </div>
-          ))}
+          </div>
+          <div className="relative bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-4 overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-emerald-400/70 to-transparent" />
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+                <DollarSign className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-2xs text-muted-foreground font-medium uppercase tracking-wide">Total pagado</p>
+                <p className="text-xl font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{fmt(detalle.total_pagado)}</p>
+              </div>
+            </div>
+          </div>
+          <div className={`relative border rounded-xl p-4 overflow-hidden ${detalle.balance_pendiente > 0 ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50' : 'bg-card border-border'}`}>
+            <div className={`absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent to-transparent ${detalle.balance_pendiente > 0 ? 'via-rose-400/70' : 'via-slate-300/40'}`} />
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl bg-linear-to-br flex items-center justify-center shrink-0 shadow-sm ${detalle.balance_pendiente > 0 ? 'from-rose-500 to-red-600' : 'from-slate-400 to-slate-500'}`}>
+                <CreditCard className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-2xs text-muted-foreground font-medium uppercase tracking-wide">Balance pendiente</p>
+                <p className={`text-xl font-black tabular-nums ${detalle.balance_pendiente > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-muted-foreground'}`}>{fmt(detalle.balance_pendiente)}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -412,22 +438,23 @@ export default function SuplidoresPage() {
                     {ordenesFiltradas.map(o => (
                       <div key={o.id} className="py-3 flex items-center justify-between gap-4">
                         <div>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            #{o.id} {o.numero_factura ? `— Factura ${o.numero_factura}` : ''}
+                          <p className="font-semibold text-foreground text-sm">
+                            <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded mr-1.5">#{o.id}</span>
+                            {o.numero_factura ? `Factura ${o.numero_factura}` : ''}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5">{fmtDate(o.fecha)}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{fmtDate(o.fecha)}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            o.estado === 'RECIBIDA' ? 'bg-green-100 text-green-700' :
-                            o.estado === 'CANCELADA' ? 'bg-red-100 text-red-700' :
-                            'bg-amber-100 text-amber-700'
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-2xs font-bold border ${
+                            o.estado === 'RECIBIDA' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50' :
+                            o.estado === 'CANCELADA' ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/50' :
+                            'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50'
                           }`}>{o.estado}</span>
-                          <span className="font-bold text-slate-800 text-sm">{fmt(o.total)}</span>
+                          <span className="font-black text-foreground text-sm tabular-nums">{fmt(o.total)}</span>
                           {o.estado === 'PENDIENTE' && (
                             <button
                               onClick={() => recibirOrden(o)}
-                              className="px-3 py-1 rounded-lg bg-green-500 text-white text-xs font-semibold hover:bg-green-600 transition"
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition shadow-sm"
                             >
                               Recibir
                             </button>
@@ -471,17 +498,17 @@ export default function SuplidoresPage() {
                           </button>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div className="bg-slate-50 rounded-lg p-2">
-                            <p className="text-slate-400">Total</p>
-                            <p className="font-bold text-slate-700">{fmt(o.total)}</p>
+                          <div className="bg-muted border border-border rounded-xl p-2.5">
+                            <p className="text-muted-foreground text-2xs uppercase tracking-wide font-medium">Total</p>
+                            <p className="font-black text-foreground tabular-nums mt-0.5">{fmt(o.total)}</p>
                           </div>
-                          <div className="bg-green-50 rounded-lg p-2">
-                            <p className="text-slate-400">Pagado</p>
-                            <p className="font-bold text-green-700">{fmt(o.total_pagado)}</p>
+                          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-2.5">
+                            <p className="text-muted-foreground text-2xs uppercase tracking-wide font-medium">Pagado</p>
+                            <p className="font-black text-emerald-700 dark:text-emerald-300 tabular-nums mt-0.5">{fmt(o.total_pagado)}</p>
                           </div>
-                          <div className="bg-red-50 rounded-lg p-2">
-                            <p className="text-slate-400">Pendiente</p>
-                            <p className="font-bold text-red-700">{fmt(o.balance_pendiente)}</p>
+                          <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-xl p-2.5">
+                            <p className="text-muted-foreground text-2xs uppercase tracking-wide font-medium">Pendiente</p>
+                            <p className="font-black text-rose-700 dark:text-rose-300 tabular-nums mt-0.5">{fmt(o.balance_pendiente)}</p>
                           </div>
                         </div>
                       </div>
@@ -590,20 +617,20 @@ export default function SuplidoresPage() {
       </div>
 
       {/* List */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Suplidor</th>
-                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Teléfono</th>
-                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Tipo pago</th>
-                <th className="text-left px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Última compra</th>
-                <th className="text-right px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Balance</th>
-                <th className="px-5 py-3" />
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <th className="text-left px-5 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">Suplidor</th>
+                <th className="text-left px-5 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">Teléfono</th>
+                <th className="text-left px-5 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">Tipo pago</th>
+                <th className="text-left px-5 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">Última compra</th>
+                <th className="text-right px-5 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">Balance</th>
+                <th className="px-5 py-2.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 [...Array(4)].map((_, i) => (
                   <tr key={i}>
@@ -616,7 +643,7 @@ export default function SuplidoresPage() {
                 ))
               ) : suplidores.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
+                  <td colSpan={6} className="px-5 py-12 text-center text-muted-foreground">
                     <Truck className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p>No hay suplidores registrados</p>
                   </td>
@@ -625,33 +652,40 @@ export default function SuplidoresPage() {
                 suplidores.map(s => (
                   <tr
                     key={s.id}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="hover:bg-muted/30 transition-colors cursor-pointer group"
                     onClick={() => setDetalle(s)}
                   >
                     <td className="px-5 py-3.5">
-                      <div>
-                        <p className="font-semibold text-slate-800">{s.nombre}</p>
-                        {s.contacto && <p className="text-xs text-slate-400">{s.contacto}</p>}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+                          <Truck className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">{s.nombre}</p>
+                          {s.contacto && <p className="text-xs text-muted-foreground">{s.contacto}</p>}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">{s.telefono || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{s.telefono || <span className="opacity-40">—</span>}</td>
                     <td className="px-5 py-3.5">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        s.tipo_pago === 'CREDITO' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-2xs font-bold border ${
+                        s.tipo_pago === 'CREDITO'
+                          ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50'
+                          : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50'
                       }`}>{s.tipo_pago}</span>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-500">
-                      {s.ultima_compra ? fmtDate(s.ultima_compra) : '—'}
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">
+                      {s.ultima_compra ? fmtDate(s.ultima_compra) : <span className="opacity-40">—</span>}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       {s.balance_pendiente > 0 ? (
-                        <span className="font-bold text-red-600">{fmt(s.balance_pendiente)}</span>
+                        <span className="inline-flex items-center gap-1 font-black text-rose-600 dark:text-rose-400 tabular-nums text-sm">{fmt(s.balance_pendiente)}</span>
                       ) : (
-                        <span className="text-slate-400 text-xs">Al día</span>
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Al día</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-400">
-                      <ChevronRight className="w-4 h-4" />
+                    <td className="px-5 py-3.5 text-muted-foreground">
+                      <ChevronRight className="w-4 h-4 group-hover:text-foreground transition-colors" />
                     </td>
                   </tr>
                 ))
@@ -667,8 +701,8 @@ export default function SuplidoresPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-indigo-600" />
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <FileText className="w-4 h-4 text-white" />
                 </div>
                 <h2 className="text-lg font-bold text-slate-800">Nueva Orden de Compra</h2>
               </div>
@@ -725,12 +759,12 @@ export default function SuplidoresPage() {
 
                   <div className="rounded-xl border border-slate-200 overflow-hidden">
                     <table className="w-full text-sm">
-                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50 border-b border-slate-200">
-                        <tr>
-                          <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-1/2">Producto</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-24">Cantidad</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-32">Precio costo</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide w-28">Subtotal</th>
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-muted/40">
+                          <th className="text-left px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest w-1/2">Producto</th>
+                          <th className="text-right px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest w-24">Cantidad</th>
+                          <th className="text-right px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest w-32">Precio costo</th>
+                          <th className="text-right px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest w-28">Subtotal</th>
                           <th className="w-10" />
                         </tr>
                       </thead>
