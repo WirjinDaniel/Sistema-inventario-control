@@ -8,7 +8,6 @@ import {
   Store, ChevronDown, Sun, Moon,
   RotateCcw, Gift, FileText, DollarSign, History,
   Building2, Globe, UserCog, BadgeDollarSign, Layers, Archive,
-  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
@@ -131,17 +130,11 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const ROL_LABEL: Record<string, string> = {
-  ADMIN: "Administrador",
-  INVENTARIO: "Inventario",
-  CAJERO: "Cajero",
-  SUPERADMIN: "Superadmin",
-};
 
 export default function Sidebar() {
   const { collapsed, openGroups, toggleGroup: storeToggleGroup, setGroupOpen } = useSidebarStore();
   const pathname = usePathname();
-  const { usuario, esAdmin, esSuperadmin, logout } = useAuthStore();
+  const { usuario, esAdmin, esSuperadmin } = useAuthStore();
   const { theme, toggle } = useTheme();
 
   const userRole = esAdmin() || esSuperadmin() ? "admin"
@@ -173,10 +166,6 @@ export default function Sidebar() {
 
   function toggleGroup(title: string) { storeToggleGroup(title); }
 
-  const initials = usuario?.nombre
-    ? usuario.nombre.split(" ").slice(0, 2).map((n: string) => n[0]).join("").toUpperCase()
-    : "U";
-
   return (
     <TooltipProvider delayDuration={0}>
       <aside className={cn(
@@ -185,22 +174,6 @@ export default function Sidebar() {
         "dark:bg-navy-dark dark:border-slate-700/50",
         collapsed ? "w-16" : "w-60"
       )}>
-
-        {/* ── Brand header ── */}
-        <div className={cn(
-          "flex items-center gap-3 px-3 py-4 border-b border-slate-200 dark:border-slate-700/50 shrink-0",
-          collapsed && "justify-center px-2"
-        )}>
-          <div className="w-8 h-8 rounded-xl bg-linear-to-br from-brand-600 to-indigo-700 flex items-center justify-center shadow-sm shrink-0">
-            <Store size={15} className="text-white" />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="font-black text-sm text-foreground leading-tight tracking-tight">ComerSys</p>
-              <p className="text-2xs text-muted-foreground font-medium">Gestión Comercial</p>
-            </div>
-          )}
-        </div>
 
         {/* ── Nav ── */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-0.5 scrollbar-hide">
@@ -372,22 +345,7 @@ export default function Sidebar() {
         </nav>
 
         {/* ── Footer ── */}
-        <div className="border-t border-slate-200 dark:border-slate-700/50 p-2 space-y-1 shrink-0">
-
-          {/* Usuario */}
-          {!collapsed && usuario && (
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/8">
-              <div className="w-7 h-7 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0">
-                <span className="text-2xs font-black text-white">{initials}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate leading-tight">{usuario.nombre}</p>
-                <p className="text-2xs text-muted-foreground">{ROL_LABEL[usuario.rol] ?? usuario.rol}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Tema */}
+        <div className="border-t border-slate-200 dark:border-slate-700/50 p-2 shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -407,33 +365,6 @@ export default function Sidebar() {
             </TooltipTrigger>
             {collapsed && <TooltipContent side="right">{theme === "dark" ? "Modo claro" : "Modo oscuro"}</TooltipContent>}
           </Tooltip>
-
-          {/* Cerrar sesión */}
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => logout()}
-                  className="w-full flex items-center justify-center px-2 py-2 rounded-xl text-sm transition-colors text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
-                >
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center">
-                    <LogOut size={14} />
-                  </div>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Cerrar sesión</TooltipContent>
-            </Tooltip>
-          ) : (
-            <button
-              onClick={() => logout()}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
-            >
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
-                <LogOut size={14} />
-              </div>
-              <span className="text-xs">Cerrar sesión</span>
-            </button>
-          )}
         </div>
       </aside>
     </TooltipProvider>
