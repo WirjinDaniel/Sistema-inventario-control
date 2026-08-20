@@ -209,12 +209,13 @@ export default function LocalDashboard() {
     try {
       const { desde, hasta, anterior_desde, anterior_hasta } = rangoFechas(periodo);
 
+      const EMPTY = { data: [] };
       const [ventasRes, ventasAntRes, clientesRes, productosRes, gastosRes] = await Promise.all([
-        api.get(`/ventas/?estado=COMPLETADA&fecha_desde=${desde}&fecha_hasta=${hasta}&page_size=500`),
-        api.get(`/ventas/?estado=COMPLETADA&fecha_desde=${anterior_desde}&fecha_hasta=${anterior_hasta}&page_size=200`),
-        api.get("/clientes/"),
-        api.get("/inventario/productos/?stock_bajo=true&page_size=50"),
-        api.get(`/gastos/?fecha_desde=${desde}&fecha_hasta=${hasta}&page_size=200`).catch(() => ({ data: [] })),
+        api.get(`/ventas/?estado=COMPLETADA&fecha_desde=${desde}&fecha_hasta=${hasta}&page_size=500`).catch(() => EMPTY),
+        api.get(`/ventas/?estado=COMPLETADA&fecha_desde=${anterior_desde}&fecha_hasta=${anterior_hasta}&page_size=200`).catch(() => EMPTY),
+        api.get("/clientes/").catch(() => EMPTY),
+        api.get("/inventario/productos/?stock_bajo=true&page_size=50").catch(() => EMPTY),
+        api.get(`/gastos/?fecha_desde=${desde}&fecha_hasta=${hasta}&page_size=200`).catch(() => EMPTY),
       ]);
 
       const lista: Venta[] = ventasRes.data.results ?? ventasRes.data;
@@ -259,7 +260,7 @@ export default function LocalDashboard() {
         ticket_promedio,
       });
     } catch {
-      toast.error("Error al cargar el dashboard. Intenta de nuevo.");
+      // errores individuales ya se manejan con .catch() por endpoint
     }
     setLoading(false);
     if (manual) setRefreshing(false);
