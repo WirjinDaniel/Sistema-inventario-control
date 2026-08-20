@@ -31,9 +31,9 @@ import { useAuthStore } from "@/store/auth";
 import { AccessDenied } from "@/components/shared/AccessDenied";
 
 const ESTADO_CONFIG = {
-  PENDIENTE: { label: "Pendiente", variant: "warning" as const },
-  RECIBIDA:  { label: "Recibida",  variant: "success" as const },
-  CANCELADA: { label: "Cancelada", variant: "danger"  as const },
+  PENDIENTE: { label: "Pendiente", accentBg: "bg-amber-50 dark:bg-amber-950/30", accentBorder: "border-amber-200 dark:border-amber-800/50", color: "text-amber-700 dark:text-amber-300" },
+  RECIBIDA:  { label: "Recibida",  accentBg: "bg-emerald-50 dark:bg-emerald-950/30", accentBorder: "border-emerald-200 dark:border-emerald-800/50", color: "text-emerald-700 dark:text-emerald-300" },
+  CANCELADA: { label: "Cancelada", accentBg: "bg-rose-50 dark:bg-rose-950/30", accentBorder: "border-rose-200 dark:border-rose-800/50", color: "text-rose-700 dark:text-rose-300" },
 };
 
 const lineaSchema = z.object({
@@ -172,7 +172,21 @@ export default function ComprasPage() {
     <div className="p-6 space-y-5">
       <PageHeader
         title="Órdenes de compra"
-        description={`${ordenes.length} órdenes${pendientes > 0 ? ` · ${pendientes} pendientes` : ""} · Total: ${formatCurrency(totalOrdenes)}`}
+        description={
+          <span className="flex items-center gap-2 flex-wrap mt-0.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200 dark:border-brand-800/50 px-2 py-0.5 rounded-full">
+              <ClipboardList size={10} /> {ordenes.length} órdenes
+            </span>
+            {pendientes > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 px-2 py-0.5 rounded-full">
+                <AlertTriangle size={10} /> {pendientes} pendiente{pendientes !== 1 ? "s" : ""}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 px-2 py-0.5 rounded-full">
+              Total: {formatCurrency(totalOrdenes)}
+            </span>
+          </span>
+        }
         actions={
           <Button onClick={() => setModal(true)} className="gap-2">
             <Plus size={15} /> Nueva orden
@@ -236,53 +250,59 @@ export default function ComprasPage() {
           />
         ) : (
           <table className="w-full text-sm">
-            <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-              <tr className="border-b border-border bg-muted/50">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
                 {["Proveedor", "N° Factura", "Fecha", "Total", "Balance", "Estado", ""].map((h) => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                  <th key={h} className="text-left px-4 py-2.5 text-2xs font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {ordenes.map((o) => {
-                const estado = ESTADO_CONFIG[o.estado as keyof typeof ESTADO_CONFIG] ?? { label: o.estado, variant: "secondary" as const };
+                const estado = ESTADO_CONFIG[o.estado as keyof typeof ESTADO_CONFIG] ?? { label: o.estado, accentBg: "bg-muted", accentBorder: "border-border", color: "text-muted-foreground" };
                 const isExp = expandedId === o.id;
                 return (
                   <React.Fragment key={o.id}>
                     <tr
-                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      className="hover:bg-muted/30 transition-colors cursor-pointer group"
                       onClick={() => setExpandedId(isExp ? null : o.id)}
                     >
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                            <Truck size={13} className="text-muted-foreground" />
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <Truck size={13} className="text-white" />
                           </div>
-                          <span className="font-medium text-foreground">{o.suplidor_nombre}</span>
+                          <span className="font-semibold text-foreground">{o.suplidor_nombre}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                        {o.numero_factura || `#${o.id}`}
+                        <span className="bg-muted px-1.5 py-0.5 rounded">{o.numero_factura || `#${o.id}`}</span>
                       </td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                        {formatDate(o.fecha)}
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDays size={11} className="opacity-50" />
+                          {formatDate(o.fecha)}
+                        </div>
                       </td>
-                      <td className="px-4 py-3.5 font-semibold text-foreground tabular-nums">
+                      <td className="px-4 py-3.5 font-black text-foreground tabular-nums text-base">
                         {formatCurrency(Number(o.total))}
                       </td>
                       <td className="px-4 py-3.5 tabular-nums">
                         {Number(o.balance_pendiente) > 0 ? (
-                          <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold text-xs">
-                            <AlertTriangle size={11} /> {formatCurrency(Number(o.balance_pendiente))}
+                          <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold text-xs bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 px-2 py-0.5 rounded-full">
+                            <AlertTriangle size={10} /> {formatCurrency(Number(o.balance_pendiente))}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-                            <Check size={11} /> Pagado
+                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-full">
+                            <Check size={10} /> Pagado
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3.5">
-                        <Badge variant={estado.variant}>{estado.label}</Badge>
+                        <span className={cn(
+                          "inline-flex items-center text-2xs font-bold px-2 py-0.5 rounded-full border",
+                          estado.accentBg, estado.accentBorder, estado.color
+                        )}>{estado.label}</span>
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
@@ -307,28 +327,31 @@ export default function ComprasPage() {
                             </>
                           )}
                           {isExp
-                            ? <ChevronUp size={14} className="text-muted-foreground" />
-                            : <ChevronDown size={14} className="text-muted-foreground" />
+                            ? <ChevronUp size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                            : <ChevronDown size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
                           }
                         </div>
                       </td>
                     </tr>
                     {isExp && o.items && (
-                      <tr className="bg-muted/20">
-                        <td colSpan={7} className="px-5 py-3">
+                      <tr>
+                        <td colSpan={7} className="px-5 py-3 bg-muted/10 border-b border-border">
                           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                             {o.items.map((item) => (
-                              <div key={item.id} className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2 text-xs">
-                                <Package size={12} className="text-muted-foreground shrink-0" />
-                                <span className="font-medium text-foreground truncate flex-1">{item.producto_nombre}</span>
-                                <span className="text-muted-foreground shrink-0 tabular-nums">
+                              <div key={item.id} className="relative bg-card rounded-xl border border-border px-3 py-2.5 flex items-center gap-2.5 text-xs overflow-hidden hover:shadow-sm transition-shadow">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-linear-to-b from-brand-400 to-indigo-500 rounded-l-xl" />
+                                <div className="w-6 h-6 rounded-lg bg-linear-to-br from-brand-50 to-indigo-100 dark:from-brand-950/40 dark:to-indigo-900/30 border border-brand-100 dark:border-brand-800/30 flex items-center justify-center shrink-0">
+                                  <Package size={11} className="text-brand-500 dark:text-brand-400" />
+                                </div>
+                                <span className="font-semibold text-foreground truncate flex-1 pl-0.5">{item.producto_nombre}</span>
+                                <span className="text-muted-foreground shrink-0 tabular-nums bg-muted px-1.5 py-0.5 rounded">
                                   {item.cantidad} × {formatCurrency(Number(item.precio_costo))}
                                 </span>
                               </div>
                             ))}
                           </div>
                           {o.notas && (
-                            <p className="text-xs text-muted-foreground mt-2 italic">{o.notas}</p>
+                            <p className="text-xs text-muted-foreground mt-2 italic opacity-70">{o.notas}</p>
                           )}
                         </td>
                       </tr>
@@ -343,10 +366,14 @@ export default function ComprasPage() {
 
       {/* Confirm cancelar orden */}
       <Dialog open={!!confirmCancelarId} onOpenChange={(o) => { if (!o) setConfirmCancelarId(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-rose-400/70 to-transparent" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-rose-600">
-              <Ban size={16} /> Cancelar orden
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shrink-0 shadow-sm">
+                <Ban size={14} className="text-white" />
+              </div>
+              <span className="text-rose-600 dark:text-rose-400">Cancelar orden</span>
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
@@ -367,10 +394,11 @@ export default function ComprasPage() {
       {/* Modal nueva orden */}
       <Dialog open={modal} onOpenChange={(o) => !o && setModal(false)}>
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-5 pb-4 border-b border-border shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-brand-50 dark:bg-brand-950/40 flex items-center justify-center">
-                <ClipboardList size={14} className="text-brand-600 dark:text-brand-400" />
+          <DialogHeader className="relative px-6 pt-5 pb-4 border-b border-border shrink-0 overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+                <ClipboardList size={14} className="text-white" />
               </div>
               Nueva Orden de Compra
             </DialogTitle>
@@ -529,13 +557,14 @@ export default function ComprasPage() {
 
               {/* Total */}
               <div className={cn(
-                "rounded-xl px-4 py-3 flex items-center justify-between border",
+                "relative rounded-xl px-4 py-3 flex items-center justify-between border overflow-hidden",
                 totalOrden > 0
                   ? "bg-brand-50 dark:bg-brand-950/30 border-brand-200 dark:border-brand-800"
                   : "bg-muted border-border"
               )}>
-                <span className="text-sm font-medium text-muted-foreground">Total orden</span>
-                <span className={cn("text-xl font-bold tabular-nums", totalOrden > 0 ? "text-brand-700 dark:text-brand-300" : "text-muted-foreground")}>
+                {totalOrden > 0 && <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />}
+                <span className="text-sm font-semibold text-muted-foreground">Total orden</span>
+                <span className={cn("text-2xl font-black tabular-nums", totalOrden > 0 ? "text-brand-700 dark:text-brand-300" : "text-muted-foreground")}>
                   {formatCurrency(totalOrden)}
                 </span>
               </div>
