@@ -23,7 +23,6 @@ import { Pagination } from "@/components/shared/Pagination";
 import { usePagination } from "@/hooks/use-pagination";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { FormField } from "@/components/shared/FormField";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -254,7 +253,7 @@ export default function ProductosPage() {
         >
           <Filter size={13} /> Stock bajo
           {filtroStockBajo && stockBajoCount > 0 && (
-            <Badge variant="danger" className="text-2xs px-1 h-4 ml-1">{stockBajoCount}</Badge>
+            <span className="text-2xs px-1.5 h-4 rounded-full bg-rose-500 text-white font-bold flex items-center ml-1">{stockBajoCount}</span>
           )}
         </Button>
         {/* Vista toggle */}
@@ -315,13 +314,14 @@ export default function ProductosPage() {
                   <tr key={p.id} className="border-b border-border hover:bg-muted/30 transition-colors group">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-linear-to-br from-brand-50 to-indigo-100 dark:from-brand-950 dark:to-indigo-950 flex items-center justify-center shrink-0 text-brand-600 dark:text-brand-400 font-black text-xs border border-brand-100 dark:border-brand-900">
+                        <div className="relative w-8 h-8 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0 text-white font-black text-xs shadow-sm">
+                          <div className="absolute inset-x-0 top-0 h-px rounded-t-lg bg-linear-to-r from-transparent via-white/30 to-transparent" />
                           {p.nombre.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-semibold text-foreground">{p.nombre}</p>
-                            {p.en_oferta && <Badge variant="danger" className="text-2xs px-1.5 py-0">OFERTA</Badge>}
+                            {p.en_oferta && <span className="text-2xs px-1.5 py-0 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-bold">OFERTA</span>}
                           </div>
                           <p className="text-xs text-muted-foreground font-mono">{p.codigo_barras || p.sku || "—"}</p>
                         </div>
@@ -329,9 +329,9 @@ export default function ProductosPage() {
                     </td>
                     <td className="px-4 py-3">
                       {p.categoria_nombre ? (
-                        <Badge variant="secondary" className="gap-1 font-normal">
-                          <Tag size={10} /> {p.categoria_nombre}
-                        </Badge>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
+                          <Tag size={9} /> {p.categoria_nombre}
+                        </span>
                       ) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-muted-foreground tabular-nums font-mono text-xs">
@@ -349,10 +349,10 @@ export default function ProductosPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className={cn(
-                        "font-semibold text-xs px-2 py-0.5 rounded-full",
+                        "font-semibold text-xs px-2 py-0.5 rounded-full border",
                         Number(p.margen_ganancia) >= 20
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
+                          : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
                       )}>
                         {Number(p.margen_ganancia).toFixed(1)}%
                       </span>
@@ -415,15 +415,22 @@ export default function ProductosPage() {
               : 100;
             return (
               <Card key={p.id} className="group hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden cursor-pointer" onClick={() => abrirEditar(p)}>
-                <div className="h-28 bg-linear-to-br from-brand-50 via-indigo-50 to-violet-50 dark:from-brand-950 dark:via-indigo-950 dark:to-violet-950 flex items-center justify-center relative border-b border-border">
-                  <span className="text-4xl font-black text-brand-200 dark:text-brand-800 select-none">
+                <div className="relative h-28 bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center border-b border-border overflow-hidden">
+                  <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent" />
+                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_80%_20%,white,transparent_60%)]" />
+                  <span className="text-4xl font-black text-white/40 select-none">
                     {p.nombre.charAt(0).toUpperCase()}
                   </span>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-3xl font-black text-white select-none drop-shadow-sm">
+                      {p.nombre.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                   {p.en_oferta && (
-                    <Badge variant="danger" className="absolute top-2 right-2 text-2xs">OFERTA</Badge>
+                    <span className="absolute top-2 right-2 text-2xs px-1.5 py-0.5 rounded-full bg-rose-500/90 text-white font-bold border border-rose-400/50">OFERTA</span>
                   )}
                   {p.stock_bajo && (
-                    <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
+                    <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm">
                       <AlertTriangle size={10} className="text-white" />
                     </div>
                   )}
@@ -431,18 +438,18 @@ export default function ProductosPage() {
                 <CardContent className="p-3">
                   <p className="font-semibold text-sm text-foreground line-clamp-2 leading-tight">{p.nombre}</p>
                   <p className="text-2xs text-muted-foreground font-mono mt-0.5">{p.sku || p.codigo_barras || "—"}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-bold text-brand-600">{formatCurrency(p.en_oferta ? p.precio_vigente : p.precio_venta)}</span>
+                  <div className="mt-2 flex items-center justify-between gap-1">
+                    <span className="text-sm font-black text-brand-600 tabular-nums">{formatCurrency(p.en_oferta ? p.precio_vigente : p.precio_venta)}</span>
                     {p.categoria_nombre && (
-                      <Badge variant="secondary" className="text-2xs px-1.5">{p.categoria_nombre}</Badge>
+                      <span className="text-2xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border truncate max-w-20">{p.categoria_nombre}</span>
                     )}
                   </div>
                   <div className="mt-2 space-y-1">
                     <div className="flex justify-between text-2xs text-muted-foreground">
-                      <span>Stock: {Number(p.stock_actual).toFixed(0)} {p.unidad_medida}</span>
+                      <span>Stock: <span className={cn("font-semibold", p.stock_bajo ? "text-rose-500" : "text-foreground")}>{Number(p.stock_actual).toFixed(0)}</span> {p.unidad_medida}</span>
                       <span>Mín: {p.stock_minimo}</span>
                     </div>
-                    <Progress value={pct} className={cn("h-1", p.stock_bajo ? "[&>div]:bg-rose-500" : pct < 50 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500")} />
+                    <Progress value={pct} className={cn("h-1.5", p.stock_bajo ? "[&>div]:bg-rose-500" : pct < 50 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500")} />
                   </div>
                 </CardContent>
               </Card>
