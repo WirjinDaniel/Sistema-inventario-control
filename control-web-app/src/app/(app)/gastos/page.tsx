@@ -18,7 +18,6 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FormField } from "@/components/shared/FormField";
@@ -43,13 +42,13 @@ const METODOS_PAGO = [
   { value: "CHEQUE",        label: "Cheque",        icon: BookCheck },
 ];
 
-const TIPOS_LABEL: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger" | "info" | "purple" | "secondary" }> = {
-  FIJO:          { label: "Fijo",           variant: "info" },
-  VARIABLE:      { label: "Variable",       variant: "warning" },
-  FINANCIERO:    { label: "Financiero",     variant: "purple" },
-  PERDIDA:       { label: "Pérdida",        variant: "danger" },
-  ADMINISTRATIVO:{ label: "Administrativo", variant: "secondary" },
-  RETIRO:        { label: "Retiro",         variant: "default" },
+const TIPOS_CONFIG: Record<string, { label: string; accentBg: string; accentBorder: string; color: string }> = {
+  FIJO:          { label: "Fijo",           accentBg: "bg-sky-50",    accentBorder: "border-sky-200",    color: "text-sky-700" },
+  VARIABLE:      { label: "Variable",       accentBg: "bg-amber-50",  accentBorder: "border-amber-200",  color: "text-amber-700" },
+  FINANCIERO:    { label: "Financiero",     accentBg: "bg-violet-50", accentBorder: "border-violet-200", color: "text-violet-700" },
+  PERDIDA:       { label: "Pérdida",        accentBg: "bg-rose-50",   accentBorder: "border-rose-200",   color: "text-rose-700" },
+  ADMINISTRATIVO:{ label: "Administrativo", accentBg: "bg-muted",     accentBorder: "border-border",     color: "text-muted-foreground" },
+  RETIRO:        { label: "Retiro",         accentBg: "bg-brand-50",  accentBorder: "border-brand-200",  color: "text-brand-700" },
 };
 
 const PERIODOS = [
@@ -150,21 +149,22 @@ export default function GastosPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Total gastos", value: resumen?.total ?? 0, icon: DollarSign, iconBg: "bg-brand-50 dark:bg-brand-950/30", iconColor: "text-brand-600 dark:text-brand-400" },
-          { label: "Gastos fijos", value: resumen?.FIJO ?? 0, icon: Receipt, iconBg: "bg-blue-50 dark:bg-blue-950/30", iconColor: "text-blue-600 dark:text-blue-400" },
-          { label: "Variables", value: resumen?.VARIABLE ?? 0, icon: TrendingDown, iconBg: "bg-amber-50 dark:bg-amber-950/30", iconColor: "text-amber-600 dark:text-amber-400" },
-          { label: "Pérdidas", value: resumen?.PERDIDA ?? 0, icon: AlertTriangle, iconBg: "bg-rose-50 dark:bg-rose-950/30", iconColor: "text-rose-600 dark:text-rose-400" },
+          { label: "Total gastos",  value: resumen?.total ?? 0,    icon: DollarSign,    gradient: "from-brand-500 to-indigo-600",   accent: "bg-linear-to-r from-brand-400 to-indigo-500",  valueColor: "text-foreground" },
+          { label: "Gastos fijos",  value: resumen?.FIJO ?? 0,     icon: Receipt,       gradient: "from-sky-500 to-blue-600",        accent: "bg-linear-to-r from-sky-400 to-blue-500",       valueColor: "text-sky-700 dark:text-sky-400" },
+          { label: "Variables",     value: resumen?.VARIABLE ?? 0, icon: TrendingDown,  gradient: "from-amber-500 to-orange-600",    accent: "bg-linear-to-r from-amber-400 to-orange-500",   valueColor: "text-amber-700 dark:text-amber-400" },
+          { label: "Pérdidas",      value: resumen?.PERDIDA ?? 0,  icon: AlertTriangle, gradient: "from-rose-500 to-red-600",        accent: "bg-linear-to-r from-rose-400 to-red-500",       valueColor: "text-rose-600 dark:text-rose-400" },
         ].map((card) => (
-          <div key={card.label} className="bg-card border border-border rounded-xl p-4">
+          <div key={card.label} className="relative bg-card border border-border rounded-xl p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div className={cn("absolute top-0 left-0 h-0.5 w-full", card.accent)} />
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-muted-foreground">{card.label}</span>
-              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", card.iconBg)}>
-                <card.icon size={16} className={card.iconColor} />
+              <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+              <div className={cn("w-8 h-8 rounded-lg bg-linear-to-br flex items-center justify-center shadow-sm", card.gradient)}>
+                <card.icon size={15} className="text-white" />
               </div>
             </div>
             {loading
               ? <Skeleton className="h-7 w-28" />
-              : <p className="text-xl font-bold text-foreground tabular-nums">{formatCurrency(card.value)}</p>
+              : <p className={cn("text-xl font-black tabular-nums", card.valueColor)}>{formatCurrency(card.value)}</p>
             }
           </div>
         ))}
@@ -215,7 +215,8 @@ export default function GastosPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="relative bg-card border border-border rounded-xl overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-rose-400/60 to-transparent" />
         {loading ? (
           <div className="p-4 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -238,16 +239,16 @@ export default function GastosPage() {
           />
         ) : (
           <table className="w-full text-sm">
-            <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-              <tr className="border-b border-border bg-muted/50">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
                 {["Fecha", "Categoría", "Descripción", "Método", "Comprobante", "Monto", ""].map((h) => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                  <th key={h} className="text-left px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {gastosFiltrados.map((g) => {
-                const tipo = TIPOS_LABEL[g.categoria_tipo] ?? { label: g.categoria_tipo, variant: "secondary" as const };
+                const tipo = TIPOS_CONFIG[g.categoria_tipo] ?? { label: g.categoria_tipo, accentBg: "bg-muted", accentBorder: "border-border", color: "text-muted-foreground" };
                 const isExp = expandedId === g.id;
                 return (
                   <React.Fragment key={g.id}>
@@ -259,21 +260,25 @@ export default function GastosPage() {
                         {formatDate(g.fecha)}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-foreground">{g.categoria_nombre}</p>
-                        <Badge variant={tipo.variant} className="mt-0.5 text-2xs h-4">{tipo.label}</Badge>
+                        <p className="text-sm font-semibold text-foreground">{g.categoria_nombre}</p>
+                        <span className={cn("mt-0.5 inline-flex text-2xs font-semibold px-1.5 py-0.5 rounded-full border", tipo.accentBg, tipo.accentBorder, tipo.color)}>
+                          {tipo.label}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground">{g.descripcion}</td>
                       <td className="px-4 py-3">
                         {(() => { const m = METODOS_PAGO.find((m) => m.value === g.metodo_pago); return m ? (
-                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <m.icon size={13} /> {m.label}
+                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
+                            <m.icon size={11} /> {m.label}
                           </span>
                         ) : <span className="text-xs text-muted-foreground">{g.metodo_pago}</span>; })()}
                       </td>
                       <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
-                        {g.comprobante || "—"}
+                        {g.comprobante
+                          ? <span className="bg-muted px-1.5 py-0.5 rounded text-foreground">{g.comprobante}</span>
+                          : "—"}
                       </td>
-                      <td className="px-4 py-3 font-bold text-foreground tabular-nums text-sm">
+                      <td className="px-4 py-3 font-black text-foreground tabular-nums text-sm">
                         {formatCurrency(Number(g.monto))}
                       </td>
                       <td className="px-4 py-3">
@@ -308,8 +313,8 @@ export default function GastosPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center">
-                <Receipt size={14} className="text-rose-600 dark:text-rose-400" />
+              <div className="w-7 h-7 rounded-lg bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-sm">
+                <Receipt size={13} className="text-white" />
               </div>
               Registrar Gasto
             </DialogTitle>
