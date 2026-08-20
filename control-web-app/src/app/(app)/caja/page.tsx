@@ -154,13 +154,14 @@ export default function CajaPage() {
       {sesionActiva ? (
         <>
           {/* Banner turno activo */}
-          <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-              <LockKeyholeOpen size={20} className="text-emerald-600 dark:text-emerald-400" />
+          <div className="relative bg-linear-to-r from-emerald-50/80 to-teal-50/80 border border-emerald-200/70 rounded-xl p-4 flex items-center gap-3 overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-emerald-400/60 to-transparent" />
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shrink-0">
+              <LockKeyholeOpen size={18} className="text-white" />
             </div>
             <div>
-              <p className="font-semibold text-emerald-800 dark:text-emerald-300">Caja abierta</p>
-              <p className="text-sm text-emerald-600 dark:text-emerald-400">
+              <p className="font-bold text-emerald-800 dark:text-emerald-300">Caja abierta</p>
+              <p className="text-sm text-emerald-700/70 dark:text-emerald-400">
                 {sesionActiva.cajero_nombre} · Desde {fmtFecha(sesionActiva.apertura)}
               </p>
             </div>
@@ -169,58 +170,67 @@ export default function CajaPage() {
           {/* KPIs del turno */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: "Efectivo inicial", value: formatCurrency(Number(sesionActiva.efectivo_inicial)), icon: Banknote, iconBg: "bg-muted", iconColor: "text-muted-foreground" },
-              { label: "Ventas del turno", value: formatCurrency(resumen?.total ?? 0), icon: TrendingUp, iconBg: "bg-emerald-100 dark:bg-emerald-900/40", iconColor: "text-emerald-600 dark:text-emerald-400" },
-              { label: "Esperado en caja", value: formatCurrency(esperadoEnCaja ?? 0), icon: DollarSign, iconBg: "bg-brand-50 dark:bg-brand-950/30", iconColor: "text-brand-600 dark:text-brand-400" },
-              { label: "Cantidad de ventas", value: String(resumen?.cantidad ?? 0), icon: ShoppingCart, iconBg: "bg-amber-100 dark:bg-amber-900/40", iconColor: "text-amber-600 dark:text-amber-400" },
+              { label: "Efectivo inicial",   value: formatCurrency(Number(sesionActiva.efectivo_inicial)), icon: Banknote,     gradient: "from-slate-500 to-slate-600",    accent: "bg-linear-to-r from-slate-400 to-slate-500",    valueColor: "text-foreground" },
+              { label: "Ventas del turno",   value: formatCurrency(resumen?.total ?? 0),                   icon: TrendingUp,   gradient: "from-emerald-500 to-teal-600",   accent: "bg-linear-to-r from-emerald-400 to-teal-500",   valueColor: "text-emerald-700 dark:text-emerald-400" },
+              { label: "Esperado en caja",   value: formatCurrency(esperadoEnCaja ?? 0),                   icon: DollarSign,   gradient: "from-brand-500 to-indigo-600",   accent: "bg-linear-to-r from-brand-400 to-indigo-500",   valueColor: "text-brand-700 dark:text-brand-400" },
+              { label: "Cantidad de ventas", value: String(resumen?.cantidad ?? 0),                         icon: ShoppingCart, gradient: "from-amber-500 to-orange-600",   accent: "bg-linear-to-r from-amber-400 to-orange-500",   valueColor: "text-amber-700 dark:text-amber-400" },
             ].map((card) => (
-              <div key={card.label} className="bg-card border border-border rounded-xl p-4">
+              <div key={card.label} className="relative bg-card border border-border rounded-xl p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+                <div className={cn("absolute top-0 left-0 h-0.5 w-full", card.accent)} />
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", card.iconBg)}>
-                    <card.icon size={16} className={card.iconColor} />
+                  <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+                  <div className={cn("w-8 h-8 rounded-lg bg-linear-to-br flex items-center justify-center shadow-sm", card.gradient)}>
+                    <card.icon size={15} className="text-white" />
                   </div>
                 </div>
-                <p className="text-xl font-bold text-foreground tabular-nums">{card.value}</p>
+                <p className={cn("text-xl font-black tabular-nums", card.valueColor)}>{card.value}</p>
               </div>
             ))}
           </div>
 
           {/* Desglose métodos de pago */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
-              <p className="text-sm font-semibold text-foreground">Ventas por método de pago</p>
+          <div className="relative bg-card border border-border rounded-xl overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-emerald-400/60 to-transparent" />
+            <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+                <DollarSign size={13} className="text-white" />
+              </div>
+              <p className="text-sm font-bold text-foreground">Ventas por método de pago</p>
             </div>
             <div className="divide-y divide-border">
               {[
-                { label: "Efectivo", value: resumen?.efectivo ?? 0, icon: Banknote, iconBg: "bg-emerald-100 dark:bg-emerald-900/40", iconColor: "text-emerald-600 dark:text-emerald-400", color: "text-emerald-600 dark:text-emerald-400" },
-                { label: "Tarjeta", value: resumen?.tarjeta ?? 0, icon: CreditCard, iconBg: "bg-blue-100 dark:bg-blue-900/40", iconColor: "text-blue-600 dark:text-blue-400", color: "text-blue-600 dark:text-blue-400" },
-                { label: "Transferencia", value: resumen?.transferencia ?? 0, icon: ArrowLeftRight, iconBg: "bg-violet-100 dark:bg-violet-900/40", iconColor: "text-violet-600 dark:text-violet-400", color: "text-violet-600 dark:text-violet-400" },
-                { label: "Fiado", value: resumen?.fiado ?? 0, icon: Clock, iconBg: "bg-amber-100 dark:bg-amber-900/40", iconColor: "text-amber-600 dark:text-amber-400", color: "text-amber-600 dark:text-amber-400" },
+                { label: "Efectivo",      value: resumen?.efectivo ?? 0,      icon: Banknote,      gradient: "from-emerald-500 to-teal-600",   color: "text-emerald-600 dark:text-emerald-400" },
+                { label: "Tarjeta",       value: resumen?.tarjeta ?? 0,       icon: CreditCard,    gradient: "from-sky-500 to-blue-600",        color: "text-sky-600 dark:text-sky-400" },
+                { label: "Transferencia", value: resumen?.transferencia ?? 0, icon: ArrowLeftRight, gradient: "from-violet-500 to-purple-600",  color: "text-violet-600 dark:text-violet-400" },
+                { label: "Fiado",         value: resumen?.fiado ?? 0,         icon: Clock,         gradient: "from-amber-500 to-orange-600",    color: "text-amber-600 dark:text-amber-400" },
               ].map((row) => (
-                <div key={row.label} className="flex items-center justify-between px-4 py-3">
+                <div key={row.label} className="flex items-center justify-between px-5 py-3 hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", row.iconBg)}>
-                      <row.icon size={15} className={row.iconColor} />
+                    <div className={cn("w-7 h-7 rounded-lg bg-linear-to-br flex items-center justify-center shadow-sm", row.gradient)}>
+                      <row.icon size={13} className="text-white" />
                     </div>
                     <span className="text-sm text-foreground">{row.label}</span>
                   </div>
-                  <span className={cn("font-bold tabular-nums text-sm", row.color)}>{formatCurrency(row.value)}</span>
+                  <span className={cn("font-black tabular-nums text-sm", row.color)}>{formatCurrency(row.value)}</span>
                 </div>
               ))}
-              <div className="flex items-center justify-between px-4 py-3.5 bg-muted/50">
-                <span className="text-sm font-semibold text-foreground">Total cobrado</span>
-                <span className="font-bold text-lg text-foreground tabular-nums">{formatCurrency(resumen?.total ?? 0)}</span>
+              <div className="relative flex items-center justify-between px-5 py-3.5 bg-linear-to-r from-emerald-50/60 to-teal-50/60 overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-emerald-400/40 to-transparent" />
+                <span className="text-sm font-bold text-foreground">Total cobrado</span>
+                <span className="font-black text-lg text-emerald-700 dark:text-emerald-400 tabular-nums">{formatCurrency(resumen?.total ?? 0)}</span>
               </div>
             </div>
           </div>
         </>
       ) : (
-        <div className="bg-muted/50 border border-border rounded-xl p-12 text-center">
-          <LockKeyhole size={44} className="mx-auto mb-3 text-muted-foreground/30" />
-          <p className="font-semibold text-foreground">La caja está cerrada</p>
+        <div className="relative bg-card border border-border rounded-xl p-12 text-center overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/40 to-transparent" />
+          <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <LockKeyhole size={26} className="text-slate-500 dark:text-slate-400" />
+          </div>
+          <p className="font-bold text-foreground text-lg">La caja está cerrada</p>
           <p className="text-sm text-muted-foreground mt-1">Abre la caja para comenzar a registrar ventas</p>
-          <Button className="mt-4 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setModal("apertura")}>
+          <Button className="mt-5 gap-2 bg-linear-to-br from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-sm" onClick={() => setModal("apertura")}>
             <LockKeyholeOpen size={15} /> Abrir caja
           </Button>
         </div>
@@ -228,17 +238,20 @@ export default function CajaPage() {
 
       {/* Historial de cierres */}
       {historial.length > 0 && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-            <History size={15} className="text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Historial de cierres</p>
+        <div className="relative bg-card border border-border rounded-xl overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
+          <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm">
+              <History size={13} className="text-white" />
+            </div>
+            <p className="text-sm font-bold text-foreground">Historial de cierres</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                <tr className="border-b border-border bg-muted/50">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
                   {["Apertura", "Cierre", "Cajero", "Ef. Inicial", "Calculado", "Declarado", "Diferencia"].map((h) => (
-                    <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                    <th key={h} className="text-left px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -253,11 +266,17 @@ export default function CajaPage() {
                       <td className="px-4 py-3 tabular-nums text-sm text-muted-foreground">{formatCurrency(Number(s.efectivo_inicial))}</td>
                       <td className="px-4 py-3 tabular-nums text-sm text-muted-foreground">{s.efectivo_calculado ? formatCurrency(Number(s.efectivo_calculado)) : "—"}</td>
                       <td className="px-4 py-3 tabular-nums text-sm text-muted-foreground">{s.efectivo_final_declarado ? formatCurrency(Number(s.efectivo_final_declarado)) : "—"}</td>
-                      <td className={cn(
-                        "px-4 py-3 tabular-nums text-sm font-bold",
-                        diff > 0 ? "text-emerald-600 dark:text-emerald-400" : diff < 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"
-                      )}>
-                        {s.diferencia_caja != null ? `${diff >= 0 ? "+" : ""}${formatCurrency(diff)}` : "—"}
+                      <td className="px-4 py-3">
+                        {s.diferencia_caja != null ? (
+                          <span className={cn(
+                            "inline-flex text-xs font-bold px-2 py-0.5 rounded-full border tabular-nums",
+                            diff > 0 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
+                            : diff < 0 ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950 dark:text-rose-400 dark:border-rose-800"
+                            : "bg-muted text-muted-foreground border-border"
+                          )}>
+                            {diff >= 0 ? "+" : ""}{formatCurrency(diff)}
+                          </span>
+                        ) : "—"}
                       </td>
                     </tr>
                   );
@@ -273,8 +292,8 @@ export default function CajaPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-                <LockKeyholeOpen size={14} className="text-emerald-600 dark:text-emerald-400" />
+              <div className="w-7 h-7 rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+                <LockKeyholeOpen size={13} className="text-white" />
               </div>
               Apertura de caja
             </DialogTitle>
@@ -319,8 +338,8 @@ export default function CajaPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center">
-                <LockKeyhole size={14} className="text-rose-600 dark:text-rose-400" />
+              <div className="w-7 h-7 rounded-lg bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-sm">
+                <LockKeyhole size={13} className="text-white" />
               </div>
               Cierre de caja
             </DialogTitle>
