@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   Store, ChevronDown, Sun, Moon,
   RotateCcw, Gift, FileText, DollarSign, History,
   Building2, Globe, UserCog, BadgeDollarSign, Layers, Archive,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
@@ -130,10 +131,17 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+const ROL_LABEL: Record<string, string> = {
+  ADMIN: "Administrador",
+  INVENTARIO: "Inventario",
+  CAJERO: "Cajero",
+  SUPERADMIN: "Superadmin",
+};
+
 export default function Sidebar() {
   const { collapsed, openGroups, toggleGroup: storeToggleGroup, setGroupOpen } = useSidebarStore();
   const pathname = usePathname();
-  const { usuario, esAdmin, esSuperadmin } = useAuthStore();
+  const { usuario, esAdmin, esSuperadmin, logout } = useAuthStore();
   const { theme, toggle } = useTheme();
 
   const userRole = esAdmin() || esSuperadmin() ? "admin"
@@ -159,28 +167,42 @@ export default function Sidebar() {
 
   function isGroupOpen(title: string, hasActiveItem: boolean): boolean {
     if (title in openGroups) return openGroups[title];
-    if (hasActiveItem) {
-      setGroupOpen(title, true);
-      return true;
-    }
+    if (hasActiveItem) { setGroupOpen(title, true); return true; }
     return false;
   }
 
-  function toggleGroup(title: string) {
-    storeToggleGroup(title);
-  }
+  function toggleGroup(title: string) { storeToggleGroup(title); }
+
+  const initials = usuario?.nombre
+    ? usuario.nombre.split(" ").slice(0, 2).map((n: string) => n[0]).join("").toUpperCase()
+    : "U";
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside
-        className={cn(
-          "flex flex-col h-full transition-all duration-300 ease-in-out",
-          "bg-brand-50 border-r border-slate-200",
-          "dark:bg-navy-dark dark:border-slate-700/50",
-          collapsed ? "w-16" : "w-60"
-        )}
-      >
-        {/* Nav */}
+      <aside className={cn(
+        "flex flex-col h-full transition-all duration-300 ease-in-out",
+        "bg-brand-50 border-r border-slate-200",
+        "dark:bg-navy-dark dark:border-slate-700/50",
+        collapsed ? "w-16" : "w-60"
+      )}>
+
+        {/* ── Brand header ── */}
+        <div className={cn(
+          "flex items-center gap-3 px-3 py-4 border-b border-slate-200 dark:border-slate-700/50 shrink-0",
+          collapsed && "justify-center px-2"
+        )}>
+          <div className="w-8 h-8 rounded-xl bg-linear-to-br from-brand-600 to-indigo-700 flex items-center justify-center shadow-sm shrink-0">
+            <Store size={15} className="text-white" />
+          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="font-black text-sm text-foreground leading-tight tracking-tight">ComerSys</p>
+              <p className="text-2xs text-muted-foreground font-medium">Gestión Comercial</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Nav ── */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-0.5 scrollbar-hide">
           {NAV_GROUPS.filter(canSeeGroup).map((group) => {
             const visibleItems = group.items.filter(canSeeItem);
@@ -190,7 +212,7 @@ export default function Sidebar() {
               item => pathname === item.href || pathname.startsWith(item.href + "/")
             );
 
-            // Single-item groups — direct link
+            /* Single-item group — direct link */
             if (visibleItems.length === 1) {
               const item = visibleItems[0];
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -200,17 +222,24 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 relative",
+                    "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150 relative group/item",
                     isActive
-                      ? "bg-brand-100 text-brand-700 font-medium dark:bg-brand-900/40 dark:text-brand-300"
-                      : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white",
+                      ? "bg-white dark:bg-white/10 text-brand-700 dark:text-brand-300 font-semibold shadow-sm"
+                      : "text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/6 dark:hover:text-white",
                     collapsed && "justify-center px-2"
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-brand-600 dark:bg-brand-400 rounded-r-full" />
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-600 dark:bg-brand-400 rounded-r-full" />
                   )}
-                  <GroupIcon size={18} className={cn("shrink-0", isActive ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500")} />
+                  <div className={cn(
+                    "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                    isActive
+                      ? "bg-brand-100 dark:bg-brand-900/50"
+                      : "group-hover/item:bg-slate-100 dark:group-hover/item:bg-white/8"
+                  )}>
+                    <GroupIcon size={15} className={isActive ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500"} />
+                  </div>
                   {!collapsed && <span className="flex-1 truncate">{group.title}</span>}
                 </Link>
               );
@@ -225,34 +254,37 @@ export default function Sidebar() {
               return row;
             }
 
-            // Multi-item groups — collapsible
+            /* Multi-item group — collapsible */
             const open = isGroupOpen(group.title, hasActiveItem);
-
             const GroupIcon = group.icon;
 
             const groupHeader = (
               <button
                 onClick={() => !collapsed && toggleGroup(group.title)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 relative",
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150 relative group/header",
                   hasActiveItem
-                    ? "text-slate-800 dark:text-white"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white",
+                    ? "text-slate-800 dark:text-slate-100 font-semibold"
+                    : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/6 dark:hover:text-white",
                   collapsed && "justify-center px-2"
                 )}
               >
                 {hasActiveItem && !open && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-brand-600 dark:bg-brand-400 rounded-r-full" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-600 dark:bg-brand-400 rounded-r-full" />
                 )}
-                <GroupIcon
-                  size={18}
-                  className={cn("shrink-0", hasActiveItem ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500")}
-                />
+                <div className={cn(
+                  "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                  hasActiveItem
+                    ? "bg-brand-100 dark:bg-brand-900/50"
+                    : "group-hover/header:bg-slate-100 dark:group-hover/header:bg-white/8"
+                )}>
+                  <GroupIcon size={15} className={hasActiveItem ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500"} />
+                </div>
                 {!collapsed && (
                   <>
                     <span className="flex-1 text-left truncate">{group.title}</span>
                     <ChevronDown
-                      size={14}
+                      size={13}
                       className={cn(
                         "text-slate-400 dark:text-slate-500 transition-transform duration-200 shrink-0",
                         open ? "rotate-0" : "-rotate-90"
@@ -268,9 +300,9 @@ export default function Sidebar() {
                 {collapsed ? (
                   <Tooltip>
                     <TooltipTrigger asChild>{groupHeader}</TooltipTrigger>
-                    <TooltipContent side="right" className="p-0 w-40">
-                      <div className="py-1">
-                        <p className="text-2xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400 px-3 py-1.5">
+                    <TooltipContent side="right" className="p-0 w-44">
+                      <div className="py-1.5">
+                        <p className="text-2xs font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 px-3 py-1">
                           {group.title}
                         </p>
                         {visibleItems.map(item => {
@@ -283,7 +315,7 @@ export default function Sidebar() {
                               className={cn(
                                 "flex items-center gap-2 px-3 py-1.5 text-sm transition-colors",
                                 isActive
-                                  ? "text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-brand-900/30"
+                                  ? "text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-brand-900/30 font-medium"
                                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/8"
                               )}
                             >
@@ -305,7 +337,7 @@ export default function Sidebar() {
                     "overflow-hidden transition-all duration-200 ease-in-out",
                     open ? "max-h-96 opacity-100 mt-0.5" : "max-h-0 opacity-0"
                   )}>
-                    <div className="ml-4 pl-3 border-l border-slate-200 dark:border-slate-700 space-y-0.5 pb-1">
+                    <div className="ml-5 pl-3 border-l-2 border-slate-200 dark:border-slate-700/70 space-y-0.5 pb-1">
                       {visibleItems.map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                         const Icon = item.icon;
@@ -314,14 +346,14 @@ export default function Sidebar() {
                             key={item.href}
                             href={item.href}
                             className={cn(
-                              "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150 relative",
+                              "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-150 relative",
                               isActive
-                                ? "bg-brand-100 text-brand-700 font-medium dark:bg-brand-900/40 dark:text-brand-300"
-                                : "text-slate-500 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/8 dark:hover:text-white"
+                                ? "bg-white dark:bg-white/10 text-brand-700 dark:text-brand-300 font-semibold shadow-sm"
+                                : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/6 dark:hover:text-white"
                             )}
                           >
                             {isActive && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-blue-500 dark:bg-blue-400 rounded-r-full" />
+                              <span className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-brand-500 dark:bg-brand-400 border-2 border-brand-50 dark:border-navy-dark" />
                             )}
                             <Icon size={14} className={cn("shrink-0", isActive ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500")} />
                             <span className="flex-1 truncate">{item.label}</span>
@@ -339,20 +371,69 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-slate-200 dark:border-slate-700/50 p-2">
-          <button
-            onClick={toggle}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-              "text-slate-500 hover:bg-white hover:text-slate-800",
-              "dark:text-slate-400 dark:hover:bg-white/8 dark:hover:text-white",
-              collapsed && "justify-center"
-            )}
-          >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            {!collapsed && <span>{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>}
-          </button>
+        {/* ── Footer ── */}
+        <div className="border-t border-slate-200 dark:border-slate-700/50 p-2 space-y-1 shrink-0">
+
+          {/* Usuario */}
+          {!collapsed && usuario && (
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/8">
+              <div className="w-7 h-7 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0">
+                <span className="text-2xs font-black text-white">{initials}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate leading-tight">{usuario.nombre}</p>
+                <p className="text-2xs text-muted-foreground">{ROL_LABEL[usuario.rol] ?? usuario.rol}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Tema */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggle}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors",
+                  "text-slate-500 hover:bg-white/70 hover:text-slate-800",
+                  "dark:text-slate-400 dark:hover:bg-white/6 dark:hover:text-white",
+                  collapsed && "justify-center"
+                )}
+              >
+                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                  {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+                </div>
+                {!collapsed && <span className="text-xs">{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>}
+              </button>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right">{theme === "dark" ? "Modo claro" : "Modo oscuro"}</TooltipContent>}
+          </Tooltip>
+
+          {/* Cerrar sesión */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => logout()}
+                  className="w-full flex items-center justify-center px-2 py-2 rounded-xl text-sm transition-colors text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center">
+                    <LogOut size={14} />
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Cerrar sesión</TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={() => logout()}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+            >
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
+                <LogOut size={14} />
+              </div>
+              <span className="text-xs">Cerrar sesión</span>
+            </button>
+          )}
         </div>
       </aside>
     </TooltipProvider>
