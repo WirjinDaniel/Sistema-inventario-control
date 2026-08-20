@@ -10,7 +10,6 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,8 +22,11 @@ type Rango = "hoy" | "semana" | "mes" | "personalizado";
 const METODO_LABELS: Record<string, string> = {
   EFECTIVO: "Efectivo", TARJETA: "Tarjeta", TRANSFERENCIA: "Transferencia", FIADO: "Fiado",
 };
-const METODO_BADGE: Record<string, "success" | "info" | "purple" | "warning"> = {
-  EFECTIVO: "success", TARJETA: "info", TRANSFERENCIA: "purple", FIADO: "warning",
+const METODO_CONFIG: Record<string, { accentBg: string; accentBorder: string; color: string; bar: string }> = {
+  EFECTIVO:      { accentBg: "bg-emerald-50", accentBorder: "border-emerald-200", color: "text-emerald-700", bar: "bg-emerald-500" },
+  TARJETA:       { accentBg: "bg-sky-50",     accentBorder: "border-sky-200",     color: "text-sky-700",     bar: "bg-sky-500" },
+  TRANSFERENCIA: { accentBg: "bg-violet-50",  accentBorder: "border-violet-200",  color: "text-violet-700",  bar: "bg-violet-500" },
+  FIADO:         { accentBg: "bg-amber-50",   accentBorder: "border-amber-200",   color: "text-amber-700",   bar: "bg-amber-500" },
 };
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy", label: "Hoy" },
@@ -155,10 +157,10 @@ export default function ReportesPage() {
   const abcData = calcularABC(ventasDetalle);
 
   const STATS = [
-    { icon: DollarSign, label: "Total vendido", value: formatCurrency(totalVentas), bg: "bg-brand-50 dark:bg-brand-950/30", ic: "text-brand-600 dark:text-brand-400" },
-    { icon: ShoppingBag, label: "Transacciones", value: String(completadas.length), bg: "bg-sky-50 dark:bg-sky-950/30", ic: "text-sky-600 dark:text-sky-400" },
-    { icon: TrendingUp, label: "Ticket promedio", value: formatCurrency(ticketPromedio), bg: "bg-emerald-50 dark:bg-emerald-950/30", ic: "text-emerald-600 dark:text-emerald-400" },
-    { icon: Users, label: "Anuladas", value: String(anuladas.length), bg: "bg-rose-50 dark:bg-rose-950/30", ic: "text-rose-600 dark:text-rose-400" },
+    { icon: DollarSign,  label: "Total vendido",  value: formatCurrency(totalVentas),        gradient: "from-brand-500 to-indigo-600",   accent: "bg-linear-to-r from-brand-400 to-indigo-500",   valueColor: "text-foreground" },
+    { icon: ShoppingBag, label: "Transacciones",  value: String(completadas.length),          gradient: "from-sky-500 to-blue-600",        accent: "bg-linear-to-r from-sky-400 to-blue-500",       valueColor: "text-sky-700 dark:text-sky-400" },
+    { icon: TrendingUp,  label: "Ticket promedio", value: formatCurrency(ticketPromedio),     gradient: "from-emerald-500 to-teal-600",    accent: "bg-linear-to-r from-emerald-400 to-teal-500",   valueColor: "text-emerald-700 dark:text-emerald-400" },
+    { icon: Users,       label: "Anuladas",        value: String(anuladas.length),            gradient: "from-rose-500 to-red-600",        accent: "bg-linear-to-r from-rose-400 to-red-500",       valueColor: "text-rose-600 dark:text-rose-400" },
   ];
 
   const rangoLabel = rango === "hoy" ? "hoy" : rango === "semana" ? "7-dias" : rango === "mes" ? "mes" : "personalizado";
@@ -208,12 +210,13 @@ export default function ReportesPage() {
         <>
           {/* KPIs */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {STATS.map(({ icon: Icon, label, value, bg, ic }) => (
-              <div key={label} className="bg-card border border-border rounded-xl p-4 hover:-translate-y-0.5 transition-transform">
-                <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-3", bg)}>
-                  <Icon size={17} className={ic} />
+            {STATS.map(({ icon: Icon, label, value, gradient, accent, valueColor }) => (
+              <div key={label} className="relative bg-card border border-border rounded-xl p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+                <div className={cn("absolute top-0 left-0 h-0.5 w-full", accent)} />
+                <div className={cn("w-9 h-9 rounded-lg bg-linear-to-br flex items-center justify-center mb-3 shadow-sm", gradient)}>
+                  <Icon size={16} className="text-white" />
                 </div>
-                <p className="text-xl font-bold text-foreground tabular-nums">{value}</p>
+                <p className={cn("text-xl font-black tabular-nums", valueColor)}>{value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
               </div>
             ))}
@@ -229,31 +232,37 @@ export default function ReportesPage() {
 
             {/* Resumen */}
             <TabsContent value="resumen" className="mt-4">
-              <div className="bg-card border border-border rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950/30 flex items-center justify-center">
-                    <BarChart2 size={15} className="text-brand-500" />
+              <div className="relative bg-card border border-border rounded-xl p-5 overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-8 h-8 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                    <BarChart2 size={14} className="text-white" />
                   </div>
-                  <h3 className="text-sm font-semibold">Ventas por método de pago</h3>
+                  <h3 className="text-sm font-bold text-foreground">Ventas por método de pago</h3>
                 </div>
                 {Object.keys(porMetodo).length === 0 ? (
                   <EmptyState icon={BarChart2} title="Sin ventas" description="No hay ventas en este período." />
                 ) : (
-                  <div className="space-y-3">
-                    {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([metodo, total]) => (
-                      <div key={metodo} className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Badge variant={METODO_BADGE[metodo] ?? "secondary"} className="text-xs">
-                            {METODO_LABELS[metodo] ?? metodo}
-                          </Badge>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-muted-foreground">{((total / totalVentas) * 100).toFixed(1)}%</span>
-                            <span className="text-sm font-bold tabular-nums">{formatCurrency(total)}</span>
+                  <div className="space-y-4">
+                    {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([metodo, total]) => {
+                      const cfg = METODO_CONFIG[metodo] ?? { accentBg: "bg-muted", accentBorder: "border-border", color: "text-muted-foreground", bar: "bg-brand-500" };
+                      return (
+                        <div key={metodo} className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className={cn("inline-flex text-xs font-semibold px-2 py-0.5 rounded-full border", cfg.accentBg, cfg.accentBorder, cfg.color)}>
+                              {METODO_LABELS[metodo] ?? metodo}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-muted-foreground">{((total / totalVentas) * 100).toFixed(1)}%</span>
+                              <span className="text-sm font-black tabular-nums">{formatCurrency(total)}</span>
+                            </div>
+                          </div>
+                          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                            <div className={cn("h-full rounded-full transition-all duration-500", cfg.bar)} style={{ width: `${(total / maximo) * 100}%` }} />
                           </div>
                         </div>
-                        <Progress value={(total / maximo) * 100} className="h-2" />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -261,8 +270,14 @@ export default function ReportesPage() {
 
             {/* Tendencia diaria */}
             <TabsContent value="tendencia" className="mt-4">
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h3 className="text-sm font-semibold mb-4">Ventas por día</h3>
+              <div className="relative bg-card border border-border rounded-xl p-5 overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-emerald-400/60 to-transparent" />
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-8 h-8 rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+                    <TrendingUp size={14} className="text-white" />
+                  </div>
+                  <h3 className="text-sm font-bold text-foreground">Ventas por día</h3>
+                </div>
                 {diasOrdenados.length === 0 ? (
                   <EmptyState icon={TrendingUp} title="Sin datos" description="No hay ventas en este período." />
                 ) : (
@@ -287,14 +302,17 @@ export default function ReportesPage() {
 
             {/* Análisis ABC */}
             <TabsContent value="abc" className="mt-4">
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <Star size={15} className="text-amber-500" />
-                    <h3 className="text-sm font-semibold">Análisis ABC de productos</h3>
-                    <Badge variant="secondary" className="text-2xs h-4">
-                      A=80% ventas · B=95% · C=resto
-                    </Badge>
+              <div className="relative bg-card border border-border rounded-xl overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-amber-400/60 to-transparent" />
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
+                      <Star size={12} className="text-white" />
+                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Análisis ABC de productos</h3>
+                    <span className="text-2xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                      A=80% · B=95% · C=resto
+                    </span>
                   </div>
                   {cargandoABC && <RefreshCw size={13} className="animate-spin text-muted-foreground" />}
                 </div>
@@ -305,27 +323,34 @@ export default function ReportesPage() {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                        <tr className="border-b border-border bg-muted/50">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/40">
                           {["Clase", "Producto", "Qty vendida", "Total", "% del total"].map((h) => (
-                            <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                            <th key={h} className="text-left px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {abcData.slice(0, 50).map((p, i) => (
-                          <tr key={i} className="hover:bg-muted/30">
+                          <tr key={i} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-2.5">
-                              <Badge variant={p.clase === "A" ? "success" : p.clase === "B" ? "info" : "secondary"} className="text-2xs w-6 justify-center">
+                              <span className={cn(
+                                "inline-flex w-6 h-6 items-center justify-center rounded-md text-2xs font-black border",
+                                p.clase === "A" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : p.clase === "B" ? "bg-sky-50 text-sky-700 border-sky-200"
+                                : "bg-muted text-muted-foreground border-border"
+                              )}>
                                 {p.clase}
-                              </Badge>
+                              </span>
                             </td>
-                            <td className="px-4 py-2.5 text-xs font-medium">{p.nombre}</td>
+                            <td className="px-4 py-2.5 text-xs font-semibold text-foreground">{p.nombre}</td>
                             <td className="px-4 py-2.5 text-xs text-muted-foreground tabular-nums">{p.qty.toFixed(0)}</td>
-                            <td className="px-4 py-2.5 text-sm font-bold tabular-nums">{formatCurrency(p.total)}</td>
+                            <td className="px-4 py-2.5 text-sm font-black tabular-nums">{formatCurrency(p.total)}</td>
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
-                                <Progress value={p.pctTotal} className="h-1.5 flex-1" />
+                                <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${p.pctTotal}%` }} />
+                                </div>
                                 <span className="text-xs text-muted-foreground tabular-nums w-10">{p.pctTotal.toFixed(1)}%</span>
                               </div>
                             </td>
@@ -340,12 +365,15 @@ export default function ReportesPage() {
 
             {/* Detalle */}
             <TabsContent value="detalle" className="mt-4">
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <FileText size={15} className="text-muted-foreground" />
-                    <h3 className="text-sm font-semibold">Detalle de ventas</h3>
-                    <Badge variant="secondary" className="text-2xs h-4">{ventas.length}</Badge>
+              <div className="relative bg-card border border-border rounded-xl overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sky-400/60 to-transparent" />
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-linear-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-sm">
+                      <FileText size={12} className="text-white" />
+                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Detalle de ventas</h3>
+                    <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{ventas.length}</span>
                   </div>
                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
                     onClick={() => exportarCSV(ventas, `ventas-detalle-${rangoLabel}`)}>
@@ -357,35 +385,42 @@ export default function ReportesPage() {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                        <tr className="border-b border-border bg-muted/50">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/40">
                           {["Fecha / Hora", "Cajero", "Cliente", "Método", "Total", "Estado"].map((h) => (
-                            <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                            <th key={h} className="text-left px-4 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {ventas.slice(0, 100).map((v) => (
+                        {ventas.slice(0, 100).map((v) => {
+                          const mCfg = METODO_CONFIG[v.metodo_pago] ?? { accentBg: "bg-muted", accentBorder: "border-border", color: "text-muted-foreground" };
+                          return (
                           <tr key={v.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3">
-                              <p className="text-xs font-medium">{new Date(v.fecha).toLocaleDateString("es-DO")}</p>
+                              <p className="text-xs font-semibold text-foreground">{new Date(v.fecha).toLocaleDateString("es-DO")}</p>
                               <p className="text-xs text-muted-foreground">{new Date(v.fecha).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}</p>
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{v.cajero_nombre}</td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{v.cliente_nombre ?? "—"}</td>
                             <td className="px-4 py-3">
-                              <Badge variant={METODO_BADGE[v.metodo_pago] ?? "secondary"} className="text-2xs">
+                              <span className={cn("inline-flex text-2xs font-semibold px-1.5 py-0.5 rounded-full border", mCfg.accentBg, mCfg.accentBorder, mCfg.color)}>
                                 {METODO_LABELS[v.metodo_pago] ?? v.metodo_pago}
-                              </Badge>
+                              </span>
                             </td>
-                            <td className="px-4 py-3 font-bold tabular-nums text-sm">{formatCurrency(Number(v.total))}</td>
+                            <td className="px-4 py-3 font-black tabular-nums text-sm">{formatCurrency(Number(v.total))}</td>
                             <td className="px-4 py-3">
-                              <Badge variant={v.estado === "COMPLETADA" ? "success" : "danger"} className="text-2xs">
+                              <span className={cn("inline-flex text-2xs font-semibold px-1.5 py-0.5 rounded-full border",
+                                v.estado === "COMPLETADA"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-rose-50 text-rose-600 border-rose-200"
+                              )}>
                                 {v.estado === "COMPLETADA" ? "Completada" : "Anulada"}
-                              </Badge>
+                              </span>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                     {ventas.length > 100 && (
