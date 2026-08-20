@@ -25,7 +25,7 @@ const recepcionSchema = z.object({
 });
 type RecepcionForm = z.infer<typeof recepcionSchema>;
 
-const inputCls = 'border border-slate-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white';
+const inputCls = 'border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 bg-card';
 
 interface LineaRecepcion {
   producto_id: string;
@@ -145,7 +145,7 @@ function RecepcionContent() {
   if (loading) {
     return (
       <div className="p-6 space-y-4">
-        {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-100 rounded-2xl animate-pulse" />)}
+        {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-muted/60 rounded-2xl animate-pulse" />)}
       </div>
     );
   }
@@ -153,36 +153,46 @@ function RecepcionContent() {
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => router.push('/compras')} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+        <button onClick={() => router.push('/compras')} className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft size={18} />
         </button>
-        <div>
-          <h1 className="text-2xl font-black text-slate-800">Recepción de Mercancía</h1>
-          <p className="text-slate-400 text-sm mt-0.5">
-            {orden ? `Orden #${orden.id} — ${orden.suplidor_nombre}` : 'Entrada directa al inventario'}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="relative w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+            <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+            <Warehouse size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-foreground">Recepción de Mercancía</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              {orden ? `Orden #${orden.id} — ${orden.suplidor_nombre}` : 'Entrada directa al inventario'}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Modo selector (solo sin orden previa) */}
       {!ordenId && (
         <div className="flex gap-2">
-          <button onClick={() => setModoDirecto(false)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${!modoDirecto ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}>
+          <button onClick={() => setModoDirecto(false)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${!modoDirecto ? 'bg-linear-to-br from-brand-500 to-indigo-600 text-white border-brand-500 shadow-sm' : 'bg-card text-muted-foreground border-border hover:border-brand-300 hover:text-foreground'}`}>
             Desde orden de compra
           </button>
-          <button onClick={() => setModoDirecto(true)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${modoDirecto ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}>
+          <button onClick={() => setModoDirecto(true)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${modoDirecto ? 'bg-linear-to-br from-brand-500 to-indigo-600 text-white border-brand-500 shadow-sm' : 'bg-card text-muted-foreground border-border hover:border-brand-300 hover:text-foreground'}`}>
             Entrada directa
           </button>
         </div>
       )}
 
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-5">
+      <div className="relative bg-card border border-border rounded-2xl shadow-sm p-6 space-y-5 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
         {/* Proveedor y factura */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><Truck size={12} /> Proveedor</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5"><Truck size={12} /> Proveedor</label>
             {orden ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-600">
+              <div className="flex items-center gap-2 px-3 py-2.5 border border-border rounded-xl bg-muted/40 text-sm text-foreground">
+                <div className="w-5 h-5 rounded-md bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0">
+                  <Truck size={10} className="text-white" />
+                </div>
                 {orden.suplidor_nombre}
               </div>
             ) : (
@@ -193,7 +203,7 @@ function RecepcionContent() {
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">N° Factura</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">N° Factura</label>
             <input placeholder="Ej: B15001234" className={`${inputCls} w-full`}
               disabled={!!orden} {...regRec('numero_factura')} />
           </div>
@@ -201,34 +211,41 @@ function RecepcionContent() {
 
         {/* Líneas */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5"><Package size={12} /> Productos recibidos</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center">
+              <Package size={9} className="text-white" />
+            </div>
+            Productos recibidos
+          </label>
           {lineas.map((linea, idx) => (
-            <div key={idx} className={`grid gap-2 items-start rounded-xl border p-3 ${
+            <div key={idx} className={`grid gap-2 items-start rounded-xl border p-3 transition-colors ${
               orden ? 'grid-cols-[1fr_auto_auto_auto]' : 'grid-cols-[1fr_auto_auto_auto_auto]'
-            } ${linea.producto_nombre ? 'border-slate-200 bg-white' : 'border-dashed border-slate-200 bg-slate-50'}`}>
+            } ${linea.producto_nombre ? 'border-border bg-card' : 'border-dashed border-border bg-muted/30'}`}>
               {/* Producto */}
               <div className="flex items-center gap-2">
-                <Package size={14} className="text-slate-400 shrink-0 mt-2" />
+                <div className="w-6 h-6 rounded-md bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0 mt-1.5">
+                  <Package size={11} className="text-white" />
+                </div>
                 {linea.producto_nombre ? (
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-800">{linea.producto_nombre}</p>
+                    <p className="text-sm font-semibold text-foreground">{linea.producto_nombre}</p>
                     {linea.cantidad_esperada && (
-                      <p className="text-xs text-slate-400">Esperado: {linea.cantidad_esperada}</p>
+                      <p className="text-xs text-muted-foreground">Esperado: {linea.cantidad_esperada}</p>
                     )}
                   </div>
                 ) : (
                   <div className="flex-1 relative">
-                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input value={busqProd[idx] ?? ''} onChange={e => buscarProducto(idx, e.target.value)}
                       placeholder="Buscar producto..."
-                      className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white" />
+                      className="w-full pl-8 pr-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 bg-card text-foreground placeholder:text-muted-foreground" />
                     {(resultsProd[idx] ?? []).length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 border border-slate-100 rounded-xl shadow-lg bg-white overflow-hidden">
+                      <div className="absolute z-10 w-full mt-1 border border-border rounded-xl shadow-lg bg-card overflow-hidden">
                         {(resultsProd[idx] ?? []).map(p => (
                           <button key={p.id} type="button" onClick={() => seleccionarProducto(idx, p)}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-50 text-left text-sm text-slate-700 border-b border-slate-50 last:border-0">
+                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-brand-50 text-left text-sm text-foreground border-b border-border/50 last:border-0">
                             <span className="flex-1">{p.nombre}</span>
-                            <span className="text-xs text-slate-400">{fmt(p.precio_costo)}</span>
+                            <span className="text-xs text-muted-foreground">{fmt(p.precio_costo)}</span>
                           </button>
                         ))}
                       </div>
@@ -239,34 +256,34 @@ function RecepcionContent() {
 
               {/* Cantidad recibida */}
               <div className="flex flex-col gap-0.5">
-                <label className="text-2xs text-slate-400 font-semibold uppercase">Cantidad</label>
+                <label className="text-2xs text-muted-foreground font-semibold uppercase tracking-widest">Cantidad</label>
                 <input type="number" value={linea.cantidad_recibida} min="0" step="0.01"
                   onChange={e => setLineas(ls => ls.map((l, i) => i === idx ? { ...l, cantidad_recibida: e.target.value } : l))}
-                  className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                  className="w-20 border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 bg-card text-foreground" />
               </div>
 
               {/* Precio costo */}
               <div className="flex flex-col gap-0.5">
-                <label className="text-2xs text-slate-400 font-semibold uppercase">Costo unit.</label>
+                <label className="text-2xs text-muted-foreground font-semibold uppercase tracking-widest">Costo unit.</label>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
                   <input type="number" value={linea.precio_costo} step="0.01"
                     onChange={e => setLineas(ls => ls.map((l, i) => i === idx ? { ...l, precio_costo: e.target.value } : l))}
-                    className="w-28 pl-5 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                    className="w-28 pl-5 border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 bg-card text-foreground" />
                 </div>
               </div>
 
               {/* Subtotal */}
               <div className="flex flex-col gap-0.5 text-right">
-                <label className="text-2xs text-slate-400 font-semibold uppercase">Subtotal</label>
-                <span className="text-sm font-semibold text-slate-700 pt-1.5">
+                <label className="text-2xs text-muted-foreground font-semibold uppercase tracking-widest">Subtotal</label>
+                <span className="text-sm font-black text-foreground pt-1.5">
                   {fmt(Number(linea.cantidad_recibida || 0) * Number(linea.precio_costo || 0))}
                 </span>
               </div>
 
               {/* Alerta diferencia */}
               {linea.cantidad_esperada && linea.cantidad_recibida !== linea.cantidad_esperada && (
-                <div className="col-span-full flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
+                <div className="col-span-full flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
                   <AlertTriangle size={12} /> Diferencia: esperado {linea.cantidad_esperada}, recibido {linea.cantidad_recibida}
                 </div>
               )}
@@ -274,7 +291,7 @@ function RecepcionContent() {
               {/* Eliminar (modo directo) */}
               {modoDirecto && !orden && lineas.length > 1 && (
                 <button onClick={() => setLineas(ls => ls.filter((_, i) => i !== idx))}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors self-center">
+                  className="p-1.5 rounded-lg hover:bg-rose-50 text-muted-foreground/40 hover:text-rose-500 transition-colors self-center">
                   <X size={14} />
                 </button>
               )}
@@ -283,27 +300,33 @@ function RecepcionContent() {
 
           {(modoDirecto || !orden) && (
             <button onClick={() => setLineas(ls => [...ls, { producto_id: '', producto_nombre: '', cantidad_esperada: '', cantidad_recibida: '1', precio_costo: '' }])}
-              className="flex items-center gap-1.5 text-sm text-indigo-600 font-semibold hover:underline mt-1">
+              className="flex items-center gap-1.5 text-sm text-brand-600 font-semibold hover:text-brand-700 hover:underline mt-1 transition-colors">
               <Plus size={14} /> Agregar producto
             </button>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Notas</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Notas</label>
           <input placeholder="Observaciones de la recepción" className={`${inputCls} w-full`} {...regRec('notas')} />
         </div>
 
         {/* Total */}
-        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-3">
-          <span className="text-sm font-semibold text-indigo-700">Total mercancía recibida</span>
-          <span className="text-xl font-black text-indigo-700">{fmt(totalRecibido)}</span>
+        <div className="relative flex items-center justify-between bg-linear-to-r from-brand-50/60 to-indigo-50/60 border border-brand-200/60 rounded-xl px-5 py-3.5 overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0">
+              <Warehouse size={14} className="text-white" />
+            </div>
+            <span className="text-sm font-semibold text-brand-700">Total mercancía recibida</span>
+          </div>
+          <span className="text-xl font-black text-brand-700">{fmt(totalRecibido)}</span>
         </div>
       </div>
 
       {/* Botón confirmar */}
       <div className="flex justify-end gap-3">
-        <button onClick={() => router.push('/compras')} className="px-6 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">
+        <button onClick={() => router.push('/compras')} className="px-6 py-2.5 rounded-xl border border-border bg-card text-muted-foreground text-sm font-semibold hover:bg-muted/50 transition-colors">
           Cancelar
         </button>
         <button onClick={confirmarRecepcion} disabled={guardando}
@@ -321,7 +344,7 @@ export default function RecepcionPage() {
   const { esAdmin, esSuperadmin, usuario } = useAuthStore();
   if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
   return (
-    <Suspense fallback={<div className="p-6 text-slate-400">Cargando...</div>}>
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Cargando...</div>}>
       <RecepcionContent />
     </Suspense>
   );
