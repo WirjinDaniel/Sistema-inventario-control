@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import {
   BookOpen, Search, ShoppingCart, CreditCard, Building2,
   Banknote, AlertTriangle, X, Check, ChevronDown, ChevronUp, FileText,
+  TrendingUp, CalendarDays, User2, Receipt,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -33,11 +34,18 @@ interface VentaDetalle extends Venta {
   factura_ncf?: string | null;
 }
 
-const METODO_CONFIG: Record<string, { label: string; badge: "success" | "info" | "purple" | "warning"; icon: React.ElementType }> = {
-  EFECTIVO:      { label: "Efectivo",      badge: "success", icon: Banknote },
-  TARJETA:       { label: "Tarjeta",       badge: "info",    icon: CreditCard },
-  TRANSFERENCIA: { label: "Transferencia", badge: "purple",  icon: Building2 },
-  FIADO:         { label: "Fiado",         badge: "warning", icon: ShoppingCart },
+const METODO_CONFIG: Record<string, {
+  label: string;
+  icon: React.ElementType;
+  gradient: string;
+  accentBg: string;
+  accentBorder: string;
+  color: string;
+}> = {
+  EFECTIVO:      { label: "Efectivo",      icon: Banknote,    gradient: "from-emerald-500 to-teal-600",  accentBg: "bg-emerald-50 dark:bg-emerald-950/30", accentBorder: "border-emerald-200 dark:border-emerald-800/50", color: "text-emerald-700 dark:text-emerald-300" },
+  TARJETA:       { label: "Tarjeta",       icon: CreditCard,  gradient: "from-sky-500 to-blue-600",      accentBg: "bg-sky-50 dark:bg-sky-950/30",         accentBorder: "border-sky-200 dark:border-sky-800/50",         color: "text-sky-700 dark:text-sky-300" },
+  TRANSFERENCIA: { label: "Transferencia", icon: Building2,   gradient: "from-violet-500 to-purple-600", accentBg: "bg-violet-50 dark:bg-violet-950/30",   accentBorder: "border-violet-200 dark:border-violet-800/50",   color: "text-violet-700 dark:text-violet-300" },
+  FIADO:         { label: "Fiado",         icon: ShoppingCart,gradient: "from-amber-500 to-orange-500",  accentBg: "bg-amber-50 dark:bg-amber-950/30",     accentBorder: "border-amber-200 dark:border-amber-800/50",     color: "text-amber-700 dark:text-amber-300" },
 };
 
 const fmtFecha = (s: string) =>
@@ -112,6 +120,8 @@ export default function VentasPage() {
   }
 
   const totalGeneral = ventas.filter((v) => v.estado === "COMPLETADA").reduce((s, v) => s + Number(v.total), 0);
+  const completadas = ventas.filter((v) => v.estado === "COMPLETADA").length;
+  const anuladas = ventas.filter((v) => v.estado === "ANULADA").length;
   const hayFiltros = !!(busqueda || filtroMetodo || filtroEstado || fechaDesde || fechaHasta);
   const { paged: ventasPaged, page, setPage, totalPages, reset: resetPage } = usePagination(ventas, 20);
 
@@ -119,18 +129,30 @@ export default function VentasPage() {
     <div className="p-6 space-y-5">
       <PageHeader
         title="Ventas"
-        description={`${ventas.length} registros · Total: ${formatCurrency(totalGeneral)}`}
-        actions={
-          <div className="flex items-center gap-1.5 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-lg px-3 py-1.5">
-            <BookOpen size={14} className="text-brand-500 dark:text-brand-400" />
-            <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
-              {ventas.filter((v) => v.estado === "COMPLETADA").length} completadas
-              {ventas.filter((v) => v.estado === "ANULADA").length > 0 && (
-                <span className="font-normal text-rose-500 dark:text-rose-400 ml-1">
-                  · {ventas.filter((v) => v.estado === "ANULADA").length} anulada{ventas.filter((v) => v.estado === "ANULADA").length !== 1 ? "s" : ""}
-                </span>
-              )}
+        description={
+          <span className="flex items-center gap-2 flex-wrap mt-0.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200 dark:border-brand-800/50 px-2 py-0.5 rounded-full">
+              <Receipt size={10} /> {ventas.length} registros
             </span>
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-full">
+              <Check size={10} /> {completadas} completada{completadas !== 1 ? "s" : ""}
+            </span>
+            {anuladas > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50 px-2 py-0.5 rounded-full">
+                <AlertTriangle size={10} /> {anuladas} anulada{anuladas !== 1 ? "s" : ""}
+              </span>
+            )}
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2 bg-linear-to-br from-brand-50 to-indigo-50 dark:from-brand-950/30 dark:to-indigo-950/20 border border-brand-200 dark:border-brand-800/50 rounded-xl px-3 py-2">
+            <div className="w-6 h-6 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0">
+              <TrendingUp size={12} className="text-white" />
+            </div>
+            <div>
+              <p className="text-2xs text-muted-foreground uppercase tracking-wide font-medium leading-none">Total período</p>
+              <p className="text-sm font-black text-brand-700 dark:text-brand-300 tabular-nums leading-tight">{formatCurrency(totalGeneral)}</p>
+            </div>
           </div>
         }
       />
@@ -144,12 +166,12 @@ export default function VentasPage() {
               value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
           </div>
           <select value={filtroMetodo} onChange={(e) => setFiltroMetodo(e.target.value)}
-            className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+            className="h-8 px-2.5 text-xs rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
             <option value="">Todos los métodos</option>
             {Object.entries(METODO_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
-            className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+            className="h-8 px-2.5 text-xs rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
             <option value="">Todos los estados</option>
             <option value="COMPLETADA">Completada</option>
             <option value="ANULADA">Anulada</option>
@@ -158,7 +180,7 @@ export default function VentasPage() {
           <DatePicker value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" />
         </div>
         {hayFiltros && (
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-muted-foreground"
+          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
             onClick={() => { setBusqueda(""); setFiltroMetodo(""); setFiltroEstado(""); setFechaDesde(""); setFechaHasta(""); }}>
             <X size={12} /> Limpiar filtros
           </Button>
@@ -182,16 +204,16 @@ export default function VentasPage() {
           <EmptyState icon={ShoppingCart} title="Sin ventas" description={hayFiltros ? "No hay ventas con estos filtros." : "Las ventas registradas aparecerán aquí."} />
         ) : (
           <table className="w-full text-sm">
-            <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-              <tr className="border-b border-border bg-muted/50">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
                 {["Fecha / Hora", "Cliente", "Cajero", "Método", "Total", "Estado", ""].map((h) => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                  <th key={h} className="text-left px-4 py-2.5 text-2xs font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {ventasPaged.map((v) => {
-                const metodo = METODO_CONFIG[v.metodo_pago] ?? { label: v.metodo_pago, badge: "secondary" as const, icon: ShoppingCart };
+                const metodo = METODO_CONFIG[v.metodo_pago] ?? { label: v.metodo_pago, icon: ShoppingCart, gradient: "from-slate-400 to-slate-500", accentBg: "bg-muted", accentBorder: "border-border", color: "text-muted-foreground" };
                 const Icon = metodo.icon;
                 const isExpanded = expandedId === v.id;
                 const anulada = v.estado === "ANULADA";
@@ -199,69 +221,88 @@ export default function VentasPage() {
                 return (
                   <React.Fragment key={v.id}>
                     <tr
-                      className={cn("hover:bg-muted/30 transition-colors cursor-pointer", anulada && "opacity-50")}
+                      className={cn("hover:bg-muted/30 transition-colors cursor-pointer group", anulada && "opacity-50")}
                       onClick={() => verDetalle(v.id)}
                     >
-                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmtFecha(v.fecha)}</td>
-                      <td className="px-4 py-3 font-medium text-foreground">
-                        {v.cliente_nombre ?? <span className="text-muted-foreground italic text-xs">Sin cliente</span>}
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDays size={11} className="opacity-50" />
+                          {fmtFecha(v.fecha)}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{v.cajero_nombre}</td>
+                      <td className="px-4 py-3 font-semibold text-foreground">
+                        {v.cliente_nombre ?? <span className="text-muted-foreground/60 italic text-xs font-normal">Sin cliente</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <User2 size={11} className="opacity-50" />
+                          {v.cajero_nombre}
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
-                        <Badge variant={metodo.badge} className="gap-1 text-xs">
+                        <span className={cn(
+                          "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border",
+                          metodo.accentBg, metodo.accentBorder, metodo.color
+                        )}>
                           <Icon size={10} /> {metodo.label}
-                        </Badge>
+                        </span>
                       </td>
-                      <td className="px-4 py-3 font-bold text-foreground tabular-nums">{formatCurrency(Number(v.total))}</td>
+                      <td className="px-4 py-3 font-black text-foreground tabular-nums text-base">{formatCurrency(Number(v.total))}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={anulada ? "danger" : "success"} className="gap-1 text-xs">
-                          {anulada ? <><AlertTriangle size={10} /> Anulada</> : <><Check size={10} /> Completada</>}
-                        </Badge>
+                        {anulada ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-300">
+                            <AlertTriangle size={10} /> Anulada
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300">
+                            <Check size={10} /> Completada
+                          </span>
+                        )}
                       </td>
-                      <td className="px-4 py-3">
-                        {isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {isExpanded
+                          ? <ChevronUp size={14} className="group-hover:text-foreground transition-colors" />
+                          : <ChevronDown size={14} className="group-hover:text-foreground transition-colors" />}
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr key={`${v.id}-det`} className="bg-muted/10">
-                        <td colSpan={7} className="px-4 py-4">
+                      <tr key={`${v.id}-det`}>
+                        <td colSpan={7} className="px-4 py-4 bg-muted/10 border-b border-border">
                           {loadingDetalle && !detalle ? (
-                            <Skeleton className="h-16 w-full rounded-lg" />
+                            <Skeleton className="h-16 w-full rounded-xl" />
                           ) : detalle && detalle.id === v.id ? (
                             <div className="space-y-3">
                               <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                                 {(detalle.items ?? []).map((item) => (
-                                  <div key={item.id} className="bg-card rounded-lg border border-border px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                                    <span className="text-foreground font-medium truncate flex-1">{item.producto_nombre}</span>
-                                    <span className="text-muted-foreground shrink-0">{item.cantidad} × {formatCurrency(Number(item.precio_unitario))}</span>
-                                    <span className="font-semibold text-foreground shrink-0">{formatCurrency(Number(item.subtotal))}</span>
+                                  <div key={item.id} className="relative bg-card rounded-xl border border-border px-3 py-2.5 flex items-center gap-3 text-xs overflow-hidden group/item hover:shadow-sm transition-shadow">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-linear-to-b from-brand-400 to-indigo-500 rounded-l-xl" />
+                                    <span className="text-foreground font-semibold truncate flex-1 pl-1">{item.producto_nombre}</span>
+                                    <span className="text-muted-foreground shrink-0 tabular-nums">{item.cantidad} × {formatCurrency(Number(item.precio_unitario))}</span>
+                                    <span className="font-bold text-foreground shrink-0 tabular-nums">{formatCurrency(Number(item.subtotal))}</span>
                                   </div>
                                 ))}
                               </div>
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                   {Number(detalle.descuento) > 0 && (
-                                    <span>Descuento: <strong className="text-rose-600 dark:text-rose-400">-{formatCurrency(Number(detalle.descuento))}</strong></span>
+                                    <span>Descuento: <strong className="text-rose-600 dark:text-rose-400">−{formatCurrency(Number(detalle.descuento))}</strong></span>
                                   )}
                                   {Number(detalle.itbis) > 0 && (
                                     <span>ITBIS: <strong className="text-foreground">{formatCurrency(Number(detalle.itbis))}</strong></span>
                                   )}
-                                  {detalle.nota && <span className="italic">{detalle.nota}</span>}
+                                  {detalle.nota && <span className="italic opacity-70">{detalle.nota}</span>}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {!anulada && (
                                     detalle.factura_ncf ? (
-                                      <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                                        <FileText size={12} /> NCF: {detalle.factura_ncf}
+                                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300">
+                                        <FileText size={10} /> NCF: {detalle.factura_ncf}
                                       </span>
                                     ) : (
                                       <Button
                                         variant="ghost" size="sm"
                                         className="h-7 text-xs gap-1.5 text-brand-600 hover:bg-brand-50/80 dark:text-brand-400 dark:hover:bg-brand-950/30"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setNcfModal(detalle);
-                                        }}
+                                        onClick={(e) => { e.stopPropagation(); setNcfModal(detalle); }}
                                       >
                                         <FileText size={12} /> Emitir comprobante
                                       </Button>
@@ -299,10 +340,14 @@ export default function VentasPage() {
       </div>
 
       <Dialog open={!!confirmAnularId} onOpenChange={(o) => { if (!o) setConfirmAnularId(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-rose-400/70 to-transparent" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-rose-600">
-              <AlertTriangle size={16} /> Anular venta
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle size={14} className="text-white" />
+              </div>
+              <span className="text-rose-600 dark:text-rose-400">Anular venta</span>
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
