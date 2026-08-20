@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,7 @@ import {
   Search, ShoppingCart, Trash2, CreditCard, Banknote,
   Smartphone, UserCheck, Building2,
   DollarSign, Lock, LogOut, Plus, Minus, AlertCircle,
-  Wifi, WifiOff, X, Tag, FileText,
+  Wifi, WifiOff, X, Tag, FileText, Store,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -42,21 +42,14 @@ interface VentaResponse {
   detalles: { producto_nombre: string; cantidad: string; precio_unitario: string; descuento: string; subtotal: string; }[];
 }
 
-const aberturaSchema = z.object({
-  efectivo_inicial: z.string().optional(),
-});
+const aberturaSchema = z.object({ efectivo_inicial: z.string().optional() });
 type AberturaForm = z.infer<typeof aberturaSchema>;
 
-const cierreSchema = z.object({
-  efectivo_declarado: z.string().optional(),
-  nota_cierre: z.string().optional(),
-});
+const cierreSchema = z.object({ efectivo_declarado: z.string().optional(), nota_cierre: z.string().optional() });
 type CierreForm = z.infer<typeof cierreSchema>;
 
 const ncfInlineSchema = z.object({
-  tipo: z.string(),
-  institucion: z.string().optional(),
-  rnc: z.string().optional(),
+  tipo: z.string(), institucion: z.string().optional(), rnc: z.string().optional(),
 }).superRefine((d, ctx) => {
   if (d.tipo === "01" && !d.rnc?.trim())
     ctx.addIssue({ code: "custom", message: "El RNC/Cédula es requerido para crédito fiscal.", path: ["rnc"] });
@@ -66,11 +59,25 @@ const ncfInlineSchema = z.object({
 type NCFInlineForm = z.infer<typeof ncfInlineSchema>;
 
 const METODOS = [
-  { key: "EFECTIVO", label: "Efectivo", Icon: Banknote },
-  { key: "TARJETA", label: "Tarjeta", Icon: CreditCard },
-  { key: "TRANSFERENCIA", label: "Transfer.", Icon: Smartphone },
-  { key: "FIADO", label: "Fiado", Icon: UserCheck },
+  { key: "EFECTIVO",      label: "Efectivo",   Icon: Banknote,   color: "emerald" },
+  { key: "TARJETA",       label: "Tarjeta",    Icon: CreditCard,  color: "sky" },
+  { key: "TRANSFERENCIA", label: "Transfer.",  Icon: Smartphone,  color: "violet" },
+  { key: "FIADO",         label: "Fiado",      Icon: UserCheck,   color: "amber" },
 ] as const;
+
+const METODO_ACTIVE: Record<string, string> = {
+  EFECTIVO:      "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+  TARJETA:       "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
+  TRANSFERENCIA: "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+  FIADO:         "border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+};
+
+const METODO_ICON_BG: Record<string, string> = {
+  EFECTIVO:      "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600",
+  TARJETA:       "bg-sky-100 dark:bg-sky-900/50 text-sky-600",
+  TRANSFERENCIA: "bg-violet-100 dark:bg-violet-900/50 text-violet-600",
+  FIADO:         "bg-amber-100 dark:bg-amber-900/50 text-amber-600",
+};
 
 export default function POSPage() {
   const [busqueda, setBusqueda] = useState("");
@@ -115,7 +122,7 @@ export default function POSPage() {
 
   const subtotal = carrito.reduce((a, i) => a + i.precio_unitario * i.cantidad, 0);
   const descuentoItems = carrito.reduce((a, i) => a + i.descuento, 0);
-  const descuentoTotal = descuentoItems; // alias para compatibilidad con el payload
+  const descuentoTotal = descuentoItems;
   const baseParaPromo = subtotal - descuentoItems;
   const descuentoPromo = (() => {
     if (!promoAplicada) return 0;
@@ -136,14 +143,12 @@ export default function POSPage() {
   useEffect(() => {
     cargarSesionActiva(); cargarClientes(); cargarBancos(); cargarColmado(); cargarPromos();
     barrasRef.current?.focus();
-    // Restaurar borrador de venta no completada si existe
     const rawBorrador = localStorage.getItem("pos_borrador");
     if (rawBorrador) {
       try {
         const b = JSON.parse(rawBorrador);
         if (b.carrito?.length) {
-          setCarrito(b.carrito);
-          setMetodoPago(b.metodoPago ?? "EFECTIVO");
+          setCarrito(b.carrito); setMetodoPago(b.metodoPago ?? "EFECTIVO");
           if (b.clienteId) setClienteId(b.clienteId);
           if (b.bancoId) setBancoId(b.bancoId);
           toast("Se restauró una venta pendiente.", { icon: "⚠️", duration: 5000 });
@@ -151,11 +156,7 @@ export default function POSPage() {
       } catch { localStorage.removeItem("pos_borrador"); }
     }
     countPending().then(setPendingCount).catch(() => {});
-
-    const up = async () => {
-      setOnline(true);
-      await sincronizarCola();
-    };
+    const up = async () => { setOnline(true); await sincronizarCola(); };
     const down = () => setOnline(false);
     window.addEventListener("online", up); window.addEventListener("offline", down);
     return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
@@ -194,11 +195,7 @@ export default function POSPage() {
     if (!pending.length) return;
     let ok = 0;
     for (const sale of pending) {
-      try {
-        await api.post("/ventas/", sale.payload);
-        await removeSale(sale.id!);
-        ok++;
-      } catch { break; }
+      try { await api.post("/ventas/", sale.payload); await removeSale(sale.id!); ok++; } catch { break; }
     }
     if (ok > 0) {
       toast.success(`${ok} venta${ok > 1 ? "s" : ""} sincronizada${ok > 1 ? "s" : ""} al reconectarse`);
@@ -221,8 +218,7 @@ export default function POSPage() {
     setCargandoCupon(true);
     try {
       const { data } = await api.get(`/promociones/por-cupon/?codigo=${codigoCupon.trim().toUpperCase()}`);
-      setPromoAplicada(data);
-      toast.success(`Cupón "${data.nombre}" aplicado`);
+      setPromoAplicada(data); toast.success(`Cupón "${data.nombre}" aplicado`);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } };
       toast.error(err?.response?.data?.detail ?? "Cupón inválido o expirado");
@@ -285,7 +281,11 @@ export default function POSPage() {
     setCarrito((prev) => { const next = [...prev]; next[idx] = { ...next[idx], cantidad: n, descuento: calcularDescuento(next[idx].producto, n) }; return next; });
   }
 
-  function limpiarCarrito() { setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO"); setBancoId(""); setEmitirNcf(false); resetNcf({ tipo: "02", institucion: "", rnc: "" }); setPromoAplicada(null); setCodigoCupon(""); barrasRef.current?.focus(); }
+  function limpiarCarrito() {
+    setCarrito([]); setMontoPagado(""); setClienteId(null); setMetodoPago("EFECTIVO");
+    setBancoId(""); setEmitirNcf(false); resetNcf({ tipo: "02", institucion: "", rnc: "" });
+    setPromoAplicada(null); setCodigoCupon(""); barrasRef.current?.focus();
+  }
 
   async function procesarVenta() {
     if (!sesionId) return toast.error("Abre una sesión de caja primero.");
@@ -295,10 +295,7 @@ export default function POSPage() {
       return toast.error(`Crédito insuficiente. Disponible: ${formatCurrency(clienteSeleccionado.credito_disponible)}`);
     if (metodoPago === "EFECTIVO" && montoPagado && Number(montoPagado) < total)
       return toast.error(`El monto recibido (${formatCurrency(Number(montoPagado))}) es menor al total (${formatCurrency(total)}).`);
-    if (emitirNcf) {
-      const ncfValid = await triggerNcf();
-      if (!ncfValid) return;
-    }
+    if (emitirNcf) { const ncfValid = await triggerNcf(); if (!ncfValid) return; }
     setProcesando(true);
     const ventaPayload: Record<string, unknown> = {
       sesion_caja: sesionId, cliente: clienteId, metodo_pago: metodoPago,
@@ -308,124 +305,95 @@ export default function POSPage() {
       detalles: carrito.map((i) => ({ producto: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario, descuento: i.descuento, subtotal: i.precio_unitario * i.cantidad - i.descuento })),
     };
 
-    // Si está offline, encolar en IndexedDB y salir
     if (!online) {
       try {
-        await enqueueSale(ventaPayload, carrito);
-        setPendingCount((n) => n + 1);
+        await enqueueSale(ventaPayload, carrito); setPendingCount((n) => n + 1);
         toast("Venta guardada offline. Se enviará al reconectarse.", { icon: "📶", duration: 6000 });
-        localStorage.removeItem("pos_borrador");
-        limpiarCarrito();
-      } catch {
-        toast.error("Error al guardar la venta offline.");
-      }
-      setProcesando(false);
-      return;
+        localStorage.removeItem("pos_borrador"); limpiarCarrito();
+      } catch { toast.error("Error al guardar la venta offline."); }
+      setProcesando(false); return;
     }
 
-    // Guardar borrador antes del POST — si falla la conexión el carrito no se pierde
     const borrador = { carrito, metodoPago, clienteId, bancoId, descuentoTotal, total };
     localStorage.setItem("pos_borrador", JSON.stringify(borrador));
     try {
       const { data } = await api.post("/ventas/", ventaPayload);
-      setUltimaVenta({ ...data, itbis: itbisTotal.toFixed(2) });
-      setUltimoNcf(null);
+      setUltimaVenta({ ...data, itbis: itbisTotal.toFixed(2) }); setUltimoNcf(null);
       if (emitirNcf) {
         const ncf = getNcfValues();
         try {
           const ncfRes = await api.post("/facturacion/facturas/", {
-            tipo: ncf.tipo,
-            venta: data.id,
+            tipo: ncf.tipo, venta: data.id,
             cliente_nombre: ncf.tipo === "15" ? (ncf.institucion || "Institución Gubernamental")
               : ncf.tipo === "01" ? (ncf.institucion || data.cliente_nombre || "Consumidor Final")
               : (data.cliente_nombre ?? "Consumidor Final"),
             cliente_rnc: ncf.rnc,
             datos_especificos: ncf.tipo === "15" ? { institucion_nombre: ncf.institucion || "Institución Gubernamental" } : {},
             detalles: carrito.map((item) => ({
-              producto: item.producto.id,
-              descripcion: item.producto.nombre,
-              codigo: item.producto.codigo_barras || "",
-              cantidad: item.cantidad,
+              producto: item.producto.id, descripcion: item.producto.nombre,
+              codigo: item.producto.codigo_barras || "", cantidad: item.cantidad,
               unidad: item.producto.unidad_medida || "UND",
-              precio_unitario: item.precio_unitario.toFixed(2),
-              descuento: item.descuento.toFixed(2),
+              precio_unitario: item.precio_unitario.toFixed(2), descuento: item.descuento.toFixed(2),
               tasa_itbis: item.producto.itbis_exento ? "0" : "18",
             })),
           });
-          setUltimoNcf({
-            ncf: ncfRes.data.ncf,
-            tipo_nombre: ncfRes.data.tipo_nombre,
-            cliente_nombre: ncfRes.data.cliente_nombre,
-          });
+          setUltimoNcf({ ncf: ncfRes.data.ncf, tipo_nombre: ncfRes.data.tipo_nombre, cliente_nombre: ncfRes.data.cliente_nombre });
           toast.success("Comprobante fiscal emitido");
         } catch (ncfErr: unknown) {
           const e = ncfErr as { response?: { data?: unknown } };
           const d = e.response?.data;
           let msg = "Error al emitir el NCF";
-          if (typeof d === "string") {
-            msg = d;
-          } else if (Array.isArray(d)) {
-            msg = d[0] ?? msg;
-          } else if (d && typeof d === "object") {
+          if (typeof d === "string") { msg = d; }
+          else if (Array.isArray(d)) { msg = d[0] ?? msg; }
+          else if (d && typeof d === "object") {
             const obj = d as Record<string, unknown>;
-            msg = (obj.non_field_errors as string[])?.[0]
-              ?? (obj.detail as string)
-              ?? Object.values(obj).flat().filter(Boolean)[0] as string
-              ?? msg;
+            msg = (obj.non_field_errors as string[])?.[0] ?? (obj.detail as string)
+              ?? Object.values(obj).flat().filter(Boolean)[0] as string ?? msg;
           }
           const esSecuencia = msg.toLowerCase().includes("secuencia");
-          toast(
-            (t) => (
-              <div className="flex flex-col gap-1.5">
-                <span className="font-medium text-sm">Venta guardada ✓ — NCF falló</span>
-                <span className="text-xs text-muted-foreground">{msg}</span>
-                {esSecuencia && (
-                  <a
-                    href="/facturacion"
-                    className="text-xs font-semibold text-brand-600 underline mt-1"
-                    onClick={() => toast.dismiss(t.id)}
-                  >
-                    Ir a Facturación &gt; Secuencias NCF →
-                  </a>
-                )}
-              </div>
-            ),
-            { duration: 10000, icon: "⚠️" }
-          );
+          toast((t) => (
+            <div className="flex flex-col gap-1.5">
+              <span className="font-medium text-sm">Venta guardada ✓ — NCF falló</span>
+              <span className="text-xs text-muted-foreground">{msg}</span>
+              {esSecuencia && (
+                <a href="/facturacion" className="text-xs font-semibold text-brand-600 underline mt-1" onClick={() => toast.dismiss(t.id)}>
+                  Ir a Facturación &gt; Secuencias NCF →
+                </a>
+              )}
+            </div>
+          ), { duration: 10000, icon: "⚠️" });
         }
       }
-      // Venta exitosa: registrar uso de promoción si aplica
-      if (promoAplicada) {
-        await api.post(`/promociones/${promoAplicada.id}/usar/`).catch(() => {});
-      }
-      localStorage.removeItem("pos_borrador");
-      limpiarCarrito();
+      if (promoAplicada) { await api.post(`/promociones/${promoAplicada.id}/usar/`).catch(() => {}); }
+      localStorage.removeItem("pos_borrador"); limpiarCarrito();
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
       const d = e.response?.data;
-      // No limpiar carrito en error — el borrador persiste para reintentar
       toast.error(d ? ((d.detail as string) ?? Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")) : "Error al procesar la venta. El carrito se conservó para reintentar.");
     } finally { setProcesando(false); }
   }
 
-  // Modal apertura de caja
+  /* ── Modal apertura ── */
   if (showApertura && !sesionId) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-        <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-border">
-            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950 flex items-center justify-center">
-              <Lock size={18} className="text-brand-600" />
+        <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+          <div className="relative">
+            <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
+            <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-border">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                <Lock size={17} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold leading-tight">Abrir Caja</h2>
+                <p className="text-xs text-muted-foreground">Ingresa el efectivo inicial del turno</p>
+              </div>
+              {!sinSesion && (
+                <button onClick={() => { setShowApertura(false); resetApertura(); }} className="ml-auto p-1.5 rounded-lg hover:bg-muted transition-colors">
+                  <X size={16} className="text-muted-foreground" />
+                </button>
+              )}
             </div>
-            <div>
-              <h2 className="text-base font-bold leading-tight">Abrir Caja</h2>
-              <p className="text-xs text-muted-foreground">Ingresa el efectivo inicial del turno</p>
-            </div>
-            {!sinSesion && (
-              <button onClick={() => { setShowApertura(false); resetApertura(); }} className="ml-auto p-1.5 rounded-lg hover:bg-muted transition-colors">
-                <X size={16} className="text-muted-foreground" />
-              </button>
-            )}
           </div>
           <form onSubmit={onAbrirCaja} className="px-6 py-5 space-y-4">
             <input autoFocus type="number" min="0" step="0.01" placeholder="0.00"
@@ -436,14 +404,16 @@ export default function POSPage() {
             <div className="grid grid-cols-3 gap-2">
               {[500, 1000, 2000, 3000, 5000, 10000].map((v) => (
                 <button key={v} type="button" onClick={() => setAperturaVal("efectivo_inicial", String(v))}
-                  className={cn("text-xs rounded-lg py-2 font-semibold transition-all",
-                    Number(efectivoInicial) === v ? "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300" : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  className={cn("text-xs rounded-xl py-2.5 font-semibold transition-all",
+                    Number(efectivoInicial) === v
+                      ? "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300 shadow-sm"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   )}>
                   RD${v.toLocaleString()}
                 </button>
               ))}
             </div>
-            <Button type="submit" disabled={abriendo} className="w-full gap-2" size="lg">
+            <Button type="submit" disabled={abriendo} className="w-full gap-2 h-11" size="lg">
               {abriendo ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <DollarSign size={16} />}
               Abrir Caja
             </Button>
@@ -454,13 +424,16 @@ export default function POSPage() {
     );
   }
 
-  // Modal cierre de caja
+  /* ── Modal cierre ── */
   if (showCierre) {
     if (resumenCierre) {
       const dif = resumenCierre.diferencia_caja != null ? Number(resumenCierre.diferencia_caja) : null;
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 overflow-hidden">
+            <div className="relative">
+              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-emerald-400/60 to-transparent" />
+            </div>
             <div className="px-6 py-6 space-y-4">
               <h2 className="text-lg font-bold text-center">Corte Z — Caja Cerrada</h2>
               <div className="bg-muted/50 rounded-xl p-4 space-y-2.5 text-sm">
@@ -471,7 +444,7 @@ export default function POSPage() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Efectivo calculado</span><span className="font-bold">{formatCurrency(resumenCierre.efectivo_calculado)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Efectivo declarado</span><span className="font-bold">{formatCurrency(resumenCierre.efectivo_final_declarado)}</span></div>
                 {dif !== null && (
-                  <div className={cn("flex justify-between font-bold rounded-lg p-2", dif === 0 ? "bg-emerald-50 text-emerald-700" : dif > 0 ? "bg-sky-50 text-sky-700" : "bg-rose-50 text-rose-700")}>
+                  <div className={cn("flex justify-between font-bold rounded-xl p-2.5", dif === 0 ? "bg-emerald-50 text-emerald-700" : dif > 0 ? "bg-sky-50 text-sky-700" : "bg-rose-50 text-rose-700")}>
                     <span>Diferencia</span><span>{dif >= 0 ? "+" : ""}{formatCurrency(dif)}</span>
                   </div>
                 )}
@@ -484,20 +457,28 @@ export default function POSPage() {
     }
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-        <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95">
+        <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 overflow-hidden">
+          <div className="relative">
+            <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-rose-400/60 to-transparent" />
+          </div>
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="font-bold">Cerrar Caja</h2>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950 flex items-center justify-center">
+                <LogOut size={15} className="text-rose-600" />
+              </div>
+              <h2 className="font-bold">Cerrar Caja</h2>
+            </div>
             <button onClick={() => { setShowCierre(false); resetCierre(); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors"><X size={16} /></button>
           </div>
           <form onSubmit={onCerrarCaja} className="px-6 py-5 space-y-4">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Efectivo en caja (RD$)</label>
+              <label className="text-2xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Efectivo en caja (RD$)</label>
               <input autoFocus type="number" min="0" step="0.01" placeholder="0.00"
                 {...regCierre("efectivo_declarado")}
                 className="w-full border border-input bg-background rounded-xl px-4 py-3 text-2xl font-black text-center tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Nota de cierre</label>
+              <label className="text-2xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Nota de cierre</label>
               <textarea rows={2} placeholder="Observaciones (opcional)"
                 {...regCierre("nota_cierre")}
                 className="w-full border border-input bg-background rounded-lg px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
@@ -515,32 +496,47 @@ export default function POSPage() {
     );
   }
 
+  /* ── POS principal ── */
   return (
-    <div className="flex h-screen bg-muted/30 dark:bg-background overflow-hidden">
+    <div className="flex h-screen bg-muted/20 dark:bg-background overflow-hidden">
 
-      {/* Panel izquierdo — productos */}
+      {/* ── Panel izquierdo — productos ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Header POS */}
+        {/* Header */}
         <header className="bg-background border-b border-border px-5 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-600 to-indigo-700 flex items-center justify-center shadow-sm">
               <ShoppingCart size={15} className="text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-sm leading-tight">Punto de Venta</h1>
-              <p className="text-xs text-muted-foreground">{sesionId ? `Sesión #${sesionId} activa` : "Sin sesión"}</p>
+              <div className="flex items-center gap-2">
+                <h1 className="font-black text-sm leading-tight">Punto de Venta</h1>
+                <span className="flex items-center gap-1 text-2xs text-muted-foreground font-medium">
+                  <Store size={10} /> {colmadoNombre}
+                </span>
+              </div>
+              <p className="text-2xs text-muted-foreground">
+                {sesionId
+                  ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Sesión #{sesionId} activa</span>
+                  : <span className="text-rose-500 font-semibold">Sin sesión de caja</span>
+                }
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className={cn("flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium",
-              online ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-rose-50 text-rose-600")}>
+            <span className={cn(
+              "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold",
+              online
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900"
+                : "bg-rose-50 text-rose-600 border border-rose-200"
+            )}>
               {online ? <Wifi size={11} /> : <WifiOff size={11} />}
               {online ? "En línea" : "Sin conexión"}
             </span>
             {pendingCount > 0 && (
               <span
-                className="flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-pointer hover:bg-amber-100 transition-colors"
+                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900 cursor-pointer hover:bg-amber-100 transition-colors"
                 onClick={sincronizarCola}
                 title="Haz clic para sincronizar ahora"
               >
@@ -548,8 +544,9 @@ export default function POSPage() {
               </span>
             )}
             {sesionId && (
-              <Button variant="ghost" size="sm" onClick={() => { resetCierre(); setResumenCierre(null); setShowCierre(true); }}
-                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950 gap-1.5 text-xs">
+              <Button variant="ghost" size="sm"
+                onClick={() => { resetCierre(); setResumenCierre(null); setShowCierre(true); }}
+                className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 gap-1.5 text-xs h-8">
                 <LogOut size={12} /> Cerrar caja
               </Button>
             )}
@@ -559,14 +556,14 @@ export default function POSPage() {
         {/* Búsqueda */}
         <div className="px-5 pt-4 pb-3 shrink-0 relative">
           <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               ref={barrasRef}
               placeholder="Buscar producto o escanear código de barras... (Enter)"
               value={busqueda}
               onChange={(e) => { setBusqueda(e.target.value); buscarProducto(e.target.value); }}
               onKeyDown={(e) => e.key === "Enter" && busqueda.trim() && escanearBarras(busqueda.trim())}
-              className="w-full pl-9 pr-4 h-10 rounded-xl border border-input bg-background text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+              className="w-full pl-10 pr-4 h-11 rounded-xl border border-input bg-background text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60 font-medium"
             />
           </div>
 
@@ -575,15 +572,15 @@ export default function POSPage() {
               {resultados.map((p) => (
                 <button key={p.id} onClick={() => agregarAlCarrito(p)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted border-b border-border last:border-0 text-left transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950 flex items-center justify-center shrink-0 font-bold text-xs text-brand-600">
-                    {p.nombre.charAt(0)}
+                  <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-50 to-indigo-50 dark:from-brand-950 dark:to-indigo-950 flex items-center justify-center shrink-0 font-black text-sm text-brand-600 border border-brand-100 dark:border-brand-900">
+                    {p.nombre.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{p.nombre}</p>
+                    <p className="font-semibold text-sm truncate">{p.nombre}</p>
                     <p className="text-xs text-muted-foreground">{p.codigo_barras} · Stock: {p.stock_actual} {p.unidad_medida}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={cn("font-bold text-sm tabular-nums", p.en_oferta ? "text-rose-500" : "text-brand-600")}>
+                    <p className={cn("font-black text-sm tabular-nums", p.en_oferta ? "text-rose-500" : "text-brand-600")}>
                       {formatCurrency(p.en_oferta ? p.precio_vigente : p.precio_venta)}
                     </p>
                     {p.en_oferta && <Badge variant="danger" className="text-2xs">OFERTA</Badge>}
@@ -597,18 +594,19 @@ export default function POSPage() {
         {/* Carrito */}
         <div className="flex-1 px-5 overflow-hidden flex flex-col gap-3 pb-4">
           {carrito.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/50 gap-3">
-              <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center">
-                <ShoppingCart size={32} />
+            <div className="flex-1 flex flex-col items-center justify-center gap-3">
+              <div className="w-20 h-20 rounded-2xl bg-muted/60 border border-border flex items-center justify-center">
+                <ShoppingCart size={30} className="text-muted-foreground/40" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground">Carrito vacío</p>
-              <p className="text-xs text-muted-foreground/70">Escanea o busca un producto para comenzar</p>
+              <p className="text-sm font-semibold text-muted-foreground">Carrito vacío</p>
+              <p className="text-xs text-muted-foreground/60">Escanea o busca un producto para comenzar</p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-2">
               {carrito.map((item, idx) => (
                 <div key={item.producto.id}
-                  className="bg-background rounded-xl border border-border shadow-sm px-4 py-3 flex items-center gap-3">
+                  className="bg-background rounded-xl border border-border shadow-sm px-4 py-3 flex items-center gap-3 hover:shadow-md transition-shadow">
+                  <div className="w-1 self-stretch rounded-full shrink-0 bg-linear-to-b from-brand-400 to-indigo-500" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-semibold text-sm truncate">{item.producto.nombre}</p>
@@ -617,7 +615,7 @@ export default function POSPage() {
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-muted-foreground font-mono">{formatCurrency(item.precio_unitario)} / {item.producto.unidad_medida}</p>
                       {item.descuento > 0 && (
-                        <Badge variant="violet" className="text-2xs">−{formatCurrency(item.descuento)} desc.</Badge>
+                        <Badge variant="violet" className="text-2xs">−{formatCurrency(item.descuento)}</Badge>
                       )}
                     </div>
                   </div>
@@ -631,17 +629,17 @@ export default function POSPage() {
                       step={item.producto.tipo === "GRANEL" ? "0.1" : "1"} min={item.producto.tipo === "GRANEL" ? "0.1" : "1"}
                       className="w-14 text-center text-sm font-bold border border-input bg-background rounded-lg py-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring tabular-nums" />
                     <button onClick={() => ajustarCantidad(idx, item.producto.tipo === "GRANEL" ? 0.1 : 1)}
-                      className="w-7 h-7 rounded-lg bg-brand-100 hover:bg-brand-200 dark:bg-brand-900/40 dark:hover:bg-brand-900/60 flex items-center justify-center transition-colors">
+                      className="w-7 h-7 rounded-lg bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/40 dark:hover:bg-brand-900/60 flex items-center justify-center transition-colors border border-brand-200 dark:border-brand-800">
                       <Plus size={12} className="text-brand-600" />
                     </button>
                   </div>
 
                   <div className="text-right shrink-0 w-24">
-                    <p className="font-bold text-sm tabular-nums font-mono">
+                    <p className="font-black text-sm tabular-nums font-mono text-foreground">
                       {formatCurrency(item.precio_unitario * item.cantidad - item.descuento)}
                     </p>
                     <button onClick={() => setCarrito((p) => p.filter((_, i) => i !== idx))}
-                      className="text-muted-foreground/40 hover:text-rose-400 transition-colors mt-1">
+                      className="text-muted-foreground/30 hover:text-rose-400 transition-colors mt-1">
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -652,10 +650,12 @@ export default function POSPage() {
 
           {carrito.length > 0 && (
             <div className="flex items-center justify-between bg-background rounded-xl border border-border px-4 py-2.5 shrink-0">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Tag size={13} /> {carrito.length} producto(s)
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                <Tag size={12} /> {carrito.length} producto{carrito.length > 1 ? "s" : ""}
+                <span className="text-muted-foreground/40">·</span>
+                <span className="font-semibold text-foreground">{formatCurrency(subtotal)}</span>
               </div>
-              <button onClick={limpiarCarrito} className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-600 font-medium transition-colors">
+              <button onClick={limpiarCarrito} className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-600 font-semibold transition-colors">
                 <X size={12} /> Limpiar
               </button>
             </div>
@@ -663,18 +663,19 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* Panel derecho — cobro */}
+      {/* ── Panel derecho — cobro ── */}
       <div className="w-80 bg-background border-l border-border flex flex-col shrink-0">
 
         {/* Total */}
-        <div className="px-5 pt-5 pb-4 border-b border-border">
-          <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Total a cobrar</p>
-          <p className="text-4xl font-black text-foreground leading-none tabular-nums">
-            <span className="text-lg text-muted-foreground font-medium">RD$</span>
-            <span className="text-brand-600">{total.toFixed(2)}</span>
+        <div className="bg-linear-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 px-5 pt-5 pb-4 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_80%_20%,white,transparent_60%)]" />
+          <p className="text-2xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Total a cobrar</p>
+          <p className="text-4xl font-black leading-none tabular-nums text-white">
+            <span className="text-lg text-slate-400 font-medium">RD$</span>
+            <span className="text-brand-400">{total.toFixed(2)}</span>
           </p>
           {(descuentoItems > 0 || descuentoPromo > 0) && (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-slate-500 mt-1.5">
               Subtotal {formatCurrency(subtotal)}
               {descuentoItems > 0 && ` · Desc. −${formatCurrency(descuentoItems)}`}
               {descuentoPromo > 0 && ` · Cupón −${formatCurrency(descuentoPromo)}`}
@@ -684,13 +685,13 @@ export default function POSPage() {
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
-          {/* Cupón de descuento */}
+          {/* Cupón */}
           <div>
-            <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Tag size={11} /> Cupón de descuento
+            <p className="text-2xs font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Tag size={10} /> Cupón de descuento
             </p>
             {promoAplicada ? (
-              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl px-3 py-2 border border-emerald-200 dark:border-emerald-900">
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl px-3 py-2.5 border border-emerald-200 dark:border-emerald-900">
                 <Tag size={13} className="text-emerald-600 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate">{promoAplicada.nombre}</p>
@@ -702,14 +703,11 @@ export default function POSPage() {
               </div>
             ) : (
               <div className="flex gap-2">
-                <Input
-                  placeholder="Código de cupón"
-                  value={codigoCupon}
+                <Input placeholder="Código de cupón" value={codigoCupon}
                   onChange={(e) => setCodigoCupon(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === "Enter" && aplicarCupon()}
-                  className="h-8 text-xs font-mono flex-1"
-                />
-                <Button variant="outline" size="sm" className="h-8 text-xs px-3 shrink-0"
+                  className="h-9 text-xs font-mono flex-1" />
+                <Button variant="outline" size="sm" className="h-9 text-xs px-3 shrink-0"
                   onClick={aplicarCupon} disabled={cargandoCupon || !codigoCupon.trim()}>
                   {cargandoCupon ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" /> : "Aplicar"}
                 </Button>
@@ -721,17 +719,21 @@ export default function POSPage() {
 
           {/* Método de pago */}
           <div>
-            <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Método de pago</p>
+            <p className="text-2xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Método de pago</p>
             <div className="grid grid-cols-2 gap-2">
               {METODOS.map(({ key, label, Icon }) => (
                 <button key={key} onClick={() => setMetodoPago(key)}
                   className={cn(
-                    "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-semibold transition-all",
+                    "flex items-center gap-2.5 p-3 rounded-xl border-2 text-xs font-semibold transition-all",
                     metodoPago === key
-                      ? "border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
-                      : "border-border text-muted-foreground hover:border-muted-foreground/40 bg-muted/30"
+                      ? METODO_ACTIVE[key]
+                      : "border-border text-muted-foreground hover:border-muted-foreground/40 bg-muted/20"
                   )}>
-                  <Icon size={18} />
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                    metodoPago === key ? METODO_ICON_BG[key] : "bg-muted"
+                  )}>
+                    <Icon size={14} />
+                  </div>
                   {label}
                 </button>
               ))}
@@ -740,11 +742,11 @@ export default function POSPage() {
 
           <Separator />
 
-          {/* Banco para transferencia */}
+          {/* Banco */}
           {metodoPago === "TRANSFERENCIA" && (
             <div className="space-y-2">
-              <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                <Building2 size={11} /> Banco destino
+              <p className="text-2xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                <Building2 size={10} /> Banco destino
               </p>
               <CustomSelect value={bancoId} onChange={(v) => setBancoId(v as string)}
                 options={[{ value: "", label: "Sin especificar" }, ...bancos.map((b) => ({ value: String(b.id), label: b.banco, description: b.numero_cuenta ? `*${b.numero_cuenta}` : undefined }))]}
@@ -752,24 +754,24 @@ export default function POSPage() {
             </div>
           )}
 
-          {/* Cliente para fiado */}
+          {/* Fiado */}
           {metodoPago === "FIADO" && (
             <div className="space-y-2">
-              <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest">Cliente</p>
+              <p className="text-2xs font-bold text-muted-foreground uppercase tracking-widest">Cliente</p>
               <select value={clienteId ?? ""} onChange={(e) => setClienteId(Number(e.target.value) || null)}
-                className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                className="w-full h-9 rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Selecciona un cliente…</option>
                 {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
               {clienteSeleccionado && (
-                <div className={cn("rounded-xl p-3 text-xs flex items-start gap-2",
+                <div className={cn("rounded-xl p-3 text-xs flex items-start gap-2 border",
                   Number(clienteSeleccionado.credito_disponible) >= total
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30"
-                    : "bg-rose-50 text-rose-600 dark:bg-rose-950/30"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900"
+                    : "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/30 dark:border-rose-900"
                 )}>
                   <AlertCircle size={13} className="mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-semibold">{clienteSeleccionado.nombre}</p>
+                    <p className="font-bold">{clienteSeleccionado.nombre}</p>
                     <p>Deuda: {formatCurrency(clienteSeleccionado.saldo_deuda)}</p>
                     <p>Disponible: {formatCurrency(clienteSeleccionado.credito_disponible)}</p>
                   </div>
@@ -781,15 +783,15 @@ export default function POSPage() {
           {/* Efectivo */}
           {metodoPago === "EFECTIVO" && (
             <div className="space-y-3">
-              <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest">Monto recibido</p>
+              <p className="text-2xs font-bold text-muted-foreground uppercase tracking-widest">Monto recibido</p>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">RD$</span>
                 <Input type="number" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)}
-                  placeholder="0.00" className="pl-10 text-right font-bold tabular-nums" />
+                  placeholder="0.00" className="pl-10 text-right font-bold tabular-nums h-10" />
               </div>
               {Number(montoPagado) >= total && total > 0 && (
-                <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-100 dark:border-emerald-900">
-                  <p className="text-xs text-emerald-600 font-medium">Cambio a devolver</p>
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-200 dark:border-emerald-900">
+                  <p className="text-xs text-emerald-600 font-semibold mb-0.5">Cambio a devolver</p>
                   <p className="text-2xl font-black text-emerald-600 tabular-nums">{formatCurrency(cambio)}</p>
                 </div>
               )}
@@ -816,11 +818,10 @@ export default function POSPage() {
                 "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all",
                 emitirNcf
                   ? "border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
-                  : "border-border text-muted-foreground hover:border-muted-foreground/40 bg-muted/30"
-              )}
-            >
+                  : "border-border text-muted-foreground hover:border-muted-foreground/30 bg-muted/20"
+              )}>
               <FileText size={15} />
-              <span className="flex-1 text-left">Emitir comprobante fiscal</span>
+              <span className="flex-1 text-left text-xs">Emitir comprobante fiscal</span>
               <span className={cn("w-8 h-4 rounded-full transition-colors relative shrink-0", emitirNcf ? "bg-brand-600" : "bg-muted-foreground/30")}>
                 <span className={cn("absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all", emitirNcf ? "left-4" : "left-0.5")} />
               </span>
@@ -852,14 +853,18 @@ export default function POSPage() {
 
         {/* Cobrar */}
         <div className="px-5 pb-5 pt-3 border-t border-border">
-          <button onClick={procesarVenta}
+          <button
+            onClick={procesarVenta}
             disabled={procesando || !carrito.length || !sesionId}
             className={cn(
-              "w-full py-4 rounded-2xl font-black text-base transition-all",
+              "relative w-full py-4 rounded-2xl font-black text-base transition-all overflow-hidden group",
               procesando || !carrito.length || !sesionId
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white shadow-lg shadow-brand-600/20"
+                : "bg-linear-to-r from-brand-600 to-indigo-700 hover:from-brand-500 hover:to-indigo-600 active:scale-[0.98] text-white shadow-lg shadow-brand-600/25 hover:shadow-xl hover:shadow-brand-600/30"
             )}>
+            {!(procesando || !carrito.length || !sesionId) && (
+              <span className="absolute inset-0 bg-linear-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+            )}
             {procesando
               ? <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Procesando…
