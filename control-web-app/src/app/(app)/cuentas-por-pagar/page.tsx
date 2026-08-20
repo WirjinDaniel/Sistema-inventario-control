@@ -9,12 +9,10 @@ import toast from "react-hot-toast";
 import { TrendingDown, AlertTriangle, Clock, Check, Banknote, Building2, CreditCard } from "lucide-react";
 import type { OrdenCompra, PagoSuplidor } from "@/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -35,12 +33,13 @@ const METODO_CONFIG: Record<PagoSuplidor["metodo"], { label: string; icon: React
   CHEQUE:        { label: "Cheque",        icon: CreditCard },
 };
 
-const ESTADO_CONFIG = {
-  PENDIENTE: { label: "Pendiente", variant: "warning" as const },
-  RECIBIDA:  { label: "Recibida",  variant: "info"    as const },
-  CANCELADA: { label: "Cancelada", variant: "success" as const },
+const ESTADO_CONFIG: Record<string, { label: string; accentBg: string; accentBorder: string; color: string }> = {
+  PENDIENTE: { label: "Pendiente", accentBg: "bg-amber-50",   accentBorder: "border-amber-200",   color: "text-amber-700" },
+  RECIBIDA:  { label: "Recibida",  accentBg: "bg-sky-50",     accentBorder: "border-sky-200",     color: "text-sky-700" },
+  CANCELADA: { label: "Cancelada", accentBg: "bg-emerald-50", accentBorder: "border-emerald-200", color: "text-emerald-700" },
 };
 
+const FILTROS = ["", "PENDIENTE", "RECIBIDA", "CANCELADA"] as const;
 
 export default function CuentasPorPagarPage() {
   const { esAdmin, esSuperadmin } = useAuthStore();
@@ -88,44 +87,57 @@ export default function CuentasPorPagarPage() {
 
   if (!esAdmin() && !esSuperadmin()) return <AccessDenied />;
 
+  const kpis = [
+    { label: "Total por pagar", value: formatCurrency(totalPendiente), sub: `${ordenes.filter((o) => o.estado !== "CANCELADA").length} facturas`, gradient: "from-rose-500 to-red-600", via: "via-rose-400/60", Icon: TrendingDown },
+    { label: "Esta semana",     value: String(venceEstaSemana),        sub: "facturas recientes",        gradient: "from-amber-500 to-orange-600", via: "via-amber-400/60", Icon: Clock },
+    { label: "Canceladas",      value: String(ordenes.filter((o) => o.estado === "CANCELADA").length), sub: "pagadas al proveedor", gradient: "from-emerald-500 to-teal-600", via: "via-emerald-400/60", Icon: Check },
+  ];
+
   return (
     <div className="p-6 space-y-5">
-      <PageHeader
-        title="Cuentas por Pagar"
-        description="Facturas de compra pendientes de pago a proveedores"
-      />
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-10 h-10 rounded-xl bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-sm shrink-0">
+          <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+          <TrendingDown size={20} className="text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-black text-foreground">Cuentas por Pagar</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Facturas de compra pendientes de pago a proveedores</p>
+        </div>
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Total por pagar", value: formatCurrency(totalPendiente), sub: `${ordenes.filter((o) => o.estado !== "CANCELADA").length} facturas`, color: "text-foreground" },
-          { label: "Esta semana", value: String(venceEstaSemana), sub: "facturas recientes", color: "text-amber-600 dark:text-amber-400", warn: true },
-          { label: "Canceladas", value: String(ordenes.filter((o) => o.estado === "CANCELADA").length), sub: "pagadas al proveedor", color: "text-emerald-600 dark:text-emerald-400" },
-        ].map((kpi) => (
-          <div key={kpi.label} className={cn(
-            "bg-card border rounded-xl p-4",
-            kpi.warn ? "border-amber-200 dark:border-amber-800" : "border-border"
-          )}>
-            <p className={cn("text-xs font-medium uppercase tracking-wide flex items-center gap-1", kpi.warn ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground")}>
-              {kpi.warn && <Clock size={11} />} {kpi.label}
-            </p>
-            <p className={cn("text-2xl font-bold mt-1 tabular-nums", kpi.color)}>{kpi.value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="relative bg-card border border-border rounded-2xl p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div className={`absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent ${kpi.via} to-transparent`} />
+            <div className="flex items-start gap-3">
+              <div className={`relative w-9 h-9 rounded-xl bg-linear-to-br ${kpi.gradient} flex items-center justify-center shadow-sm shrink-0`}>
+                <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                <kpi.Icon size={16} className="text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">{kpi.label}</p>
+                <p className="text-xl font-black text-foreground tabular-nums mt-0.5">{kpi.value}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
+              </div>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filtros */}
       <div className="flex gap-2 flex-wrap">
-        {(["", "PENDIENTE", "RECIBIDA", "CANCELADA"] as const).map((e) => (
+        {FILTROS.map((e) => (
           <button
             key={e}
             onClick={() => setFiltroEstado(e)}
             className={cn(
-              "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
+              "px-4 py-1.5 rounded-xl text-sm font-semibold border transition-all duration-150",
               filtroEstado === e
-                ? "bg-brand-600 text-white shadow-sm"
-                : "bg-card border border-border text-muted-foreground hover:text-foreground"
+                ? "bg-linear-to-r from-brand-500 to-indigo-600 text-white border-transparent shadow-sm"
+                : "bg-card border-border text-muted-foreground hover:text-foreground"
             )}
           >
             {e === "" ? "Todas" : ESTADO_CONFIG[e]?.label ?? e}
@@ -134,73 +146,72 @@ export default function CuentasPorPagarPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="relative bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-rose-400/60 to-transparent" />
         {loading ? (
           <div className="p-4 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Skeleton className="h-4 w-32" />
-                <div className="flex-1" />
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-5 w-16 rounded-full" />
-              </div>
+              <div key={i} className="h-12 bg-muted/60 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : ordenes.length === 0 ? (
-          <EmptyState icon={TrendingDown} title="Sin facturas" description={filtroEstado ? `No hay facturas con estado "${ESTADO_CONFIG[filtroEstado as keyof typeof ESTADO_CONFIG]?.label}"` : "Sin cuentas por pagar"} />
+          <EmptyState icon={TrendingDown} title="Sin facturas" description={filtroEstado ? `No hay facturas con estado "${ESTADO_CONFIG[filtroEstado]?.label}"` : "Sin cuentas por pagar"} />
         ) : (
-          <table className="w-full text-sm">
-            <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-              <tr className="border-b border-border bg-muted/50">
-                {["Proveedor", "N° Factura", "Fecha", "Total", "Pagado", "Balance", "Estado", ""].map((h) => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {ordenes.map((o) => {
-                const estado = ESTADO_CONFIG[o.estado as keyof typeof ESTADO_CONFIG] ?? { label: o.estado, variant: "secondary" as const };
-                const balancePct = Number(o.total) > 0 ? (Number(o.total_pagado) / Number(o.total)) * 100 : 0;
-                return (
-                  <tr key={o.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium text-foreground">{o.suplidor_nombre}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.numero_factura || `#${o.id}`}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      <span className="flex items-center gap-1"><Clock size={11} /> {formatDate(o.fecha)}</span>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-foreground tabular-nums">{formatCurrency(Number(o.total))}</td>
-                    <td className="px-4 py-3 tabular-nums">
-                      <p className="text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(Number(o.total_pagado))}</p>
-                      {balancePct > 0 && <Progress value={Math.min(balancePct, 100)} className="h-1 w-16 mt-1" />}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {Number(o.balance_pendiente) > 0 ? (
-                        <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold text-sm">
-                          <AlertTriangle size={11} /> {formatCurrency(Number(o.balance_pendiente))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border">
+                  {["Proveedor", "N° Factura", "Fecha", "Total", "Pagado", "Balance", "Estado", ""].map((h) => (
+                    <th key={h} className="text-left px-5 py-3 text-2xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {ordenes.map((o) => {
+                  const estado = ESTADO_CONFIG[o.estado] ?? { label: o.estado, accentBg: "bg-muted", accentBorder: "border-border", color: "text-muted-foreground" };
+                  const balancePct = Number(o.total) > 0 ? (Number(o.total_pagado) / Number(o.total)) * 100 : 0;
+                  return (
+                    <tr key={o.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-5 py-3 font-semibold text-foreground">{o.suplidor_nombre}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-muted-foreground">{o.numero_factura || `#${o.id}`}</td>
+                      <td className="px-5 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        <span className="flex items-center gap-1"><Clock size={11} /> {formatDate(o.fecha)}</span>
+                      </td>
+                      <td className="px-5 py-3 font-semibold text-foreground tabular-nums">{formatCurrency(Number(o.total))}</td>
+                      <td className="px-5 py-3 tabular-nums">
+                        <p className="text-emerald-600 text-sm">{formatCurrency(Number(o.total_pagado))}</p>
+                        {balancePct > 0 && <Progress value={Math.min(balancePct, 100)} className="h-1 w-16 mt-1" />}
+                      </td>
+                      <td className="px-5 py-3 tabular-nums">
+                        {Number(o.balance_pendiente) > 0 ? (
+                          <span className="flex items-center gap-1 text-rose-600 font-black text-sm">
+                            <AlertTriangle size={11} /> {formatCurrency(Number(o.balance_pendiente))}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 text-sm">{formatCurrency(0)}</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-2xs font-semibold border ${estado.accentBg} ${estado.accentBorder} ${estado.color}`}>
+                          {estado.label}
                         </span>
-                      ) : (
-                        <span className="text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(0)}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={estado.variant}>{estado.label}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      {o.estado !== "CANCELADA" && Number(o.balance_pendiente) > 0 && (
-                        <Button
-                          size="sm" variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => { setPagoModal(o); resetPago({ monto: "", metodo: "EFECTIVO", referencia: "", nota: "" }); }}
-                        >
-                          Pagar
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-5 py-3">
+                        {o.estado !== "CANCELADA" && Number(o.balance_pendiente) > 0 && (
+                          <button
+                            className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition-colors"
+                            onClick={() => { setPagoModal(o); resetPago({ monto: "", metodo: "EFECTIVO", referencia: "", nota: "" }); }}
+                          >
+                            Pagar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -208,13 +219,19 @@ export default function CuentasPorPagarPage() {
       <Dialog open={!!pagoModal} onOpenChange={(o) => !o && setPagoModal(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Registrar pago</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="relative w-7 h-7 rounded-lg bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-sm">
+                <div className="absolute inset-x-0 top-0 h-px rounded-t-lg bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                <Banknote size={13} className="text-white" />
+              </div>
+              Registrar pago
+            </DialogTitle>
           </DialogHeader>
           {pagoModal && (
             <form onSubmit={registrarPago} className="space-y-4 py-2">
-              <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm">
+              <div className="bg-muted/50 border border-border rounded-xl p-3 text-sm">
                 <p className="font-semibold text-foreground">{pagoModal.suplidor_nombre}</p>
-                <p className="text-muted-foreground mt-0.5">Balance: <span className="font-bold tabular-nums text-foreground">{formatCurrency(Number(pagoModal.balance_pendiente))}</span></p>
+                <p className="text-muted-foreground mt-0.5">Balance: <span className="font-black tabular-nums text-foreground">{formatCurrency(Number(pagoModal.balance_pendiente))}</span></p>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium" htmlFor="monto-pago">Monto (RD$)</Label>
@@ -234,10 +251,10 @@ export default function CuentasPorPagarPage() {
                       key={k} type="button"
                       onClick={() => setPagoVal("metodo", k)}
                       className={cn(
-                        "flex flex-col items-center gap-1 py-2.5 rounded-lg border text-xs font-medium transition-all",
+                        "flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-semibold transition-all",
                         metodoPago === k
-                          ? "border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300"
-                          : "border-border text-muted-foreground hover:text-foreground"
+                          ? "border-brand-300 bg-brand-50 text-brand-700"
+                          : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/60"
                       )}
                     >
                       <v.icon size={16} /> {v.label}

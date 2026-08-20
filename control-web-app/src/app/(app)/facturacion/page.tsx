@@ -10,12 +10,10 @@ import toast from "react-hot-toast";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { cn, formatCurrency } from "@/lib/utils";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { AccessDenied } from "@/components/shared/AccessDenied";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import {
@@ -81,9 +79,13 @@ interface DashboardData {
   alertas: { tipo: string; mensaje: string; nivel: "error" | "warning" }[];
 }
 
-const ESTADO_BADGE: Record<string, string> = {
-  BORRADOR: "secondary", EMITIDA: "default", PAGADA: "success",
-  PENDIENTE: "warning", PARCIAL: "warning", ANULADA: "danger",
+const ESTADO_CONFIG: Record<string, { accentBg: string; accentBorder: string; color: string }> = {
+  BORRADOR:  { accentBg: "bg-muted",      accentBorder: "border-border",      color: "text-muted-foreground" },
+  EMITIDA:   { accentBg: "bg-brand-50",   accentBorder: "border-brand-200",   color: "text-brand-700" },
+  PAGADA:    { accentBg: "bg-emerald-50", accentBorder: "border-emerald-200", color: "text-emerald-700" },
+  PENDIENTE: { accentBg: "bg-amber-50",   accentBorder: "border-amber-200",   color: "text-amber-700" },
+  PARCIAL:   { accentBg: "bg-amber-50",   accentBorder: "border-amber-200",   color: "text-amber-700" },
+  ANULADA:   { accentBg: "bg-rose-50",    accentBorder: "border-rose-200",    color: "text-rose-700" },
 };
 
 const fmtFecha = (s: string) =>
@@ -333,20 +335,27 @@ export default function FacturacionPage() {
 
   return (
     <div className="p-6 space-y-5">
-      <PageHeader
-        title="Facturación Fiscal"
-        description="Gestión de Números de Comprobante Fiscal (NCF) — DGII República Dominicana"
-        actions={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={exportarCSV}>
-              <Download size={13} /> Exportar 606
-            </Button>
-            <Button size="sm" className="gap-1.5 h-8" onClick={() => setNuevaModal(true)}>
-              <Plus size={13} /> Nueva factura
-            </Button>
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="relative w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+            <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+            <FileText size={20} className="text-white" />
           </div>
-        }
-      />
+          <div>
+            <h1 className="text-2xl font-black text-foreground">Facturación Fiscal</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Gestión de Números de Comprobante Fiscal (NCF) — DGII República Dominicana</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={exportarCSV}>
+            <Download size={13} /> Exportar 606
+          </Button>
+          <Button size="sm" className="gap-1.5 h-8" onClick={() => setNuevaModal(true)}>
+            <Plus size={13} /> Nueva factura
+          </Button>
+        </div>
+      </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-8">
@@ -387,32 +396,39 @@ export default function FacturacionPage() {
                 {/* KPI cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { label: "Facturas emitidas", value: dashboard.totales.total_facturas ?? 0, icon: FileText, color: "text-brand-500" },
-                    { label: "Total facturado", value: formatCurrency(Number(dashboard.totales.total_ventas ?? 0)), icon: Banknote, color: "text-emerald-500" },
-                    { label: "ITBIS recolectado", value: formatCurrency(Number(dashboard.totales.total_itbis ?? 0)), icon: Shield, color: "text-purple-500" },
-                    { label: "Por cobrar", value: formatCurrency(Number(dashboard.pendientes?.total ?? 0)), icon: CreditCard, color: "text-amber-500" },
-                  ].map(({ label, value, icon: Icon, color }) => (
-                    <div key={label} className="bg-card border border-border rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Icon size={14} className={color} />
-                        <span className="text-xs text-muted-foreground">{label}</span>
+                    { label: "Facturas emitidas", value: String(dashboard.totales.total_facturas ?? 0), gradient: "from-brand-500 to-indigo-600",   via: "via-brand-400/60",   icon: FileText },
+                    { label: "Total facturado",   value: formatCurrency(Number(dashboard.totales.total_ventas ?? 0)), gradient: "from-emerald-500 to-teal-600", via: "via-emerald-400/60", icon: Banknote },
+                    { label: "ITBIS recolectado", value: formatCurrency(Number(dashboard.totales.total_itbis ?? 0)), gradient: "from-violet-500 to-purple-600", via: "via-violet-400/60", icon: Shield },
+                    { label: "Por cobrar",        value: formatCurrency(Number(dashboard.pendientes?.total ?? 0)), gradient: "from-amber-500 to-orange-600", via: "via-amber-400/60", icon: CreditCard },
+                  ].map(({ label, value, gradient, via, icon: Icon }) => (
+                    <div key={label} className="relative bg-card border border-border rounded-2xl p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+                      <div className={`absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent ${via} to-transparent`} />
+                      <div className="flex items-start gap-3">
+                        <div className={`relative w-8 h-8 rounded-xl bg-linear-to-br ${gradient} flex items-center justify-center shadow-sm shrink-0`}>
+                          <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                          <Icon size={14} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className="text-xl font-black tabular-nums text-foreground">{value}</p>
+                        </div>
                       </div>
-                      <p className="text-xl font-bold tabular-nums">{value}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Por tipo */}
                 {dashboard.por_tipo.length > 0 && (
-                  <div className="bg-card border border-border rounded-xl p-4">
-                    <h3 className="text-sm font-semibold mb-3">Facturación por tipo NCF</h3>
+                  <div className="relative bg-card border border-border rounded-2xl p-4 overflow-hidden">
+                    <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/50 to-transparent" />
+                    <h3 className="text-sm font-bold mb-3 text-foreground">Facturación por tipo NCF</h3>
                     <div className="space-y-2">
                       {dashboard.por_tipo.map((pt) => {
                         const tipoInfo = TIPOS_NCF.find((t) => t.codigo === pt.tipo);
                         return (
                           <div key={pt.tipo} className="flex items-center justify-between text-sm py-2 border-b border-border last:border-0">
                             <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-2xs font-mono">B{pt.tipo}</Badge>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-muted border border-border text-foreground">B{pt.tipo}</span>
                               <span className="text-xs text-muted-foreground">{tipoInfo?.nombre ?? `Tipo ${pt.tipo}`}</span>
                             </div>
                             <div className="flex items-center gap-4 text-xs">
@@ -459,20 +475,21 @@ export default function FacturacionPage() {
             </Button>
           </div>
 
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="relative bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
             {loading ? (
               <div className="p-4 space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}
+                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-12 bg-muted/60 rounded-xl animate-pulse" />)}
               </div>
             ) : facturas.length === 0 ? (
               <EmptyState icon={FileText} title="Sin facturas" description="No hay facturas NCF en este período." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                    <tr className="border-b border-border bg-muted/50">
+                  <thead>
+                    <tr className="bg-muted/40 border-b border-border">
                       {["", "NCF", "Tipo", "Fecha", "Cliente / RNC", "Total", "Saldo", "Estado", ...((esAdmin() || esSuperadmin()) ? [""] : [])].map((h, i) => (
-                        <th key={i} className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                        <th key={i} className="text-left px-3 py-2.5 text-2xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -488,7 +505,7 @@ export default function FacturacionPage() {
                           </td>
                           <td className="px-3 py-3 font-mono text-xs font-medium whitespace-nowrap">{f.ncf}</td>
                           <td className="px-3 py-3">
-                            <Badge variant="secondary" className="text-2xs">B{f.tipo}</Badge>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-muted border border-border text-foreground">B{f.tipo}</span>
                           </td>
                           <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmtFecha(f.fecha)}</td>
                           <td className="px-3 py-3">
@@ -504,9 +521,11 @@ export default function FacturacionPage() {
                             )}
                           </td>
                           <td className="px-3 py-3">
-                            <Badge variant={ESTADO_BADGE[f.estado] as any} className="text-2xs">
-                              {f.estado_nombre ?? f.estado}
-                            </Badge>
+                            {(() => { const ec = ESTADO_CONFIG[f.estado] ?? ESTADO_CONFIG.BORRADOR; return (
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-2xs font-semibold border ${ec.accentBg} ${ec.accentBorder} ${ec.color}`}>
+                                {f.estado_nombre ?? f.estado}
+                              </span>
+                            ); })()}
                           </td>
                           {(esAdmin() || esSuperadmin()) && (
                             <td className="px-3 py-3">
@@ -541,13 +560,13 @@ export default function FacturacionPage() {
                                   <p className="font-semibold mb-2 text-muted-foreground">Ítems</p>
                                   {f.detalles.length > 0 ? (
                                     <table className="w-full text-xs">
-                                      <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                                        <tr className="text-muted-foreground">
-                                          <th className="text-left pb-1">Descripción</th>
-                                          <th className="text-right pb-1">Cant</th>
-                                          <th className="text-right pb-1">Precio</th>
-                                          <th className="text-right pb-1">ITBIS</th>
-                                          <th className="text-right pb-1">Total</th>
+                                      <thead>
+                                        <tr className="bg-muted/40 border-b border-border text-muted-foreground">
+                                          <th className="text-left py-1.5 px-2 text-2xs font-bold uppercase tracking-widest">Descripción</th>
+                                          <th className="text-right py-1.5 px-2 text-2xs font-bold uppercase tracking-widest">Cant</th>
+                                          <th className="text-right py-1.5 px-2 text-2xs font-bold uppercase tracking-widest">Precio</th>
+                                          <th className="text-right py-1.5 px-2 text-2xs font-bold uppercase tracking-widest">ITBIS</th>
+                                          <th className="text-right py-1.5 px-2 text-2xs font-bold uppercase tracking-widest">Total</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border">
@@ -671,17 +690,21 @@ export default function FacturacionPage() {
                 const pct = total > 0 ? Math.min((usado / total) * 100, 100) : 0;
                 const critica = s.proxima_a_agotar || pct >= 90;
                 return (
-                  <div key={s.id} className={cn("bg-card border rounded-xl p-4",
-                    s.agotada || s.vencida ? "border-rose-200 dark:border-rose-900" : critica ? "border-amber-200 dark:border-amber-900" : "border-border")}>
+                  <div key={s.id} className={cn("relative bg-card border rounded-2xl p-4 overflow-hidden shadow-sm",
+                    s.agotada || s.vencida ? "border-rose-200" : critica ? "border-amber-200" : "border-border")}>
+                    <div className={cn("absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent to-transparent", s.agotada || s.vencida ? "via-rose-400/60" : critica ? "via-amber-400/60" : "via-brand-400/40")} />
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-mono text-sm font-bold">B{s.tipo}XXXXXXXX</span>
-                          <Badge variant={s.agotada || s.vencida ? "danger" : s.activo ? "success" : "secondary"} className="text-2xs">
-                            {s.agotada ? "Agotada" : s.vencida ? "Vencida" : s.activo ? "Activa" : "Inactiva"}
-                          </Badge>
+                          {(() => {
+                            const st = s.agotada || s.vencida ? { bg: "bg-rose-50", border: "border-rose-200", color: "text-rose-700" }
+                              : s.activo ? { bg: "bg-emerald-50", border: "border-emerald-200", color: "text-emerald-700" }
+                              : { bg: "bg-muted", border: "border-border", color: "text-muted-foreground" };
+                            return <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-2xs font-semibold border ${st.bg} ${st.border} ${st.color}`}>{s.agotada ? "Agotada" : s.vencida ? "Vencida" : s.activo ? "Activa" : "Inactiva"}</span>;
+                          })()}
                           {s.proxima_a_agotar && !s.agotada && !s.vencida && (
-                            <Badge variant="warning" className="text-2xs">⚠ Solo {s.disponibles} disponibles</Badge>
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-2xs font-semibold border bg-amber-50 border-amber-200 text-amber-700">⚠ Solo {s.disponibles} disponibles</span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -738,15 +761,17 @@ export default function FacturacionPage() {
         <TabsContent value="tipos" className="mt-4">
           <div className="grid gap-3 md:grid-cols-2">
             {TIPOS_NCF.map((t) => (
-              <div key={t.codigo} className="bg-card border border-border rounded-xl p-4 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-950/30 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-brand-600">B{t.codigo}</span>
+              <div key={t.codigo} className="relative bg-card border border-border rounded-2xl p-4 flex items-start gap-3 overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+                <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/40 to-transparent" />
+                <div className="relative w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+                  <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                  <span className="text-xs font-black text-white">B{t.codigo}</span>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">{t.nombre}</p>
+                  <p className="text-sm font-bold text-foreground">{t.nombre}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{t.descripcion}</p>
                   {TIPOS_REQUIEREN_RELACIONADO.has(t.codigo) && (
-                    <Badge variant="secondary" className="text-2xs mt-1.5">Requiere NCF relacionado</Badge>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-semibold border bg-amber-50 border-amber-200 text-amber-700 mt-1.5">Requiere NCF relacionado</span>
                   )}
                 </div>
               </div>
@@ -1044,14 +1069,14 @@ export default function FacturacionPage() {
 
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                    <tr className="text-muted-foreground">
-                      <th className="text-left pb-2 pr-2 min-w-40">Descripción</th>
-                      <th className="text-right pb-2 pr-2 w-16">Cant</th>
-                      <th className="text-right pb-2 pr-2 w-24">Precio</th>
-                      <th className="text-right pb-2 pr-2 w-20">Desc</th>
-                      <th className="text-right pb-2 pr-2 w-20">ITBIS %</th>
-                      <th className="text-right pb-2 w-24">Total</th>
+                  <thead>
+                    <tr className="bg-muted/40 border-b border-border text-muted-foreground">
+                      <th className="text-left py-2 pr-2 pl-1 min-w-40 text-2xs font-bold uppercase tracking-widest">Descripción</th>
+                      <th className="text-right py-2 pr-2 w-16 text-2xs font-bold uppercase tracking-widest">Cant</th>
+                      <th className="text-right py-2 pr-2 w-24 text-2xs font-bold uppercase tracking-widest">Precio</th>
+                      <th className="text-right py-2 pr-2 w-20 text-2xs font-bold uppercase tracking-widest">Desc</th>
+                      <th className="text-right py-2 pr-2 w-20 text-2xs font-bold uppercase tracking-widest">ITBIS %</th>
+                      <th className="text-right py-2 w-24 text-2xs font-bold uppercase tracking-widest">Total</th>
                       <th className="w-6"></th>
                     </tr>
                   </thead>
