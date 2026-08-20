@@ -97,8 +97,9 @@ class DevolucionCreateSerializer(serializers.Serializer):
 
             monto_total += item_data['cantidad'] * venta_item.precio_unitario
 
-            # Reintegrar stock
-            prod = venta_item.producto
+            # Reintegrar stock con bloqueo de fila para evitar race condition
+            from apps.inventario.models import Producto as ProductoModel
+            prod = ProductoModel.objects.select_for_update().get(pk=venta_item.producto_id)
             prod.stock_actual += item_data['cantidad']
             prod.save(update_fields=['stock_actual'])
             MovimientoInventario.objects.create(

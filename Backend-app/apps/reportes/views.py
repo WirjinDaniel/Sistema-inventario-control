@@ -67,7 +67,10 @@ class TendenciaDiariaView(APIView):
 
     def get(self, request):
         from apps.ventas.models import Venta
-        dias = int(request.query_params.get('dias', 14))
+        try:
+            dias = int(request.query_params.get('dias', 14))
+        except (ValueError, TypeError):
+            return Response({'detail': 'El parámetro "dias" debe ser un número entero.'}, status=400)
         desde = timezone.now().date() - timedelta(days=dias - 1)
         tendencia = (
             Venta.objects.filter(
@@ -123,7 +126,10 @@ class AnalisisABCView(APIView):
                 'pct_total': round(t / total_global * 100, 2) if total_global else 0,
                 'clase': 'A' if pct_acum <= 80 else 'B' if pct_acum <= 95 else 'C',
             })
-        limit = min(int(request.query_params.get('limit', 200)), 500)
+        try:
+            limit = min(int(request.query_params.get('limit', 200)), 500)
+        except (ValueError, TypeError):
+            limit = 200
         return Response({'desde': desde, 'hasta': hasta, 'total_global': total_global, 'productos': resultado[:limit]})
 
 

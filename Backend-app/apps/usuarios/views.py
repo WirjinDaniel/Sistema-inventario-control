@@ -307,7 +307,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             )
 
         password = request.data.get('password', '')
-        if len(password) < 6:
+        if len(password) < 8:
             return Response(
                 {'error': 'La contraseña debe tener al menos 6 caracteres.'},
                 status=status.HTTP_400_BAD_REQUEST,

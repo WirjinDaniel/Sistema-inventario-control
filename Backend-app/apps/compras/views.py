@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,6 +7,8 @@ from django.utils import timezone
 from .models import Suplidor, OrdenCompra, OrdenCompraItem, PagoSuplidor
 from .serializers import SuplidorSerializer, OrdenCompraSerializer, OrdenCompraItemSerializer, PagoSuplidorSerializer
 from apps.inventario.models import Producto, MovimientoInventario
+from apps.usuarios.audit import log as audit_log
+from apps.usuarios.models import AuditoriaLog
 from apps.dashboard.permissions import IsAdminOfColmado, IsSuperadmin
 
 
@@ -50,12 +53,18 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         orden = serializer.save(usuario=request.user)
 
-        total = 0
+        total = Decimal('0')
         for item in items_data:
-            prod = Producto.objects.get(pk=item['producto'], colmado=request.user.colmado)
-            cantidad = item['cantidad']
-            precio = item['precio_costo']
-            subtotal = float(cantidad) * float(precio)
+            try:
+                prod = Producto.objects.get(pk=item['producto'], colmado=request.user.colmado)
+            except Producto.DoesNotExist:
+                return Response(
+                    {'detail': f'Producto con ID {item["producto"]} no encontrado.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            cantidad = Decimal(str(item['cantidad']))
+            precio = Decimal(str(item['precio_costo']))
+            subtotal = cantidad * precio
             total += subtotal
             OrdenCompraItem.objects.create(
                 orden=orden,
@@ -68,6 +77,9 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
         orden.total = total
         orden.save(update_fields=['total'])
 
+        audit_log(request, AuditoriaLog.ACCION_COMPRA, 'compras',
+                  f'Orden de compra #{orden.pk} — {orden.suplidor.nombre} — RD${total}',
+                  objeto_id=orden.pk)
         return Response(OrdenCompraSerializer(orden).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='recibir')
@@ -96,6 +108,9 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
                 nota=f'Compra #{orden.pk} — {orden.suplidor.nombre}',
             )
 
+        audit_log(request, AuditoriaLog.ACCION_COMPRA, 'compras',
+                  f'Recepción orden #{orden.pk} — {orden.suplidor.nombre}',
+                  objeto_id=orden.pk)
         return Response(OrdenCompraSerializer(orden).data)
 
 
