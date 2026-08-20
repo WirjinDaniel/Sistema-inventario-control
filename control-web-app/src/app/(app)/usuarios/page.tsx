@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Plus, X, Check, Search, Shield, User2,
-  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock, AlertTriangle,
+  ShoppingCart, Package, UserCog, Eye, EyeOff, KeyRound, Hash, Lock, AlertTriangle, Users,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -43,12 +43,11 @@ const usuarioSchema = z.object({
 
 type FormUsuario = z.infer<typeof usuarioSchema>;
 
-const ROL_CONFIG: Record<Rol, { label: string; color: string; Icon: React.ElementType }> = {
-  ADMIN:      { label: "Administrador", color: "bg-violet-50 text-violet-700 border border-violet-100", Icon: Shield },
-  CAJERO:     { label: "Cajero",        color: "bg-sky-50 text-sky-700 border border-sky-100",         Icon: ShoppingCart },
-  INVENTARIO: { label: "Inventario",    color: "bg-emerald-50 text-emerald-700 border border-emerald-100", Icon: Package },
+const ROL_CONFIG: Record<Rol, { label: string; accentBg: string; accentBorder: string; color: string; gradient: string; Icon: React.ElementType }> = {
+  ADMIN:      { label: "Administrador", accentBg: "bg-violet-50",  accentBorder: "border-violet-200", color: "text-violet-700",  gradient: "from-violet-500 to-purple-600",  Icon: Shield },
+  CAJERO:     { label: "Cajero",        accentBg: "bg-sky-50",     accentBorder: "border-sky-200",    color: "text-sky-700",     gradient: "from-sky-500 to-blue-600",       Icon: ShoppingCart },
+  INVENTARIO: { label: "Inventario",    accentBg: "bg-emerald-50", accentBorder: "border-emerald-200",color: "text-emerald-700", gradient: "from-emerald-500 to-teal-600",   Icon: Package },
 };
-
 
 export default function UsuariosPage() {
   const { esAdmin } = useAuthStore();
@@ -73,7 +72,6 @@ export default function UsuariosPage() {
   const formDirty = !!(modal && isDirty);
   useUnsavedChanges(formDirty);
 
-  // Permisos granulares
   const [permsTarget, setPermsTarget] = useState<UsuarioAPI | null>(null);
   const [perms, setPerms] = useState<Record<string, boolean>>({});
   const [guardandoPerms, setGuardandoPerms] = useState(false);
@@ -105,7 +103,6 @@ export default function UsuariosPage() {
       const { data } = await api.get(`/usuarios/${u.id}/permisos/`);
       setPerms(data);
     } catch {
-      // Si no existe el endpoint, inicializar con permisos según rol
       const defaults: Record<string, boolean> = {};
       MODULOS_PERMS.forEach((m) => { defaults[m.key] = u.rol === "ADMIN"; });
       setPerms(defaults);
@@ -123,7 +120,6 @@ export default function UsuariosPage() {
     setGuardandoPerms(false);
   }
 
-  // Reset contraseña
   const [resetTarget, setResetTarget] = useState<UsuarioAPI | null>(null);
   const [nuevaPass, setNuevaPass] = useState("");
   const [showNuevaPass, setShowNuevaPass] = useState(false);
@@ -221,9 +217,11 @@ export default function UsuariosPage() {
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Shield size={48} className="mx-auto mb-3 text-slate-200" />
-          <h2 className="text-lg font-bold text-slate-400">Acceso restringido</h2>
-          <p className="text-slate-300 text-sm mt-1">Solo los administradores pueden gestionar usuarios.</p>
+          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+            <Shield size={26} className="text-muted-foreground/30" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">Acceso restringido</h2>
+          <p className="text-muted-foreground text-sm mt-1">Solo los administradores pueden gestionar usuarios.</p>
         </div>
       </div>
     );
@@ -232,29 +230,37 @@ export default function UsuariosPage() {
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800">Usuarios</h1>
-          <p className="text-slate-400 text-sm mt-0.5">{activos} activos de {usuarios.length} registrados</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="relative w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+            <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+            <Users size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-foreground">Usuarios</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{activos} activos de {usuarios.length} registrados</p>
+          </div>
         </div>
         <button onClick={abrirCrear}
-          className="flex items-center gap-2 bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-200 active:scale-95">
+          className="flex items-center gap-2 bg-linear-to-r from-brand-500 to-indigo-600 hover:from-brand-400 hover:to-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all duration-200 active:scale-95">
           <Plus size={16} /> Nuevo usuario
         </button>
       </div>
 
       {/* Stats roles */}
       <div className="grid grid-cols-3 gap-3">
-        {(Object.entries(ROL_CONFIG) as [Rol, typeof ROL_CONFIG[Rol]][]).map(([rol, { label, color, Icon }]) => {
+        {(Object.entries(ROL_CONFIG) as [Rol, typeof ROL_CONFIG[Rol]][]).map(([rol, cfg]) => {
           const count = usuarios.filter((u) => u.rol === rol).length;
           return (
-            <div key={rol} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all duration-200">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-                <Icon size={18} />
+            <div key={rol} className="relative bg-card rounded-2xl p-4 shadow-sm border border-border flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/40 to-transparent" />
+              <div className={`relative w-10 h-10 rounded-xl bg-linear-to-br ${cfg.gradient} flex items-center justify-center shadow-sm shrink-0`}>
+                <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                <cfg.Icon size={18} className="text-white" />
               </div>
               <div>
-                <p className="text-xl font-black text-slate-800">{count}</p>
-                <p className="text-xs text-slate-400">{label}</p>
+                <p className="text-xl font-black text-foreground">{count}</p>
+                <p className="text-xs text-muted-foreground">{cfg.label}</p>
               </div>
             </div>
           );
@@ -263,77 +269,81 @@ export default function UsuariosPage() {
 
       {/* Búsqueda */}
       <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input placeholder="Buscar por nombre o usuario..." value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-150" />
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-400 transition-all duration-150" />
       </div>
 
       {/* Lista */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="relative bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
         <table className="w-full text-sm">
-          <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-            <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-400 tracking-wide">
-              <th className="px-5 py-3.5 text-left">Usuario</th>
-              <th className="px-4 py-3.5 text-left">Nombre</th>
-              <th className="px-4 py-3.5 text-center">Rol</th>
-              <th className="px-4 py-3.5 text-center">Estado</th>
-              <th className="px-4 py-3.5 text-center">Acciones</th>
+          <thead>
+            <tr className="bg-muted/40 border-b border-border">
+              {['Usuario', 'Nombre', 'Rol', 'Estado', 'Acciones'].map((h) => (
+                <th key={h} className="px-5 py-3 text-left text-2xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
+              ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border">
             {loading ? (
               [...Array(4)].map((_, i) => (
-                <tr key={i} className="border-b border-slate-50">
+                <tr key={i}>
                   {[...Array(5)].map((__, j) => (
-                    <td key={j} className="px-5 py-4"><Skeleton className="h-4 w-full" /></td>
+                    <td key={j} className="px-5 py-4"><div className="h-4 bg-muted/60 rounded animate-pulse" /></td>
                   ))}
                 </tr>
               ))
             ) : usuarios.length === 0 ? (
-              <tr><td colSpan={5} className="text-center py-14 text-slate-300">
-                <User2 size={40} className="mx-auto mb-3 opacity-20" />
-                <p className="font-medium text-slate-400">No hay usuarios</p>
+              <tr><td colSpan={5} className="text-center py-16">
+                <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                  <User2 size={26} className="text-muted-foreground/30" />
+                </div>
+                <p className="font-bold text-foreground">No hay usuarios</p>
+                <p className="text-sm text-muted-foreground mt-1">Crea el primer usuario con el botón de arriba</p>
               </td></tr>
             ) : usuarios.map((u) => {
-              const { label, color, Icon } = ROL_CONFIG[u.rol] ?? ROL_CONFIG.CAJERO;
+              const cfg = ROL_CONFIG[u.rol] ?? ROL_CONFIG.CAJERO;
               return (
-                <tr key={u.id} className="border-b border-slate-50 hover:bg-indigo-50/20 transition-colors duration-100">
+                <tr key={u.id} className="hover:bg-muted/30 transition-colors duration-100">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${u.is_active ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-400"}`}>
+                      <div className={`relative w-8 h-8 rounded-full bg-linear-to-br ${u.is_active ? "from-brand-500 to-indigo-600" : "from-slate-400 to-slate-500"} flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm`}>
                         {u.nombre[0]?.toUpperCase()}
                       </div>
-                      <span className="font-mono text-slate-600 text-xs bg-slate-100 px-2 py-0.5 rounded-lg">{u.username}</span>
+                      <span className="font-mono text-xs bg-muted border border-border px-2 py-0.5 rounded-lg text-foreground">{u.username}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 font-medium text-slate-700">{u.nombre}</td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${color}`}>
-                      <Icon size={11} /> {label}
+                  <td className="px-4 py-3.5 font-semibold text-foreground">{u.nombre}</td>
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold border ${cfg.accentBg} ${cfg.accentBorder} ${cfg.color}`}>
+                      <cfg.Icon size={10} /> {cfg.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 text-center">
+                  <td className="px-4 py-3.5">
                     <button onClick={() => u.is_active ? setConfirmToggle(u) : toggleActivo(u)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
-                        u.is_active ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold border transition-all duration-150 ${
+                        u.is_active
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                          : "bg-muted border-border text-muted-foreground hover:bg-muted/80"
                       }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-emerald-400" : "bg-slate-300"}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
                       {u.is_active ? "Activo" : "Inactivo"}
                     </button>
                   </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <div className="flex items-center justify-center gap-1">
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1">
                       <button onClick={() => abrirEditar(u)} title="Editar usuario"
-                        className="p-1.5 rounded-lg hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition-all duration-150 active:scale-90">
+                        className="p-1.5 rounded-lg hover:bg-brand-50 text-muted-foreground hover:text-brand-600 transition-all duration-150 active:scale-90">
                         <UserCog size={15} />
                       </button>
                       <button onClick={() => { setResetTarget(u); setNuevaPass(""); setShowNuevaPass(false); }} title="Restablecer contraseña"
-                        className="p-1.5 rounded-lg hover:bg-amber-100 text-slate-400 hover:text-amber-600 transition-all duration-150 active:scale-90">
+                        className="p-1.5 rounded-lg hover:bg-amber-50 text-muted-foreground hover:text-amber-600 transition-all duration-150 active:scale-90">
                         <KeyRound size={15} />
                       </button>
                       <button onClick={() => abrirPermisos(u)} title="Permisos granulares"
-                        className="p-1.5 rounded-lg hover:bg-violet-100 text-slate-400 hover:text-violet-600 transition-all duration-150 active:scale-90">
+                        className="p-1.5 rounded-lg hover:bg-violet-50 text-muted-foreground hover:text-violet-600 transition-all duration-150 active:scale-90">
                         <Lock size={15} />
                       </button>
                     </div>
@@ -348,25 +358,27 @@ export default function UsuariosPage() {
       {/* Modal reset contraseña */}
       {resetTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-sm border border-border overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-amber-400/60 to-transparent" />
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                  <KeyRound size={15} className="text-amber-600" />
+                <div className="relative w-8 h-8 rounded-lg bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
+                  <div className="absolute inset-x-0 top-0 h-px rounded-t-lg bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                  <KeyRound size={14} className="text-white" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-800 text-sm">Restablecer contraseña</h2>
-                  <p className="text-xs text-slate-400">{resetTarget.nombre}</p>
+                  <h2 className="font-bold text-foreground text-sm">Restablecer contraseña</h2>
+                  <p className="text-xs text-muted-foreground">{resetTarget.nombre}</p>
                 </div>
               </div>
               <button onClick={() => setResetTarget(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                 <X size={18} />
               </button>
             </div>
             <div className="px-6 py-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Nueva contraseña</label>
+                <label className="text-xs font-bold text-foreground uppercase tracking-wide">Nueva contraseña</label>
                 <div className="relative">
                   <Input
                     type={showNuevaPass ? "text" : "password"}
@@ -377,15 +389,15 @@ export default function UsuariosPage() {
                     autoFocus
                   />
                   <button type="button" onClick={() => setShowNuevaPass(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                     {showNuevaPass ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+            <div className="flex gap-3 px-6 py-4 border-t border-border">
               <button onClick={() => setResetTarget(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold transition-colors duration-150">
+                className="flex-1 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-sm font-semibold transition-colors duration-150">
                 Cancelar
               </button>
               <button onClick={resetearPassword} disabled={reseteando}
@@ -405,36 +417,38 @@ export default function UsuariosPage() {
       {/* Modal permisos granulares */}
       {permsTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
+          <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-border">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-violet-400/60 to-transparent rounded-t-2xl" />
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-                  <Lock size={15} className="text-violet-600" />
+                <div className="relative w-8 h-8 rounded-lg bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
+                  <div className="absolute inset-x-0 top-0 h-px rounded-t-lg bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                  <Lock size={14} className="text-white" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-800 text-sm">Permisos de {permsTarget.nombre}</h2>
-                  <p className="text-xs text-slate-400">{ROL_CONFIG[permsTarget.rol]?.label}</p>
+                  <h2 className="font-bold text-foreground text-sm">Permisos de {permsTarget.nombre}</h2>
+                  <p className="text-xs text-muted-foreground">{ROL_CONFIG[permsTarget.rol]?.label}</p>
                 </div>
               </div>
               <button onClick={() => setPermsTarget(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                 <X size={18} />
               </button>
             </div>
             <div className="px-6 py-4 space-y-5">
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Los permisos granulares se suman a los permisos del rol. El administrador siempre tiene acceso total.
               </p>
               {Array.from(new Set(MODULOS_PERMS.map((m) => m.grupo))).map((grupo) => (
                 <div key={grupo}>
-                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">{grupo}</p>
-                  <div className="space-y-2">
+                  <p className="text-xs font-bold text-foreground uppercase tracking-widest mb-2">{grupo}</p>
+                  <div className="space-y-1">
                     {MODULOS_PERMS.filter((m) => m.grupo === grupo).map((m) => (
-                      <label key={m.key} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-slate-50 cursor-pointer group">
-                        <span className="text-sm text-slate-600 group-hover:text-slate-800 transition-colors">{m.label}</span>
+                      <label key={m.key} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-muted/60 cursor-pointer group">
+                        <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{m.label}</span>
                         <div
                           onClick={() => setPerms((p) => ({ ...p, [m.key]: !p[m.key] }))}
-                          className={`relative rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${perms[m.key] ? "bg-indigo-500" : "bg-slate-200"}`}
+                          className={`relative rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${perms[m.key] ? "bg-brand-500" : "bg-muted-foreground/30"}`}
                           style={{ width: 40, height: 22 }}>
                           <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${perms[m.key] ? "translate-x-4.5" : "translate-x-0"}`}
                             style={{ width: 18, height: 18 }} />
@@ -445,13 +459,13 @@ export default function UsuariosPage() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+            <div className="flex gap-3 px-6 py-4 border-t border-border sticky bottom-0 bg-card">
               <button onClick={() => setPermsTarget(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold transition-colors">
+                className="flex-1 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-sm font-semibold transition-colors">
                 Cancelar
               </button>
               <button onClick={guardarPermisos} disabled={guardandoPerms}
-                className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
+                className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500 text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
                 {guardandoPerms ? (
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -491,16 +505,18 @@ export default function UsuariosPage() {
       {/* Modal crear/editar */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md border border-border overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                  <UserCog size={15} className="text-indigo-600" />
+                <div className="relative w-8 h-8 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <div className="absolute inset-x-0 top-0 h-px rounded-t-lg bg-linear-to-r from-transparent via-white/40 to-transparent" />
+                  <UserCog size={14} className="text-white" />
                 </div>
-                <h2 className="font-bold text-slate-800">{modal === "crear" ? "Nuevo Usuario" : "Editar Usuario"}</h2>
+                <h2 className="font-bold text-foreground">{modal === "crear" ? "Nuevo Usuario" : "Editar Usuario"}</h2>
               </div>
               <button onClick={() => setModal(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                 <X size={18} />
               </button>
             </div>
@@ -556,7 +572,7 @@ export default function UsuariosPage() {
                       {...register("password")}
                     />
                     <button type="button" onClick={() => setShowPass((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
@@ -571,10 +587,10 @@ export default function UsuariosPage() {
                       <div className="space-y-1">
                         <div className="flex gap-0.5 h-1">
                           {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className={`flex-1 rounded-full transition-colors ${i <= s.score ? s.color : "bg-slate-200"}`} />
+                            <div key={i} className={`flex-1 rounded-full transition-colors ${i <= s.score ? s.color : "bg-muted"}`} />
                           ))}
                         </div>
-                        <p className="text-xs text-slate-400">Seguridad: <span className="font-medium text-slate-600">{s.label}</span></p>
+                        <p className="text-xs text-muted-foreground">Seguridad: <span className="font-medium text-foreground">{s.label}</span></p>
                       </div>
                     );
                   })()}
@@ -597,24 +613,24 @@ export default function UsuariosPage() {
                       <label className="flex items-center gap-3 cursor-pointer">
                         <div
                           onClick={() => field.onChange(!field.value)}
-                          className={`relative rounded-full transition-colors duration-200 cursor-pointer ${field.value ? "bg-indigo-500" : "bg-slate-200"}`}
+                          className={`relative rounded-full transition-colors duration-200 cursor-pointer ${field.value ? "bg-brand-500" : "bg-muted-foreground/30"}`}
                           style={{ width: 40, height: 22 }}>
                           <span className={`absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200 ${field.value ? "translate-x-4.5" : "translate-x-0"}`}
                             style={{ width: 18, height: 18 }} />
                         </div>
-                        <span className="text-sm text-slate-600 font-medium">Usuario activo</span>
+                        <span className="text-sm text-muted-foreground font-medium">Usuario activo</span>
                       </label>
                     )}
                   />
                 )}
               </div>
-              <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+              <div className="flex gap-3 px-6 py-4 border-t border-border">
                 <button type="button" onClick={() => setModal(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold transition-colors duration-150 active:scale-95">
+                  className="flex-1 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-sm font-semibold transition-colors duration-150 active:scale-95">
                   Cancelar
                 </button>
                 <button type="submit" disabled={guardando}
-                  className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
+                  className="flex-1 py-2.5 rounded-xl bg-linear-to-r from-brand-500 to-indigo-600 hover:from-brand-400 hover:to-indigo-500 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-95">
                   {guardando ? (
                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
