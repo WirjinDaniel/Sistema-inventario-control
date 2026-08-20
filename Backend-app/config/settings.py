@@ -176,6 +176,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '20/minute',
         'user': '200/minute',
+        'login': '5/minute',
     },
 }
 
@@ -191,15 +192,16 @@ SIMPLE_JWT = {
 }
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
+_CORS_DEFAULTS = (
+    'http://localhost:3000,http://localhost:3001,'
+    'http://localhost:3002,http://localhost:3003,'
+    'http://127.0.0.1:3000,http://127.0.0.1:3001,'
+    'http://127.0.0.1:3002,http://127.0.0.1:3003'
+)
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://localhost:3003',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:3002',
-    'http://127.0.0.1:3003',
+    o.strip()
+    for o in config('CORS_ALLOWED_ORIGINS', default=_CORS_DEFAULTS).split(',')
+    if o.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
 

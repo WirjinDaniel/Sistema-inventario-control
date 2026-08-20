@@ -3,6 +3,7 @@ from datetime import timedelta
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Usuario, Colmado, AuditoriaLog, LoginAttempt
@@ -13,6 +14,11 @@ from apps.dashboard.permissions import IsSuperadmin, IsAdminOrSuperuser, IsAdmin
 # Configuración de bloqueo por intentos fallidos
 MAX_INTENTOS_FALLIDOS = 5
 BLOQUEO_MINUTOS = 15
+
+
+class LoginRateThrottle(AnonRateThrottle):
+    """Throttle estricto exclusivo para el endpoint de login: 5 intentos/minuto por IP."""
+    scope = 'login'
 
 # Conjunto cerrado de permisos granulares permitidos en permisos_extra.
 PERMISOS_VALIDOS = frozenset({
@@ -72,6 +78,7 @@ PERMISOS_VALIDOS = frozenset({
 
 class CustomTokenView(TokenObtainPairView):
     serializer_class = CustomTokenSerializer
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request, *args, **kwargs):
         username = request.data.get('username', '')
