@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
@@ -178,8 +178,8 @@ export default function AuditoriaPage() {
                   const AIcon = accion.icon;
                   const hasExtra = log.extra && Object.keys(log.extra).length > 0;
                   return (
-                    <>
-                      <tr key={log.id}
+                    <React.Fragment key={log.id}>
+                      <tr
                         className={`hover:bg-muted/30 transition-colors ${hasExtra ? 'cursor-pointer' : ''}`}
                         onClick={() => hasExtra && setExpandedId(expandedId === log.id ? null : log.id)}>
                         <td className="px-5 py-3.5 text-muted-foreground whitespace-nowrap text-xs">{fmtFecha(log.fecha)}</td>
@@ -219,7 +219,7 @@ export default function AuditoriaPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
