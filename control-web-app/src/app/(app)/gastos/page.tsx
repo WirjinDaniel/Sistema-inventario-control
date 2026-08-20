@@ -337,7 +337,7 @@ export default function GastosPage() {
                 <option value="">Seleccionar categoría...</option>
                 {categorias.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nombre} ({TIPOS_LABEL[c.tipo]?.label ?? c.tipo})
+                    {c.nombre} ({TIPOS_CONFIG[c.tipo]?.label ?? c.tipo})
                   </option>
                 ))}
               </select>
