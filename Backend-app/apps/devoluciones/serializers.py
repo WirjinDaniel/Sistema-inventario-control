@@ -1,8 +1,5 @@
 from rest_framework import serializers
-from django.db import transaction
-from django.db.models import Sum
 from .models import Devolucion, DevolucionItem
-from apps.inventario.models import MovimientoInventario
 
 
 class DevolucionItemSerializer(serializers.ModelSerializer):
@@ -50,73 +47,26 @@ class DevolucionCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError('Debe incluir al menos un ítem a devolver.')
         return items
 
-    @transaction.atomic
     def create(self, validated_data):
-        from apps.ventas.models import Venta, VentaDetalle
+        from apps.ventas.models import Venta
+        from .services import crear_devolucion
         request = self.context['request']
 
-        venta = Venta.objects.get(pk=validated_data['venta'], colmado=request.user.colmado)
-        if venta.estado == Venta.ESTADO_ANULADA:
-            raise serializers.ValidationError('No se puede devolver una venta anulada.')
+        try:
+            venta = Venta.objects.get(pk=validated_data['venta'], colmado=request.user.colmado)
+        except Venta.DoesNotExist:
+            raise serializers.ValidationError('Venta no encontrada.')
 
         items_data = validated_data.pop('items')
-        # El monto se calcula después de validar contra precios originales (ver loop abajo)
+        validated_data.pop('venta')
 
-        dev = Devolucion.objects.create(
-            colmado=request.user.colmado,
-            venta=venta,
-            cliente=venta.cliente,
-            cajero=request.user,
-            monto_devuelto=0,  # se recalcula al final con precios originales
-            **{k: v for k, v in validated_data.items() if k != 'venta'},
-        )
-
-        monto_total = 0
-        for item_data in items_data:
-            venta_item = VentaDetalle.objects.get(pk=item_data['venta_item'], venta=venta)
-
-            # Validar que no se devuelva más de lo vendido (acumulando devoluciones previas)
-            ya_devuelto = DevolucionItem.objects.filter(
-                venta_item=venta_item,
-                devolucion__estado__in=(Devolucion.ESTADO_PENDIENTE, Devolucion.ESTADO_PROCESADA),
-            ).aggregate(total=Sum('cantidad'))['total'] or 0
-            disponible = venta_item.cantidad - ya_devuelto
-            if item_data['cantidad'] > disponible:
-                raise serializers.ValidationError(
-                    f'Solo puedes devolver {disponible} unidad(es) de "{venta_item.producto.nombre}" '
-                    f'(ya devueltas: {ya_devuelto}).'
-                )
-
-            # Forzar precio original de la venta para evitar descuadres contables
-            DevolucionItem.objects.create(
-                devolucion=dev,
-                venta_item=venta_item,
-                cantidad=item_data['cantidad'],
-                precio_unitario=venta_item.precio_unitario,
-            )
-
-            monto_total += item_data['cantidad'] * venta_item.precio_unitario
-
-            # Reintegrar stock con bloqueo de fila para evitar race condition
-            from apps.inventario.models import Producto as ProductoModel
-            prod = ProductoModel.objects.select_for_update().get(pk=venta_item.producto_id)
-            prod.stock_actual += item_data['cantidad']
-            prod.save(update_fields=['stock_actual'])
-            MovimientoInventario.objects.create(
+        try:
+            return crear_devolucion(
                 colmado=request.user.colmado,
-                producto=prod,
-                tipo=MovimientoInventario.TIPO_ENTRADA,
-                cantidad=item_data['cantidad'],
-                usuario=request.user,
-                nota=f'Devolución #{dev.pk} — {validated_data["motivo"]}',
+                cajero=request.user,
+                venta=venta,
+                items_data=items_data,
+                **validated_data,
             )
-
-        dev.monto_devuelto = monto_total
-        dev.save(update_fields=['monto_devuelto'])
-
-        # Si fue fiado y la devolución es en efectivo, reducir deuda
-        if venta.metodo_pago == 'FIADO' and venta.cliente and dev.metodo_devolucion == Devolucion.METODO_EFECTIVO:
-            venta.cliente.saldo_deuda = max(venta.cliente.saldo_deuda - monto_total, 0)
-            venta.cliente.save(update_fields=['saldo_deuda'])
-
-        return dev
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))

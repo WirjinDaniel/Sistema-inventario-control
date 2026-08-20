@@ -61,24 +61,24 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        from django.contrib.auth.hashers import make_password
         password = validated_data.pop('password')
-        if validated_data.get('pin_caja'):
-            validated_data['pin_caja'] = make_password(validated_data['pin_caja'])
+        pin_raw = validated_data.pop('pin_caja', '')
         user = Usuario(**validated_data)
         user.set_password(password)
+        if pin_raw:
+            user.set_pin_caja(pin_raw)
         user.save()
         return user
 
     def update(self, instance, validated_data):
-        from django.contrib.auth.hashers import make_password
         password = validated_data.pop('password', None)
-        if 'pin_caja' in validated_data and validated_data['pin_caja']:
-            validated_data['pin_caja'] = make_password(validated_data['pin_caja'])
+        pin_raw = validated_data.pop('pin_caja', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if password:
             instance.set_password(password)
+        if pin_raw:
+            instance.set_pin_caja(pin_raw)
         instance.save()
         return instance
 

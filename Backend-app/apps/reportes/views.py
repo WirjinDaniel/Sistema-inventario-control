@@ -172,13 +172,17 @@ class StockBajoReporteView(APIView):
     def get(self, request):
         from apps.inventario.models import Producto
         from django.db.models import F
+        try:
+            limit = min(int(request.query_params.get('limit', 200)), 500)
+        except (ValueError, TypeError):
+            limit = 200
         productos = list(
             Producto.objects.filter(colmado=request.user.colmado, activo=True)
             .filter(stock_actual__lte=F('stock_minimo'))
             .values('id', 'nombre', 'sku', 'stock_actual', 'stock_minimo', 'categoria__nombre', 'precio_costo')
-            .order_by('stock_actual')
+            .order_by('stock_actual')[:limit]
         )
-        return Response({'cantidad': len(productos), 'productos': productos[:200]})
+        return Response({'cantidad': len(productos), 'productos': productos})
 
 
 class CuentasPorCobrarReporteView(APIView):
@@ -187,10 +191,15 @@ class CuentasPorCobrarReporteView(APIView):
 
     def get(self, request):
         from apps.clientes.models import Cliente
+        from django.db.models import Sum
+        try:
+            limit = min(int(request.query_params.get('limit', 200)), 500)
+        except (ValueError, TypeError):
+            limit = 200
+        qs = Cliente.objects.filter(colmado=request.user.colmado, saldo_deuda__gt=0)
+        total = qs.aggregate(t=Sum('saldo_deuda'))['t'] or 0
         clientes = list(
-            Cliente.objects.filter(colmado=request.user.colmado, saldo_deuda__gt=0)
-            .values('id', 'nombre', 'telefono', 'saldo_deuda', 'limite_credito')
-            .order_by('-saldo_deuda')
+            qs.values('id', 'nombre', 'telefono', 'saldo_deuda', 'limite_credito')
+            .order_by('-saldo_deuda')[:limit]
         )
-        total = sum(float(c['saldo_deuda']) for c in clientes)
-        return Response({'total_pendiente': total, 'clientes_count': len(clientes), 'clientes': clientes})
+        return Response({'total_pendiente': total, 'clientes_count': qs.count(), 'clientes': clientes})

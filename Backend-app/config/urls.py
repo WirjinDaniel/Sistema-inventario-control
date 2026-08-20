@@ -1,14 +1,25 @@
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenRefreshView
 from apps.usuarios.views import CustomTokenView, LogoutView
+
+
+class RefreshRateThrottle(AnonRateThrottle):
+    """Throttle para el endpoint de refresh: 20 intentos/minuto por IP."""
+    scope = 'refresh'
+
+
+class ThrottledTokenRefreshView(TokenRefreshView):
+    throttle_classes = [RefreshRateThrottle]
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Auth
     path('api/auth/login/', CustomTokenView.as_view(), name='token_obtain_pair'),
-    path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/refresh/', ThrottledTokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/logout/', LogoutView.as_view({'post': 'logout'}), name='token_logout'),
 
     # Apps

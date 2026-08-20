@@ -166,9 +166,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'config.pagination.ColmadoPagination',
     'PAGE_SIZE': 50,
-    'MAX_PAGE_SIZE': 200,
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
@@ -177,6 +176,7 @@ REST_FRAMEWORK = {
         'anon': '20/minute',
         'user': '200/minute',
         'login': '5/minute',
+        'refresh': '20/minute',
     },
 }
 

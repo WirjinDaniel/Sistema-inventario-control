@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.hashers import make_password, check_password
 from django.db import models
 from django.utils import timezone
 
@@ -49,7 +50,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=150, unique=True)
     nombre = models.CharField(max_length=200)
     rol = models.CharField(max_length=20, choices=ROLES, default=ROL_CAJERO)
-    pin_caja = models.CharField(max_length=6, blank=True)
+    pin_caja = models.CharField(max_length=128, blank=True)
     permisos_extra = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -70,6 +71,16 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.nombre} ({self.rol})'
+
+    def set_pin_caja(self, pin_raw):
+        """Guarda el PIN hasheado usando el mismo sistema de Django para passwords."""
+        self.pin_caja = make_password(str(pin_raw))
+
+    def verificar_pin_caja(self, pin_raw):
+        """Verifica el PIN en texto plano contra el hash almacenado."""
+        if not self.pin_caja:
+            return False
+        return check_password(str(pin_raw), self.pin_caja)
 
     @property
     def es_admin(self):

@@ -59,64 +59,19 @@ class VentaCreateSerializer(serializers.ModelSerializer):
                 )
         return data
 
-    @transaction.atomic
     def create(self, validated_data):
+        from .services import crear_venta
         detalles_data = validated_data.pop('detalles')
         request = self.context['request']
-
-        subtotal = sum(
-            d['precio_unitario'] * d['cantidad'] - d.get('descuento', 0)
-            for d in detalles_data
-        )
-        total = subtotal - validated_data.get('descuento', 0)
-        cambio = max(validated_data.get('monto_pagado', 0) - total, 0)
-
-        venta = Venta.objects.create(
-            colmado=request.user.colmado,
-            cajero=request.user,
-            subtotal=subtotal,
-            total=total,
-            cambio=cambio,
-            **validated_data,
-        )
-
-        for detalle_data in detalles_data:
-            producto = detalle_data['producto']
-            cantidad = detalle_data['cantidad']
-
-            prod = Producto.objects.select_for_update().get(pk=producto.pk, colmado=request.user.colmado)
-            if prod.stock_actual < cantidad:
-                raise serializers.ValidationError(
-                    f'Stock insuficiente para {prod.nombre}. Disponible: {prod.stock_actual}'
-                )
-            prod.stock_actual -= cantidad
-            prod.save(update_fields=['stock_actual'])
-
-            subtotal_item = detalle_data['precio_unitario'] * cantidad - detalle_data.get('descuento', 0)
-            VentaDetalle.objects.create(venta=venta, subtotal=subtotal_item, **detalle_data)
-
-            MovimientoInventario.objects.create(
+        try:
+            return crear_venta(
                 colmado=request.user.colmado,
-                producto=prod,
-                tipo=MovimientoInventario.TIPO_SALIDA,
-                cantidad=cantidad,
-                costo_unitario=prod.precio_costo,
-                usuario=request.user,
-                nota=f'Venta #{venta.pk}',
+                cajero=request.user,
+                detalles_data=detalles_data,
+                **validated_data,
             )
-
-        if venta.metodo_pago == Venta.PAGO_FIADO and venta.cliente:
-            cliente = Cliente.objects.select_for_update().get(pk=venta.cliente_id)
-            if not cliente.puede_fiar(total):
-                raise serializers.ValidationError(
-                    f'El cliente {cliente.nombre} no tiene crédito suficiente. '
-                    f'Disponible: RD${cliente.credito_disponible:.2f}'
-                )
-            cliente.saldo_deuda += total
-            cliente.save(update_fields=['saldo_deuda'])
-            venta.cliente = cliente
-
-        return venta
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
 
 
 class VentaSerializer(serializers.ModelSerializer):

@@ -2,11 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db import transaction
 from django.db.models import Sum
 from .models import BancoCuenta, SesionCaja, Venta, VentaDetalle
 from .serializers import BancoCuentaSerializer, SesionCajaSerializer, VentaSerializer, VentaCreateSerializer
-from apps.inventario.models import MovimientoInventario
 from apps.usuarios.audit import log as audit_log
 from apps.usuarios.models import AuditoriaLog
 from apps.dashboard.permissions import IsAdminOfColmado, IsCajeroOrAdmin
@@ -101,37 +99,14 @@ class VentaViewSet(viewsets.ModelViewSet):
         return Response(VentaSerializer(venta, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='anular')
-    @transaction.atomic
     def anular(self, request, pk=None):
+        from .services import anular_venta
         venta = self.get_object()
-        if venta.estado == Venta.ESTADO_ANULADA:
-            return Response({'detail': 'La venta ya está anulada.'}, status=status.HTTP_400_BAD_REQUEST)
-
         motivo = request.data.get('motivo', '')
-        if not motivo:
-            return Response({'detail': 'Se requiere un motivo para anular.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        for detalle in venta.detalles.all():
-            prod = detalle.producto
-            prod.stock_actual += detalle.cantidad
-            prod.save(update_fields=['stock_actual'])
-            MovimientoInventario.objects.create(
-                colmado=request.user.colmado,
-                producto=prod,
-                tipo=MovimientoInventario.TIPO_AJUSTE,
-                cantidad=detalle.cantidad,
-                usuario=request.user,
-                nota=f'Anulación venta #{venta.pk}: {motivo}',
-            )
-
-        if venta.metodo_pago == Venta.PAGO_FIADO and venta.cliente:
-            venta.cliente.saldo_deuda -= venta.total
-            venta.cliente.saldo_deuda = max(venta.cliente.saldo_deuda, 0)
-            venta.cliente.save(update_fields=['saldo_deuda'])
-
-        venta.estado = Venta.ESTADO_ANULADA
-        venta.motivo_anulacion = motivo
-        venta.save(update_fields=['estado', 'motivo_anulacion'])
+        try:
+            venta = anular_venta(venta, motivo, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         audit_log(request, AuditoriaLog.ACCION_ANULAR, 'ventas',
                   f'Anulación venta #{venta.pk} — Motivo: {motivo}', objeto_id=venta.pk)
