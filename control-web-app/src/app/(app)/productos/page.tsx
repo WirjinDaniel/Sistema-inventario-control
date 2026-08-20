@@ -196,16 +196,23 @@ export default function ProductosPage() {
 
   if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
 
+  const productosActivos = productos.filter((p) => p.activo).length;
+
   return (
     <div className="p-6 space-y-5">
       <PageHeader
         title="Productos"
         description={
-          <span>
-            {productos.length} productos
+          <span className="flex items-center gap-3 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-muted px-2.5 py-1 rounded-full">
+              <Package size={11} /> {productos.length} total
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-full">
+              <Check size={11} /> {productosActivos} activos
+            </span>
             {stockBajoCount > 0 && (
-              <span className="ml-2 inline-flex items-center gap-1 text-rose-500 font-semibold">
-                <AlertTriangle size={12} /> {stockBajoCount} con stock bajo
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-full">
+                <AlertTriangle size={11} /> {stockBajoCount} stock bajo
               </span>
             )}
           </span>
@@ -272,15 +279,15 @@ export default function ProductosPage() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                <tr className="bg-muted/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
-                  <th className="px-5 py-3 text-left font-semibold">Producto</th>
-                  <th className="px-4 py-3 text-left font-semibold">Categoría</th>
-                  <th className="px-4 py-3 text-right font-semibold">Costo</th>
-                  <th className="px-4 py-3 text-right font-semibold">Precio</th>
-                  <th className="px-4 py-3 text-right font-semibold">Margen</th>
-                  <th className="px-4 py-3 text-center font-semibold">Stock</th>
-                  <th className="px-4 py-3 text-center font-semibold">Estado</th>
+              <thead>
+                <tr className="bg-muted/40 border-b border-border text-muted-foreground text-2xs uppercase tracking-widest font-bold">
+                  <th className="px-5 py-3 text-left">Producto</th>
+                  <th className="px-4 py-3 text-left">Categoría</th>
+                  <th className="px-4 py-3 text-right">Costo</th>
+                  <th className="px-4 py-3 text-right">Precio</th>
+                  <th className="px-4 py-3 text-right">Margen</th>
+                  <th className="px-4 py-3 text-center">Stock</th>
+                  <th className="px-4 py-3 text-center">Estado</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -308,7 +315,7 @@ export default function ProductosPage() {
                   <tr key={p.id} className="border-b border-border hover:bg-muted/30 transition-colors group">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950 flex items-center justify-center shrink-0 text-brand-600 font-bold text-xs">
+                        <div className="w-8 h-8 rounded-lg bg-linear-to-br from-brand-50 to-indigo-100 dark:from-brand-950 dark:to-indigo-950 flex items-center justify-center shrink-0 text-brand-600 dark:text-brand-400 font-black text-xs border border-brand-100 dark:border-brand-900">
                           {p.nombre.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -407,8 +414,8 @@ export default function ProductosPage() {
               ? Math.min((Number(p.stock_actual) / Number(p.stock_minimo)) * 100, 100)
               : 100;
             return (
-              <Card key={p.id} className="group hover:shadow-md transition-all overflow-hidden cursor-pointer" onClick={() => abrirEditar(p)}>
-                <div className="h-28 bg-linear-to-br from-brand-50 to-brand-100 dark:from-brand-950 dark:to-brand-900 flex items-center justify-center relative">
+              <Card key={p.id} className="group hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden cursor-pointer" onClick={() => abrirEditar(p)}>
+                <div className="h-28 bg-linear-to-br from-brand-50 via-indigo-50 to-violet-50 dark:from-brand-950 dark:via-indigo-950 dark:to-violet-950 flex items-center justify-center relative border-b border-border">
                   <span className="text-4xl font-black text-brand-200 dark:text-brand-800 select-none">
                     {p.nombre.charAt(0).toUpperCase()}
                   </span>
@@ -451,11 +458,12 @@ export default function ProductosPage() {
 
       {/* Sheet drawer crear/editar */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
+        <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0 overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent z-10" />
           <SheetHeader className="px-6 pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-950 flex items-center justify-center">
-                <Package size={17} className="text-brand-600" />
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                <Package size={16} className="text-white" />
               </div>
               <SheetTitle>{modal === "crear" ? "Nuevo Producto" : "Editar Producto"}</SheetTitle>
               <div className="ml-auto flex items-center gap-2">
