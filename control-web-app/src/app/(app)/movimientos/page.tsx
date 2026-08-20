@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   ArrowLeftRight, Search, TrendingUp, TrendingDown, RotateCcw,
-  ShoppingCart, X,
+  ShoppingCart, X, SlidersHorizontal, CalendarDays, User2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -36,38 +36,50 @@ const TIPO_CONFIG = {
   ENTRADA: {
     label: "Entrada",
     icon: TrendingUp,
-    iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
-    iconColor: "text-emerald-600 dark:text-emerald-400",
+    gradient: "from-emerald-500 to-teal-600",
+    accentBg: "bg-emerald-50 dark:bg-emerald-950/30",
+    accentBorder: "border-emerald-200 dark:border-emerald-800/50",
+    accentLine: "via-emerald-400/70",
     badge: "success" as const,
     sign: "+",
     valueColor: "text-emerald-600 dark:text-emerald-400",
+    rowBar: "bg-emerald-400",
   },
   SALIDA: {
     label: "Salida",
     icon: TrendingDown,
-    iconBg: "bg-rose-100 dark:bg-rose-900/40",
-    iconColor: "text-rose-600 dark:text-rose-400",
+    gradient: "from-rose-500 to-red-600",
+    accentBg: "bg-rose-50 dark:bg-rose-950/30",
+    accentBorder: "border-rose-200 dark:border-rose-800/50",
+    accentLine: "via-rose-400/70",
     badge: "danger" as const,
-    sign: "-",
+    sign: "−",
     valueColor: "text-rose-600 dark:text-rose-400",
+    rowBar: "bg-rose-400",
   },
   AJUSTE: {
     label: "Ajuste",
     icon: RotateCcw,
-    iconBg: "bg-amber-100 dark:bg-amber-900/40",
-    iconColor: "text-amber-600 dark:text-amber-400",
+    gradient: "from-amber-500 to-orange-500",
+    accentBg: "bg-amber-50 dark:bg-amber-950/30",
+    accentBorder: "border-amber-200 dark:border-amber-800/50",
+    accentLine: "via-amber-400/70",
     badge: "warning" as const,
     sign: "±",
     valueColor: "text-amber-600 dark:text-amber-400",
+    rowBar: "bg-amber-400",
   },
   VENTA: {
     label: "Venta",
     icon: ShoppingCart,
-    iconBg: "bg-blue-100 dark:bg-blue-900/40",
-    iconColor: "text-blue-600 dark:text-blue-400",
+    gradient: "from-sky-500 to-blue-600",
+    accentBg: "bg-sky-50 dark:bg-sky-950/30",
+    accentBorder: "border-sky-200 dark:border-sky-800/50",
+    accentLine: "via-sky-400/70",
     badge: "info" as const,
-    sign: "-",
-    valueColor: "text-blue-600 dark:text-blue-400",
+    sign: "−",
+    valueColor: "text-sky-600 dark:text-sky-400",
+    rowBar: "bg-sky-400",
   },
 } as const;
 
@@ -118,11 +130,23 @@ export default function MovimientosPage() {
 
   if (!esAdmin() && !esSuperadmin() && usuario?.rol !== "INVENTARIO") return <AccessDenied />;
 
+  const totalMovs = movs.length;
+  const tiposUnicos = new Set(movs.map(m => m.tipo)).size;
+
   return (
     <div className="p-6 space-y-5">
       <PageHeader
         title="Movimientos de inventario"
-        description={`${movs.length} registros en el período seleccionado`}
+        description={
+          <span className="flex items-center gap-2 flex-wrap mt-0.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200 dark:border-brand-800/50 px-2 py-0.5 rounded-full">
+              <ArrowLeftRight size={10} /> {totalMovs} registros
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 px-2 py-0.5 rounded-full">
+              <SlidersHorizontal size={10} /> {tiposUnicos} tipo{tiposUnicos !== 1 ? "s" : ""}
+            </span>
+          </span>
+        }
       />
 
       {/* KPIs */}
@@ -130,24 +154,44 @@ export default function MovimientosPage() {
         {(Object.entries(TIPO_CONFIG) as [keyof typeof TIPO_CONFIG, (typeof TIPO_CONFIG)[keyof typeof TIPO_CONFIG]][]).map(([tipo, cfg]) => {
           const Icon = cfg.icon;
           const val = kpis[tipo];
+          const isActive = filtroTipo === tipo;
           return (
             <div
               key={tipo}
-              onClick={() => setFiltroTipo(filtroTipo === tipo ? "" : tipo)}
+              onClick={() => setFiltroTipo(isActive ? "" : tipo)}
               className={cn(
-                "bg-card border rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all hover:shadow-sm",
-                filtroTipo === tipo ? "border-brand-300 dark:border-brand-700 ring-1 ring-brand-200 dark:ring-brand-800" : "border-border"
+                "relative bg-card border rounded-xl p-4 cursor-pointer transition-all duration-200 overflow-hidden group",
+                "hover:shadow-md hover:-translate-y-0.5",
+                isActive
+                  ? cn("shadow-sm", cfg.accentBg, cfg.accentBorder)
+                  : "border-border hover:border-border"
               )}
             >
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", cfg.iconBg)}>
-                <Icon size={18} className={cfg.iconColor} />
+              {/* Top accent line */}
+              <div className={cn(
+                "absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent to-transparent transition-opacity duration-200",
+                cfg.accentLine,
+                isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+              )} />
+
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-linear-to-br shadow-sm",
+                  cfg.gradient
+                )}>
+                  <Icon size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className={cn("text-2xl font-black tabular-nums leading-tight", cfg.valueColor)}>
+                    {Number(val).toFixed(0)}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-medium">{cfg.label}s</p>
+                </div>
               </div>
-              <div>
-                <p className={cn("text-xl font-bold tabular-nums", cfg.valueColor)}>
-                  {Number(val).toFixed(0)}
-                </p>
-                <p className="text-xs text-muted-foreground">{cfg.label}s</p>
-              </div>
+
+              {isActive && (
+                <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-current opacity-60" style={{ color: cfg.valueColor.includes("emerald") ? "#10b981" : cfg.valueColor.includes("rose") ? "#f43f5e" : cfg.valueColor.includes("amber") ? "#f59e0b" : "#0ea5e9" }} />
+              )}
             </div>
           );
         })}
@@ -156,7 +200,7 @@ export default function MovimientosPage() {
       {/* Filtros */}
       <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar producto, referencia..."
             value={busqueda}
@@ -167,7 +211,7 @@ export default function MovimientosPage() {
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          className="h-8 px-2 text-xs rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-8 px-2.5 text-xs rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="">Todos los tipos</option>
           {Object.entries(TIPO_CONFIG).map(([k, v]) => (
@@ -175,12 +219,13 @@ export default function MovimientosPage() {
           ))}
         </select>
         <div className="flex items-center gap-1.5">
+          <CalendarDays size={13} className="text-muted-foreground" />
           <DatePicker value={fechaDesde} onChange={setFechaDesde} placeholder="Desde" />
           <span className="text-xs text-muted-foreground">—</span>
           <DatePicker value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" />
         </div>
         {hayFiltros && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={limpiarFiltros}>
+          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground" onClick={limpiarFiltros}>
             <X size={12} /> Limpiar
           </Button>
         )}
@@ -189,17 +234,17 @@ export default function MovimientosPage() {
       {/* Tabla */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-4 space-y-2">
+          <div className="p-4 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4">
-                <Skeleton className="w-8 h-8 rounded-lg" />
-                <div className="flex-1 space-y-1">
+                <Skeleton className="w-9 h-9 rounded-xl" />
+                <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-3 w-40" />
-                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-2.5 w-24" />
                 </div>
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-5 w-12" />
-                <Skeleton className="h-5 w-12" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-14" />
+                <Skeleton className="h-4 w-24" />
               </div>
             ))}
           </div>
@@ -212,10 +257,10 @@ export default function MovimientosPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                <tr className="border-b border-border bg-muted/50">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
                   {["Fecha", "Producto", "Tipo", "Cantidad", "Antes → Después", "Referencia", "Usuario"].map((h) => (
-                    <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{h}</th>
+                    <th key={h} className="text-left px-4 py-2.5 text-2xs font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -224,31 +269,55 @@ export default function MovimientosPage() {
                   const cfg = TIPO_CONFIG[m.tipo] ?? TIPO_CONFIG.AJUSTE;
                   const Icon = cfg.icon;
                   return (
-                    <tr key={m.id} className="hover:bg-muted/30 transition-colors group">
+                    <tr key={m.id} className="hover:bg-muted/30 transition-colors group relative">
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {fmtFecha(m.fecha)}
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDays size={11} className="opacity-50" />
+                          {fmtFecha(m.fecha)}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-foreground">{m.producto_nombre}</p>
-                        {m.nota && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{m.nota}</p>}
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn(
+                            "w-1.5 h-8 rounded-full shrink-0 opacity-60",
+                            cfg.rowBar
+                          )} />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground leading-tight">{m.producto_nombre}</p>
+                            {m.nota && <p className="text-xs text-muted-foreground truncate max-w-48 mt-0.5">{m.nota}</p>}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={cfg.badge} className="gap-1 text-xs">
+                        <span className={cn(
+                          "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border",
+                          cfg.accentBg, cfg.accentBorder, cfg.valueColor
+                        )}>
                           <Icon size={10} /> {cfg.label}
-                        </Badge>
+                        </span>
                       </td>
-                      <td className={cn("px-4 py-3 font-bold tabular-nums text-sm", cfg.valueColor)}>
+                      <td className={cn("px-4 py-3 font-black tabular-nums text-base", cfg.valueColor)}>
                         {cfg.sign}{Number(m.cantidad).toFixed(2)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
-                        <span>{Number(m.stock_antes).toFixed(2)}</span>
-                        <span className="mx-1.5 text-border">→</span>
-                        <span className="font-semibold text-foreground">{Number(m.stock_despues).toFixed(2)}</span>
+                      <td className="px-4 py-3 text-xs tabular-nums">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">{Number(m.stock_antes).toFixed(2)}</span>
+                          <span className="text-muted-foreground/40">→</span>
+                          <span className="font-bold text-foreground">{Number(m.stock_despues).toFixed(2)}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
-                        {m.referencia || "—"}
+                        {m.referencia
+                          ? <span className="bg-muted px-1.5 py-0.5 rounded text-foreground/70">{m.referencia}</span>
+                          : <span className="text-muted-foreground/40">—</span>
+                        }
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{m.usuario_nombre}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <User2 size={11} className="opacity-50" />
+                          {m.usuario_nombre}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
