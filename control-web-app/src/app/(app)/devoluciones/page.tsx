@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   RotateCcw, Search, Plus, Check, X, ChevronDown, ChevronUp,
   Package, AlertTriangle, RefreshCw, DollarSign,
+  CalendarDays, User2, Receipt,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
@@ -165,13 +166,17 @@ export default function DevolucionesPage() {
     resetDev({ motivo: MOTIVOS[0], metodo_devolucion: "EFECTIVO", nota: "" });
   }
 
-  const estadoBadge = (e: string): "success" | "warning" | "danger" =>
-    e === "APROBADA" ? "success" : e === "PENDIENTE" ? "warning" : "danger";
+  const estadoConfig = (e: string) =>
+    e === "APROBADA"
+      ? { accentBg: "bg-emerald-50 dark:bg-emerald-950/30", accentBorder: "border-emerald-200 dark:border-emerald-800/50", color: "text-emerald-700 dark:text-emerald-300" }
+      : e === "PENDIENTE"
+      ? { accentBg: "bg-amber-50 dark:bg-amber-950/30", accentBorder: "border-amber-200 dark:border-amber-800/50", color: "text-amber-700 dark:text-amber-300" }
+      : { accentBg: "bg-rose-50 dark:bg-rose-950/30", accentBorder: "border-rose-200 dark:border-rose-800/50", color: "text-rose-700 dark:text-rose-300" };
 
   const STATS = [
-    { label: "Total devoluciones", value: devoluciones.length, icon: RotateCcw, color: "text-brand-500" },
-    { label: "Monto devuelto", value: formatCurrency(devoluciones.reduce((a, d) => a + Number(d.monto_devuelto), 0)), icon: DollarSign, color: "text-emerald-500" },
-    { label: "Pendientes", value: devoluciones.filter((d) => d.estado === "PENDIENTE").length, icon: AlertTriangle, color: "text-amber-500" },
+    { label: "Total devoluciones", value: String(devoluciones.length), icon: RotateCcw, gradient: "from-brand-500 to-indigo-600", accentBg: "bg-brand-50 dark:bg-brand-950/30", accentBorder: "border-brand-200 dark:border-brand-800/50", valueColor: "text-brand-700 dark:text-brand-300" },
+    { label: "Monto devuelto", value: formatCurrency(devoluciones.reduce((a, d) => a + Number(d.monto_devuelto), 0)), icon: DollarSign, gradient: "from-emerald-500 to-teal-600", accentBg: "bg-emerald-50 dark:bg-emerald-950/30", accentBorder: "border-emerald-200 dark:border-emerald-800/50", valueColor: "text-emerald-700 dark:text-emerald-300" },
+    { label: "Pendientes", value: String(devoluciones.filter((d) => d.estado === "PENDIENTE").length), icon: AlertTriangle, gradient: "from-amber-500 to-orange-500", accentBg: "bg-amber-50 dark:bg-amber-950/30", accentBorder: "border-amber-200 dark:border-amber-800/50", valueColor: "text-amber-700 dark:text-amber-300" },
   ];
 
   return (
@@ -188,13 +193,18 @@ export default function DevolucionesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        {STATS.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon size={15} className={color} />
-              <span className="text-xs text-muted-foreground">{label}</span>
+        {STATS.map(({ label, value, icon: Icon, gradient, accentBg, accentBorder, valueColor }) => (
+          <div key={label} className={cn("relative border rounded-xl p-4 overflow-hidden", accentBg, accentBorder)}>
+            <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-current/40 to-transparent opacity-60" />
+            <div className="flex items-center gap-3">
+              <div className={cn("w-10 h-10 rounded-xl bg-linear-to-br flex items-center justify-center shrink-0 shadow-sm", gradient)}>
+                <Icon size={17} className="text-white" />
+              </div>
+              <div>
+                <p className="text-2xs text-muted-foreground font-medium uppercase tracking-wide leading-none">{label}</p>
+                <p className={cn("text-2xl font-black tabular-nums leading-tight mt-0.5", valueColor)}>{value}</p>
+              </div>
             </div>
-            <p className="text-xl font-bold text-foreground tabular-nums">{value}</p>
           </div>
         ))}
       </div>
@@ -223,51 +233,75 @@ export default function DevolucionesPage() {
           <EmptyState icon={RotateCcw} title="Sin devoluciones" description="No hay devoluciones registradas." />
         ) : (
           <div className="divide-y divide-border">
-            {devoluciones.map((d) => (
+            {devoluciones.map((d) => {
+              const eCfg = estadoConfig(d.estado);
+              return (
               <div key={d.id}>
                 <button
                   onClick={() => setExpandedId(expandedId === d.id ? null : d.id)}
-                  className="w-full flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
+                  className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors text-left group"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center shrink-0">
-                    <RotateCcw size={15} className="text-rose-500" />
+                  <div className="w-9 h-9 rounded-xl bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shrink-0 shadow-sm">
+                    <RotateCcw size={14} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {d.cliente_nombre || "Cliente general"} — Venta #{d.venta}
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {d.cliente_nombre || "Cliente general"}
+                      <span className="text-muted-foreground font-normal ml-1.5 text-xs">
+                        <Receipt size={10} className="inline mr-0.5 opacity-60" />Venta #{d.venta}
+                      </span>
                     </p>
-                    <p className="text-xs text-muted-foreground">{fmtFecha(d.fecha)} · {d.cajero_nombre}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                      <CalendarDays size={10} className="opacity-60" />{fmtFecha(d.fecha)}
+                      <span className="opacity-40">·</span>
+                      <User2 size={10} className="opacity-60" />{d.cajero_nombre}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={estadoBadge(d.estado)} className="text-2xs">{d.estado}</Badge>
-                    <span className="text-sm font-bold text-foreground tabular-nums">{formatCurrency(Number(d.monto_devuelto))}</span>
-                    {expandedId === d.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    <span className={cn(
+                      "inline-flex items-center text-2xs font-bold px-2 py-0.5 rounded-full border",
+                      eCfg.accentBg, eCfg.accentBorder, eCfg.color
+                    )}>{d.estado}</span>
+                    <span className="text-base font-black text-foreground tabular-nums">{formatCurrency(Number(d.monto_devuelto))}</span>
+                    {expandedId === d.id
+                      ? <ChevronUp size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                      : <ChevronDown size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />}
                   </div>
                 </button>
                 {expandedId === d.id && (
-                  <div className="px-4 pb-4 bg-muted/20 border-t border-border">
-                    <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-xs mb-3">
-                      <div><span className="text-muted-foreground">Motivo:</span> <span className="font-medium">{d.motivo}</span></div>
-                      <div><span className="text-muted-foreground">Método:</span> <span className="font-medium">{METODO_LABELS[d.metodo_devolucion] ?? d.metodo_devolucion}</span></div>
-                      {d.nota && <div><span className="text-muted-foreground">Nota:</span> <span className="font-medium">{d.nota}</span></div>}
+                  <div className="px-4 pb-4 bg-muted/10 border-t border-border">
+                    <div className="mt-3 flex items-center gap-4 flex-wrap mb-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-lg border border-border">
+                        <span className="text-muted-foreground">Motivo:</span>
+                        <span className="font-semibold text-foreground">{d.motivo}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-lg border border-border">
+                        <span className="text-muted-foreground">Método:</span>
+                        <span className="font-semibold text-foreground">{METODO_LABELS[d.metodo_devolucion] ?? d.metodo_devolucion}</span>
+                      </span>
+                      {d.nota && (
+                        <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-lg border border-border italic text-muted-foreground">
+                          {d.nota}
+                        </span>
+                      )}
                     </div>
                     {d.items?.length > 0 && (
-                      <table className="w-full text-xs">
-                        <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                          <tr className="text-muted-foreground border-b border-border">
-                            <th className="text-left py-1.5">Producto</th>
-                            <th className="text-right py-1.5">Cant.</th>
-                            <th className="text-right py-1.5">Precio</th>
-                            <th className="text-right py-1.5">Subtotal</th>
+                      <table className="w-full text-xs rounded-xl overflow-hidden">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/40 text-muted-foreground">
+                            <th className="text-left px-3 py-2 text-2xs font-bold uppercase tracking-widest">Producto</th>
+                            <th className="text-right px-3 py-2 text-2xs font-bold uppercase tracking-widest">Cant.</th>
+                            <th className="text-right px-3 py-2 text-2xs font-bold uppercase tracking-widest">Precio</th>
+                            <th className="text-right px-3 py-2 text-2xs font-bold uppercase tracking-widest">Subtotal</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {d.items.map((it, i) => (
-                            <tr key={i}>
-                              <td className="py-1.5">{it.producto_nombre}</td>
-                              <td className="text-right">{it.cantidad}</td>
-                              <td className="text-right">{formatCurrency(Number(it.precio_unitario))}</td>
-                              <td className="text-right font-medium">{formatCurrency(it.cantidad * Number(it.precio_unitario))}</td>
+                            <tr key={i} className="hover:bg-muted/20 transition-colors">
+                              <td className="px-3 py-2 font-medium text-foreground">{it.producto_nombre}</td>
+                              <td className="px-3 py-2 text-right tabular-nums">{it.cantidad}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatCurrency(Number(it.precio_unitario))}</td>
+                              <td className="px-3 py-2 text-right font-bold tabular-nums text-foreground">{formatCurrency(it.cantidad * Number(it.precio_unitario))}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -276,17 +310,22 @@ export default function DevolucionesPage() {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Modal nueva devolución */}
       <Dialog open={modalOpen} onOpenChange={(o) => { if (!o) { setModalOpen(false); resetModal(); } }}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-rose-400/70 to-transparent" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <RotateCcw size={16} className="text-rose-500" /> Nueva devolución
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-rose-500 to-red-600 flex items-center justify-center shrink-0 shadow-sm">
+                <RotateCcw size={14} className="text-white" />
+              </div>
+              Nueva devolución
             </DialogTitle>
           </DialogHeader>
 
@@ -323,12 +362,19 @@ export default function DevolucionesPage() {
                 <div className="space-y-2 max-h-72 overflow-y-auto">
                   {ventas.map((v) => (
                     <button key={v.id} onClick={() => seleccionarVenta(v)}
-                      className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted/40 transition-colors">
+                      className="w-full text-left p-3 rounded-xl border border-border hover:bg-muted/40 hover:border-brand-200 dark:hover:border-brand-800/50 transition-all group">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Venta #{v.id} — {v.cliente_nombre ?? "General"}</span>
-                        <span className="text-sm font-bold tabular-nums">{formatCurrency(Number(v.total))}</span>
+                        <span className="text-sm font-semibold text-foreground group-hover:text-brand-700 dark:group-hover:text-brand-300 transition-colors">
+                          {v.cliente_nombre ?? "General"}
+                          <span className="text-muted-foreground font-normal ml-1.5 text-xs">Venta #{v.id}</span>
+                        </span>
+                        <span className="text-sm font-black tabular-nums">{formatCurrency(Number(v.total))}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{fmtFecha(v.fecha)} · {v.cajero_nombre}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                        <CalendarDays size={10} className="opacity-60" />{fmtFecha(v.fecha)}
+                        <span className="opacity-40">·</span>
+                        <User2 size={10} className="opacity-60" />{v.cajero_nombre}
+                      </p>
                     </button>
                   ))}
                 </div>
@@ -389,9 +435,10 @@ export default function DevolucionesPage() {
               </div>
 
               {totalDevolver > 0 && (
-                <div className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 rounded-lg px-4 py-3 border border-rose-200 dark:border-rose-900">
-                  <span className="text-sm font-medium text-rose-700 dark:text-rose-400">Total a devolver</span>
-                  <span className="text-lg font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(totalDevolver)}</span>
+                <div className="relative flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 rounded-xl px-4 py-3 border border-rose-200 dark:border-rose-800/50 overflow-hidden">
+                  <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-rose-400/70 to-transparent" />
+                  <span className="text-sm font-semibold text-rose-700 dark:text-rose-400">Total a devolver</span>
+                  <span className="text-xl font-black text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(totalDevolver)}</span>
                 </div>
               )}
             </div>
