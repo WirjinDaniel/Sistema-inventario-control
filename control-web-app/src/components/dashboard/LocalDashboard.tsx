@@ -15,7 +15,6 @@ import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 
@@ -167,7 +166,7 @@ function KpiCard({ icon: Icon, label, value, sub, delta, accent, iconBg, iconCol
         )}
       </div>
       <p className="text-2xl font-black text-foreground tabular-nums tracking-tight leading-none mb-1">{value}</p>
-      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</p>
+      <p className="text-xs font-bold text-muted-foreground">{label}</p>
       {sub && <p className="text-2xs text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
@@ -388,25 +387,25 @@ export default function LocalDashboard() {
             icon={ShoppingBag} label="Transacciones" loading={loading}
             value={String(stats?.ventas_periodo ?? 0)}
             sub={`completadas — ${periodoLabel.toLowerCase()}`}
-            accent="bg-sky-500"
-            iconBg="bg-sky-50 dark:bg-sky-950"
-            iconColor="text-sky-600 dark:text-sky-400"
+            accent="bg-linear-to-r from-sky-400 to-blue-500"
+            iconBg="bg-linear-to-br from-sky-500 to-blue-600"
+            iconColor="text-white"
           />
           <KpiCard
             icon={Users} label="Clientes con fiado" loading={loading}
             value={String(stats?.clientes_con_deuda ?? 0)}
             sub="deudas pendientes"
-            accent="bg-amber-500"
-            iconBg="bg-amber-50 dark:bg-amber-950"
-            iconColor="text-amber-600 dark:text-amber-400"
+            accent="bg-linear-to-r from-amber-400 to-orange-500"
+            iconBg="bg-linear-to-br from-amber-500 to-orange-600"
+            iconColor="text-white"
           />
           <KpiCard
             icon={AlertTriangle} label="Stock bajo" loading={loading}
             value={String(stats?.productos_stock_bajo ?? 0)}
             sub="productos a reponer"
-            accent="bg-rose-500"
-            iconBg="bg-rose-50 dark:bg-rose-950"
-            iconColor="text-rose-600 dark:text-rose-400"
+            accent="bg-linear-to-r from-rose-400 to-red-500"
+            iconBg="bg-linear-to-br from-rose-500 to-red-600"
+            iconColor="text-white"
           />
         </div>
 
@@ -415,23 +414,23 @@ export default function LocalDashboard() {
           <MicroKpi
             icon={BarChart2} label="Ticket promedio"
             value={formatCurrency(stats?.ticket_promedio ?? 0)}
-            iconBg="bg-purple-50 dark:bg-purple-950"
-            iconColor="text-purple-600 dark:text-purple-400"
+            iconBg="bg-linear-to-br from-purple-500 to-violet-600"
+            iconColor="text-white"
             loading={loading}
           />
           <MicroKpi
             icon={TrendingDown} label={`Gastos — ${periodoLabel.toLowerCase()}`}
             value={formatCurrency(stats?.gastos_periodo ?? 0)}
-            iconBg="bg-rose-50 dark:bg-rose-950"
-            iconColor="text-rose-600 dark:text-rose-400"
+            iconBg="bg-linear-to-br from-rose-500 to-red-600"
+            iconColor="text-white"
             valueColor="text-rose-600 dark:text-rose-400"
             loading={loading}
           />
           <MicroKpi
             icon={Receipt} label="Total fiado pendiente"
             value={formatCurrency(stats?.fiado_total ?? 0)}
-            iconBg="bg-amber-50 dark:bg-amber-950"
-            iconColor="text-amber-600 dark:text-amber-400"
+            iconBg="bg-linear-to-br from-amber-500 to-orange-600"
+            iconColor="text-white"
             valueColor="text-amber-600 dark:text-amber-400"
             loading={loading}
           />
@@ -439,7 +438,8 @@ export default function LocalDashboard() {
 
         {/* ── Gráfica ventas por hora + Métodos de pago ── */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <div className="bg-card rounded-2xl border border-border shadow-sm xl:col-span-2 overflow-hidden">
+          <div className="relative bg-card rounded-2xl border border-border shadow-sm xl:col-span-2 overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-indigo-400/60 to-transparent" />
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
@@ -490,7 +490,8 @@ export default function LocalDashboard() {
           </div>
 
           {/* Métodos de pago */}
-          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="relative bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-emerald-400/60 to-transparent" />
             <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
               <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
                 <DollarSign size={15} className="text-white" />
@@ -555,7 +556,8 @@ export default function LocalDashboard() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
           {/* Últimas ventas */}
-          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="relative bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sky-400/60 to-transparent" />
             <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
               <div className="w-9 h-9 rounded-xl bg-linear-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-sm">
                 <ShoppingBag size={15} className="text-white" />
@@ -574,8 +576,8 @@ export default function LocalDashboard() {
                 {stats.ultimas_ventas.map((v) => (
                   <div key={v.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
-                        <ShoppingBag size={14} className="text-indigo-600 dark:text-indigo-400" />
+                      <div className="w-9 h-9 rounded-xl bg-linear-to-br from-sky-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                        <ShoppingBag size={14} className="text-white" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">
@@ -606,7 +608,8 @@ export default function LocalDashboard() {
           </div>
 
           {/* Productos stock bajo */}
-          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="relative bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-rose-400/60 to-transparent" />
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-linear-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-sm">
@@ -618,7 +621,9 @@ export default function LocalDashboard() {
                 </div>
               </div>
               {(stats?.productos_stock_bajo ?? 0) > 5 && (
-                <Badge variant="danger" className="text-xs font-bold">{stats?.productos_stock_bajo} total</Badge>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                  {stats?.productos_stock_bajo} total
+                </span>
               )}
             </div>
             {loading ? (
@@ -635,10 +640,10 @@ export default function LocalDashboard() {
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-semibold text-foreground truncate flex-1 mr-3">{p.nombre}</p>
                         <span className={cn(
-                          "text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0",
+                          "text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 border",
                           isCritical
-                            ? "bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400"
-                            : "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"
+                            ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950 dark:text-rose-400 dark:border-rose-800"
+                            : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800"
                         )}>
                           {p.stock_actual} {p.unidad ?? "uds"}
                         </span>
