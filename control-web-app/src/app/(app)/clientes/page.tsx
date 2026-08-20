@@ -190,35 +190,23 @@ export default function ClientesPage() {
 
           {/* Fila 2: KPI chips */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 rounded-xl px-4 py-2">
-              <AlertTriangle size={13} className="text-rose-500" />
-              <div>
-                <p className="text-2xs font-semibold text-rose-500 uppercase tracking-wide leading-none">Total fiados</p>
-                <p className="text-sm font-black text-rose-700 dark:text-rose-300 tabular-nums">{formatCurrency(totalDeudas)}</p>
+            {[
+              { label: "Total fiados", value: formatCurrency(totalDeudas), icon: AlertTriangle, gradient: "from-rose-500 to-red-600", accentBg: "bg-rose-50 dark:bg-rose-950/30", accentBorder: "border-rose-100 dark:border-rose-900/50", valueColor: "text-rose-700 dark:text-rose-300" },
+              { label: "Con deuda", value: `${conDeuda} / ${clientes.length}`, icon: Users, gradient: "from-slate-500 to-slate-600", accentBg: "bg-slate-100 dark:bg-slate-800/80", accentBorder: "border-slate-200 dark:border-slate-700/50", valueColor: "text-slate-700 dark:text-slate-200" },
+              { label: "Promedio deuda", value: formatCurrency(promedioDeuda), icon: TrendingDown, gradient: "from-amber-500 to-orange-500", accentBg: "bg-amber-50 dark:bg-amber-950/30", accentBorder: "border-amber-100 dark:border-amber-900/50", valueColor: "text-amber-700 dark:text-amber-300" },
+              { label: "Al día", value: `${pctAlDia.toFixed(0)}%`, icon: BadgeCheck, gradient: "from-emerald-500 to-teal-600", accentBg: "bg-emerald-50 dark:bg-emerald-950/30", accentBorder: "border-emerald-100 dark:border-emerald-900/50", valueColor: "text-emerald-700 dark:text-emerald-300" },
+            ].map(({ label, value, icon: Icon, gradient, accentBg, accentBorder, valueColor }) => (
+              <div key={label} className={cn("relative flex items-center gap-2.5 border rounded-xl px-3 py-2 overflow-hidden", accentBg, accentBorder)}>
+                <div className={cn("absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent to-transparent opacity-70", `via-[var(--accent)]`)} />
+                <div className={cn("w-8 h-8 rounded-lg bg-linear-to-br flex items-center justify-center shrink-0 shadow-sm", gradient)}>
+                  <Icon size={13} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-2xs font-bold text-muted-foreground uppercase tracking-wide leading-none">{label}</p>
+                  <p className={cn("text-sm font-black tabular-nums leading-tight", valueColor)}>{value}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2">
-              <Users size={13} className="text-slate-500" />
-              <div>
-                <p className="text-2xs font-bold text-slate-700 uppercase tracking-wide leading-none">Con deuda</p>
-                <p className="text-sm font-black text-slate-700 dark:text-slate-200 tabular-nums">{conDeuda} / {clientes.length}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-xl px-4 py-2">
-              <TrendingDown size={13} className="text-amber-500" />
-              <div>
-                <p className="text-2xs font-semibold text-amber-500 uppercase tracking-wide leading-none">Promedio deuda</p>
-                <p className="text-sm font-black text-amber-700 dark:text-amber-300 tabular-nums">{formatCurrency(promedioDeuda)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 rounded-xl px-4 py-2">
-              <Check size={13} className="text-emerald-500" />
-              <div>
-                <p className="text-2xs font-semibold text-emerald-500 uppercase tracking-wide leading-none">Al día</p>
-                <p className="text-sm font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{pctAlDia.toFixed(0)}%</p>
-              </div>
-            </div>
-
+            ))}
           </div>
 
           {/* Fila 3: filtros + orden + toggle vista + búsqueda + botón */}
@@ -348,15 +336,15 @@ export default function ClientesPage() {
             /* ── Vista tabla ── */
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
               <table className="w-full text-sm">
-                <thead style={{ backgroundColor: '#EEF0FF' }} className="dark:bg-slate-700/50">
-                  <tr className="border-b border-slate-50 dark:border-slate-800">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wide">Cliente</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wide hidden md:table-cell">Teléfono</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wide hidden lg:table-cell">Cédula</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wide">Deuda</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wide hidden md:table-cell">Límite</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wide w-28 hidden lg:table-cell">Uso</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wide">Estado</th>
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-muted/40">
+                    <th className="px-4 py-2.5 text-left text-2xs font-bold text-muted-foreground uppercase tracking-widest">Cliente</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-bold text-muted-foreground uppercase tracking-widest hidden md:table-cell">Teléfono</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-bold text-muted-foreground uppercase tracking-widest hidden lg:table-cell">Cédula</th>
+                    <th className="px-4 py-2.5 text-right text-2xs font-bold text-muted-foreground uppercase tracking-widest">Deuda</th>
+                    <th className="px-4 py-2.5 text-right text-2xs font-bold text-muted-foreground uppercase tracking-widest hidden md:table-cell">Límite</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-bold text-muted-foreground uppercase tracking-widest w-28 hidden lg:table-cell">Uso</th>
+                    <th className="px-4 py-2.5 text-center text-2xs font-bold text-muted-foreground uppercase tracking-widest">Estado</th>
                     <th className="w-10" />
                   </tr>
                 </thead>
@@ -383,10 +371,8 @@ export default function ClientesPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className={cn(
-                              "w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shrink-0",
-                              tieneDeuda
-                                ? "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400"
-                                : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                              "w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shrink-0 text-white shadow-sm bg-linear-to-br",
+                              tieneDeuda ? "from-rose-500 to-red-600" : "from-emerald-500 to-teal-600"
                             )}>
                               {getInitials(c.nombre)}
                             </div>
@@ -498,10 +484,8 @@ export default function ClientesPage() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          "w-11 h-11 rounded-xl flex items-center justify-center text-sm font-black shrink-0",
-                          tieneDeuda
-                            ? "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400"
-                            : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                          "w-11 h-11 rounded-xl flex items-center justify-center text-sm font-black shrink-0 text-white shadow-sm bg-linear-to-br",
+                          tieneDeuda ? "from-rose-500 to-red-600" : "from-emerald-500 to-teal-600"
                         )}>
                           {getInitials(c.nombre)}
                         </div>
@@ -631,10 +615,10 @@ export default function ClientesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center text-base font-black",
+                      "w-12 h-12 rounded-2xl flex items-center justify-center text-base font-black text-white shadow-sm bg-linear-to-br",
                       Number(clienteActivo.saldo_deuda) > 0
-                        ? "bg-rose-100 dark:bg-rose-900/40 text-rose-600"
-                        : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600"
+                        ? "from-rose-500 to-red-600"
+                        : "from-emerald-500 to-teal-600"
                     )}>
                       {getInitials(clienteActivo.nombre)}
                     </div>
@@ -684,24 +668,28 @@ export default function ClientesPage() {
                 {/* KPI cards */}
                 <div className="space-y-3">
                   <div className={cn(
-                    "rounded-xl p-4 border",
+                    "relative rounded-xl p-4 border overflow-hidden",
                     Number(clienteActivo.saldo_deuda) > 0
                       ? "bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/50"
                       : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/50"
                   )}>
+                    <div className={cn(
+                      "absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent to-transparent",
+                      Number(clienteActivo.saldo_deuda) > 0 ? "via-rose-400/70" : "via-emerald-400/70"
+                    )} />
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-medium text-slate-500">Deuda actual</p>
+                        <p className="text-2xs font-bold text-muted-foreground uppercase tracking-wide">Deuda actual</p>
                         <p className={cn("text-2xl font-black tabular-nums mt-0.5",
                           Number(clienteActivo.saldo_deuda) > 0 ? "text-rose-700 dark:text-rose-300" : "text-emerald-700 dark:text-emerald-300"
                         )}>
                           {formatCurrency(Number(clienteActivo.saldo_deuda))}
                         </p>
                       </div>
-                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center",
-                        Number(clienteActivo.saldo_deuda) > 0 ? "bg-rose-100 dark:bg-rose-900/40" : "bg-emerald-100 dark:bg-emerald-900/40"
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-linear-to-br",
+                        Number(clienteActivo.saldo_deuda) > 0 ? "from-rose-500 to-red-600" : "from-emerald-500 to-teal-600"
                       )}>
-                        <TrendingDown size={17} className={Number(clienteActivo.saldo_deuda) > 0 ? "text-rose-600" : "text-emerald-600"} />
+                        <TrendingDown size={17} className="text-white" />
                       </div>
                     </div>
                   </div>
@@ -781,8 +769,8 @@ export default function ClientesPage() {
                     <div className="space-y-2">
                       {historial.map((a) => (
                         <div key={a.id} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2.5">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-                            <Check size={13} className="text-emerald-600 dark:text-emerald-400" />
+                          <div className="w-8 h-8 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <Check size={13} className="text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -814,11 +802,12 @@ export default function ClientesPage() {
 
       {/* ── Modal crear / editar ── */}
       <Dialog open={modal === "crear" || modal === "editar"} onOpenChange={(o) => !o && setModal(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-brand-400/60 to-transparent" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center">
-                <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-brand-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+                <Users size={14} className="text-white" />
               </div>
               {modal === "crear" ? "Nuevo cliente" : "Editar cliente"}
             </DialogTitle>
@@ -867,11 +856,12 @@ export default function ClientesPage() {
 
       {/* ── Modal abono ── */}
       <Dialog open={modal === "abono"} onOpenChange={(o) => !o && setModal(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-emerald-400/70 to-transparent" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-                <Wallet size={14} className="text-emerald-600 dark:text-emerald-400" />
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+                <Wallet size={14} className="text-white" />
               </div>
               Registrar abono
             </DialogTitle>
