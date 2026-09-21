@@ -8,3 +8,7 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# ── Dependencias ──────────────────────────────────────────────────────────────
+node_modules/
+*.log
